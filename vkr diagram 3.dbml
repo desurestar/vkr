@@ -1,0 +1,145 @@
+Table "Пользователь" [headercolor: #29a0cf] {
+	id bigint [ pk, not null, unique ]
+	"имя_пользователя" varchar(150) [ not null ]
+	email varchar(255) [ not null ]
+	"хеш_пароля" varchar(255) [ not null ]
+	"отображаемое_имя" varchar(150)
+	"аватар" text
+	"биография" text
+	"клиент_uid" varchar(36)
+	"дата_регистрации" timestamptz
+	"последний_вход" timestamptz
+}
+
+Table "Пост" [headercolor: #175e7a] {
+	id bigint [ pk, not null, unique ]
+	"автор" bigint [ not null ]
+	"тип" varchar(20) [ not null ]
+	"статус" varchar(20) [ not null ]
+	"заголовок" varchar(320)
+	"краткое_описание" text
+	"содержание" text
+	"обложка" text
+	"калории" integer
+	"время_готовки_минут" integer
+	"количество_блюд" integer
+	"лайки" integer
+	"комментарии" integer
+	"просмотры" bigint
+	"дата_создания" timestamptz
+	"дата_обновления" timestamptz
+	"клиент_uid" varchar(36)
+}
+
+Table "Комментарий" [headercolor: #175e7a] {
+	id bigint [ pk, not null, unique ]
+	"пост" bigint [ not null ]
+	"автор" bigint [ not null ]
+	"текст" text
+	"создано" timestamptz
+	"обновлено" timestamptz
+	"клиент_uid" varchar(36)
+}
+
+Table "Тег" [headercolor: #29a0cf] {
+	id bigint [ pk, not null, unique ]
+	"название" varchar(100)
+	"ярлык" varchar(100)
+	"цвет" varchar(7)
+}
+
+Table "Пост_Тег" [headercolor: #175e7a] {
+	"пост" bigint [ pk, not null ]
+	"тег" bigint [ pk, not null ]
+}
+
+Table "Ингредиент" [headercolor: #29a0cf] {
+	id bigint [ pk, not null, unique ]
+	"название" varchar(255)
+}
+
+Table "Ингредиент_Поста" [headercolor: #175e7a] {
+	id bigint [ pk, not null, unique ]
+	"пост" bigint [ not null ]
+	"ингредиент" bigint [ not null ]
+	"количество" numeric
+	"единица" varchar(50)
+
+	indexes {
+		("пост", "ингредиент") [ name: 'Ингредиент_Поста_index_0', unique ]
+	}
+}
+
+Table "Шаг_Рецепта" [headercolor: #175e7a] {
+	id bigint [ pk, not null, unique ]
+	"пост" bigint [ not null ]
+	"номер" integer
+	"описание" text
+	"изображение" text
+
+	indexes {
+		("пост", "номер") [ name: 'Шаг_Рецепта_index_0', unique ]
+	}
+}
+
+Table "Лайк" [headercolor: #175e7a] {
+	"пост" bigint [ pk, not null ]
+	"пользователь" bigint [ pk, not null ]
+	"создано" timestamptz
+}
+
+Table "Подписка" [headercolor: #29a0cf] {
+	"подписчик" bigint [ pk, not null ]
+	"автор" bigint [ pk, not null ]
+	"создано" timestamptz
+
+	Note: 'Добавить CHECK (подписчик <> автор), чтобы нельзя было подписаться на самого себя'
+}
+
+Ref "fk_Пользователь_id_Лайк" {
+	"Пользователь".id < "Лайк"."пользователь" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Пост_id_Лайк" {
+	"Пост".id < "Лайк"."пост" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Пользователь_id_Пост" {
+	"Пользователь".id < "Пост"."автор" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Пост_id_Комментарий" {
+	"Пост".id < "Комментарий"."пост" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Пользователь_id_Комментарий" {
+	"Пользователь".id < "Комментарий"."автор" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Пост_id_Пост_Тег" {
+	"Пост".id < "Пост_Тег"."пост" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Тег_id_Пост_Тег" {
+	"Тег".id < "Пост_Тег"."тег" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Пост_id_Ингредиент_Поста" {
+	"Пост".id < "Ингредиент_Поста"."пост" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Ингредиент_id_Ингредиент_Поста" {
+	"Ингредиент".id < "Ингредиент_Поста"."ингредиент" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Пост_id_Шаг_Рецепта" {
+	"Пост".id < "Шаг_Рецепта"."пост" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Пользователь_Подписчик_Подписка" {
+	"Пользователь".id < "Подписка"."подписчик" [ delete: cascade, update: cascade ]
+}
+
+Ref "fk_Пользователь_Автор_Подписка" {
+	"Пользователь".id < "Подписка"."автор" [ delete: cascade, update: cascade ]
+}

@@ -1,0 +1,970 @@
+{
+  "tables": [
+    {
+      "id": "qmpU6d8ZAKcJ3Q1xg_HUu",
+      "name": "Пользователь",
+      "comment": "",
+      "color": "#29a0cf",
+      "fields": [
+        {
+          "id": "5ONf-cymBnqGdqYP4ADNo",
+          "name": "id",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "olQcemK0JpVmFzknfyePN",
+          "name": "имя_пользователя",
+          "type": "VARCHAR(150)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "x2w0-7ReyTqYipESwCew3",
+          "name": "email",
+          "type": "VARCHAR(255)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "FEOGTY8_JLpk4iJwc4o3q",
+          "name": "хеш_пароля",
+          "type": "VARCHAR(255)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "qfFCZKlj_DW1KessAtZbe",
+          "name": "отображаемое_имя",
+          "type": "VARCHAR(150)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "vVLoyoSdt0gErTvJ06kUe",
+          "name": "аватар",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "Ta4Pbd1KyF4sLMKexHZ1u",
+          "name": "биография",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "tkxy8QMT1-U_XA8D3Tbe2",
+          "name": "клиент_uid",
+          "type": "VARCHAR(36)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "48_dDo6ASeZ_lvWHf41Ad",
+          "name": "дата_регистрации",
+          "type": "TIMESTAMPTZ",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "4KuuR_bxZ0X-q_HZCU8PD",
+          "name": "последний_вход",
+          "type": "TIMESTAMPTZ",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        }
+      ],
+      "indices": [],
+      "x": -308.09389935193803,
+      "y": -3.151065314359343
+    },
+    {
+      "id": "kgCttmVf1CMjX84ZQ6QlA",
+      "name": "Пост",
+      "comment": "",
+      "color": "#175e7a",
+      "fields": [
+        {
+          "id": "UpuJgyJc4jfld-15EbIE8",
+          "name": "id",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "aKB0bcj3C9rq1YjrdwjNt",
+          "name": "автор",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "ZyOS5kS7i7dF3tjFPklP4",
+          "name": "тип",
+          "type": "VARCHAR(20)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "-SU7W2SLjtxy1olCYaPHr",
+          "name": "статус",
+          "type": "VARCHAR(20)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "aAm9w9lAfoB56eNE-mQoy",
+          "name": "заголовок",
+          "type": "VARCHAR(320)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "8YjblPmKc5wmC_Fvw_Aui",
+          "name": "краткое_описание",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "umFll966AnnFIh6YmwS89",
+          "name": "содержание",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "eQQ-x9keOjxlrKL5tuLiJ",
+          "name": "обложка",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "6c5gRtpmgN7yHI9hZPAGb",
+          "name": "калории",
+          "type": "INTEGER",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "9PqvnSGGJCqWq6BEdNdd7",
+          "name": "время_готовки_минут",
+          "type": "INTEGER",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "-F47QGPBUi1n4wETJaJ-x",
+          "name": "количество_блюд",
+          "type": "INTEGER",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "dkmYfDuKNbNwNLDTXJZgE",
+          "name": "лайки",
+          "type": "INTEGER",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "DG77fSjyXd5zNfg9n_V4s",
+          "name": "комментарии",
+          "type": "INTEGER",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "4h7viE7DY5HU0_-zXVfIQ",
+          "name": "просмотры",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "3kEZGbvLvsgrAQ3F3NHAG",
+          "name": "дата_создания",
+          "type": "TIMESTAMPTZ",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "yXvODxYc_BGHS0P-JKt4K",
+          "name": "дата_обновления",
+          "type": "TIMESTAMPTZ",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "up0kCQKRjPlhUeee8idxy",
+          "name": "клиент_uid",
+          "type": "VARCHAR(36)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        }
+      ],
+      "indices": [],
+      "x": 260.1585856296874,
+      "y": 243.56051349717197
+    },
+    {
+      "id": "hPsnuBMobmiY7ZoMzfk5W",
+      "name": "Комментарий",
+      "comment": "",
+      "color": "#175e7a",
+      "fields": [
+        {
+          "id": "4ifREACH33b8PvopvOtnU",
+          "name": "id",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "jLp3EJdBxUpJy5XNS2POr",
+          "name": "пост",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "ZSgkmWzOSTXRHEbgqDuiZ",
+          "name": "автор",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "RtiCy5fdxnIl5ZlQII7IA",
+          "name": "текст",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "ooNHxZeozzUhLe3bvIJGM",
+          "name": "создано",
+          "type": "TIMESTAMPTZ",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "KJ-49u7wRCDgyUEWPqmcN",
+          "name": "обновлено",
+          "type": "TIMESTAMPTZ",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "yiacCRWfmPjNXxc2Hqf5z",
+          "name": "клиент_uid",
+          "type": "VARCHAR(36)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        }
+      ],
+      "indices": [],
+      "x": 678.3202443511873,
+      "y": -19.09821775156254
+    },
+    {
+      "id": "KR5Hw5JCsZOZpUjLI5Ec_",
+      "name": "Тег",
+      "comment": "",
+      "color": "#29a0cf",
+      "fields": [
+        {
+          "id": "FyOahcON2s1U3s-Vluguu",
+          "name": "id",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "sool7mzbpSf3RjoZ7pht6",
+          "name": "название",
+          "type": "VARCHAR(100)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "vP_zIr4ELyYPA2BxsmX8k",
+          "name": "ярлык",
+          "type": "VARCHAR(100)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "3nAhCElNtMYTT4EiKa0yg",
+          "name": "цвет",
+          "type": "VARCHAR(7)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        }
+      ],
+      "indices": [],
+      "x": 1233.4399065648133,
+      "y": 220.10885410000014
+    },
+    {
+      "id": "dpQ1isyaSjeMtGaSI7ug8",
+      "name": "Пост_Тег",
+      "comment": "",
+      "color": "#175e7a",
+      "fields": [
+        {
+          "id": "WcQwR9OxhSIBNWHyb3_Yq",
+          "name": "пост",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "COXOzWFTidiRp47nJT_EA",
+          "name": "тег",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        }
+      ],
+      "indices": [],
+      "x": 879.5725239773128,
+      "y": 339.24334223779704
+    },
+    {
+      "id": "9el5bK44YfVM8k-AkO5k8",
+      "name": "Ингредиент",
+      "comment": "",
+      "color": "#29a0cf",
+      "fields": [
+        {
+          "id": "krTSNHy-lZEvsrHz338PG",
+          "name": "id",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "YaxGulM2HNVRiDqFmLfLK",
+          "name": "название",
+          "type": "VARCHAR(255)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        }
+      ],
+      "indices": [],
+      "x": 1361.7388782191256,
+      "y": 516.3594254150312
+    },
+    {
+      "id": "XcNwz7PXG-4M6biXkbQVQ",
+      "name": "Ингредиент_Поста",
+      "comment": "",
+      "color": "#175e7a",
+      "fields": [
+        {
+          "id": "LliHKtWahoTvQ2yolRAyN",
+          "name": "id",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "n1X3UZh3_nyG7OLvoEMf-",
+          "name": "пост",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "SCwnrB1tJs5-j7yeQukc1",
+          "name": "ингредиент",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "fIQ1mALLH5RSUzcHjNMI8",
+          "name": "количество",
+          "type": "NUMERIC",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "uFsFdeYUv07qTwNGhUNkI",
+          "name": "единица",
+          "type": "VARCHAR(50)",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        }
+      ],
+      "indices": [
+        {
+          "id": 1,
+          "fields": [
+            "пост",
+            "ингредиент"
+          ],
+          "name": "Ингредиент_Поста_index_0",
+          "unique": true
+        }
+      ],
+      "x": 844.1420084531251,
+      "y": 518.2355306843748
+    },
+    {
+      "id": "rmJ4Q_zd2k2q_dtB2AwO2",
+      "name": "Шаг_Рецепта",
+      "comment": "",
+      "color": "#175e7a",
+      "fields": [
+        {
+          "id": "-UifmoWh54Ynvi1i1pIwU",
+          "name": "id",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "7oz5VQGpdf05osYePFkct",
+          "name": "пост",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "m4EGWcvb40o9h5TdZ_lry",
+          "name": "номер",
+          "type": "INTEGER",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "fuIyUvRokCDBsHeKwXvG-",
+          "name": "описание",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "XKaAiGCRsAmsju--zPQlL",
+          "name": "изображение",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        }
+      ],
+      "indices": [
+        {
+          "id": 2,
+          "fields": [
+            "пост",
+            "номер"
+          ],
+          "name": "Шаг_Рецепта_index_0",
+          "unique": true
+        }
+      ],
+      "x": 757.1178680199372,
+      "y": 917.8521366013442
+    },
+    {
+      "id": "Za2aPujOO62LxOIOy8oKd",
+      "name": "Лайк",
+      "comment": "",
+      "color": "#175e7a",
+      "fields": [
+        {
+          "id": "M3-guor3etK7nJ-a7_Qsy",
+          "name": "пост",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "r-xUvSfGWIIw-WrX0x-2s",
+          "name": "пользователь",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "790ft6hYfBz_5ujYdJTYk",
+          "name": "создано",
+          "type": "TIMESTAMPTZ",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        }
+      ],
+      "indices": [],
+      "x": -231.38838084143742,
+      "y": 772.4517023384689
+    },
+    {
+      "id": "TepF49ETXaUxdtVtTl7gF",
+      "name": "Подписка",
+      "comment": "Добавить CHECK (подписчик <> автор), чтобы нельзя было подписаться на самого себя",
+      "color": "#29a0cf",
+      "fields": [
+        {
+          "id": "ZeErMOgsak9lSv96IwWT8",
+          "name": "подписчик",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "C03axirbU5kukiuUYC13H",
+          "name": "автор",
+          "type": "BIGINT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": ""
+        },
+        {
+          "id": "sjPmXqiAtEBrV6KsVL0J5",
+          "name": "создано",
+          "type": "TIMESTAMPTZ",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": ""
+        }
+      ],
+      "indices": [],
+      "x": -457.83442635215357,
+      "y": 492.7258965024723
+    }
+  ],
+  "relationships": [
+    {
+      "name": "fk_Пользователь_id_Лайк",
+      "startTableId": "qmpU6d8ZAKcJ3Q1xg_HUu",
+      "endTableId": "Za2aPujOO62LxOIOy8oKd",
+      "endFieldId": "r-xUvSfGWIIw-WrX0x-2s",
+      "startFieldId": "5ONf-cymBnqGdqYP4ADNo",
+      "id": "Xrff49jGCXWv1_CLD1Ige",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Пост_id_Лайк",
+      "startTableId": "kgCttmVf1CMjX84ZQ6QlA",
+      "endTableId": "Za2aPujOO62LxOIOy8oKd",
+      "endFieldId": "M3-guor3etK7nJ-a7_Qsy",
+      "startFieldId": "UpuJgyJc4jfld-15EbIE8",
+      "id": "mJkW3j-S9fG2Urx4Us8o3",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Пользователь_id_Пост",
+      "startTableId": "qmpU6d8ZAKcJ3Q1xg_HUu",
+      "endTableId": "kgCttmVf1CMjX84ZQ6QlA",
+      "endFieldId": "aKB0bcj3C9rq1YjrdwjNt",
+      "startFieldId": "5ONf-cymBnqGdqYP4ADNo",
+      "id": "8sZP_TULogmabisoEXp-9",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Пост_id_Комментарий",
+      "startTableId": "kgCttmVf1CMjX84ZQ6QlA",
+      "endTableId": "hPsnuBMobmiY7ZoMzfk5W",
+      "endFieldId": "jLp3EJdBxUpJy5XNS2POr",
+      "startFieldId": "UpuJgyJc4jfld-15EbIE8",
+      "id": "YYGOct160Pi3yFwpW-fVb",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Пользователь_id_Комментарий",
+      "startTableId": "qmpU6d8ZAKcJ3Q1xg_HUu",
+      "endTableId": "hPsnuBMobmiY7ZoMzfk5W",
+      "endFieldId": "ZSgkmWzOSTXRHEbgqDuiZ",
+      "startFieldId": "5ONf-cymBnqGdqYP4ADNo",
+      "id": "ILeKGxj1W34qCH9s6U-Qy",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Пост_id_Пост_Тег",
+      "startTableId": "kgCttmVf1CMjX84ZQ6QlA",
+      "endTableId": "dpQ1isyaSjeMtGaSI7ug8",
+      "endFieldId": "WcQwR9OxhSIBNWHyb3_Yq",
+      "startFieldId": "UpuJgyJc4jfld-15EbIE8",
+      "id": "ou_hNsPQARjTCFeXCOR_i",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Тег_id_Пост_Тег",
+      "startTableId": "KR5Hw5JCsZOZpUjLI5Ec_",
+      "endTableId": "dpQ1isyaSjeMtGaSI7ug8",
+      "endFieldId": "COXOzWFTidiRp47nJT_EA",
+      "startFieldId": "FyOahcON2s1U3s-Vluguu",
+      "id": "1FNRr68Km87X5p_WsciRM",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Пост_id_Ингредиент_Поста",
+      "startTableId": "kgCttmVf1CMjX84ZQ6QlA",
+      "endTableId": "XcNwz7PXG-4M6biXkbQVQ",
+      "endFieldId": "n1X3UZh3_nyG7OLvoEMf-",
+      "startFieldId": "UpuJgyJc4jfld-15EbIE8",
+      "id": "dC2ghF0OglQU7RTWg4mPH",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Ингредиент_id_Ингредиент_Поста",
+      "startTableId": "9el5bK44YfVM8k-AkO5k8",
+      "endTableId": "XcNwz7PXG-4M6biXkbQVQ",
+      "endFieldId": "SCwnrB1tJs5-j7yeQukc1",
+      "startFieldId": "krTSNHy-lZEvsrHz338PG",
+      "id": "dUk9b3d7S0VBDGgT7dEkf",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Пост_id_Шаг_Рецепта",
+      "startTableId": "kgCttmVf1CMjX84ZQ6QlA",
+      "endTableId": "rmJ4Q_zd2k2q_dtB2AwO2",
+      "endFieldId": "7oz5VQGpdf05osYePFkct",
+      "startFieldId": "UpuJgyJc4jfld-15EbIE8",
+      "id": "ccTlPQsk5oNopROWzdGHA",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Пользователь_Подписчик_Подписка",
+      "startTableId": "qmpU6d8ZAKcJ3Q1xg_HUu",
+      "endTableId": "TepF49ETXaUxdtVtTl7gF",
+      "endFieldId": "ZeErMOgsak9lSv96IwWT8",
+      "startFieldId": "5ONf-cymBnqGdqYP4ADNo",
+      "id": "fJR4qYLLwyZG9XHhMaOfY",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    },
+    {
+      "name": "fk_Пользователь_Автор_Подписка",
+      "startTableId": "qmpU6d8ZAKcJ3Q1xg_HUu",
+      "endTableId": "TepF49ETXaUxdtVtTl7gF",
+      "endFieldId": "C03axirbU5kukiuUYC13H",
+      "startFieldId": "5ONf-cymBnqGdqYP4ADNo",
+      "id": "AKYklCuX6GvL8LMYOM4nb",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "cardinality": "one_to_many"
+    }
+  ],
+  "notes": [],
+  "subjectAreas": [],
+  "database": "postgresql",
+  "types": [],
+  "enums": [],
+  "title": "vkr diagram 3"
+}

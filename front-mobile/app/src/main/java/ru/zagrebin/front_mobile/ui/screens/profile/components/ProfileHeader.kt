@@ -1,0 +1,133 @@
+package ru.zagrebin.front_mobile.ui.screens.profile.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.User
+
+@Composable
+fun ProfileHeader(
+    name: String = "Иван Иванов",
+    email: String = "test@email.ru",
+    avatarUrl: String? = null,
+    onCreateClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(235.dp)
+    ) {
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(bottomEnd = 28.dp, bottomStart = 28.dp))
+                .background(Color(0xFF1E1C1F))
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+        ) {
+
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offset(y = 24.dp),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    Button(
+                        onClick = onCreateClick,
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.9f),
+                            contentColor = Color.Black
+                        ),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        elevation = null
+                    ) {
+                        Text(
+                            text = "Создать +",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Column(
+                    modifier = Modifier.padding(start = 140.dp)
+                ) {
+                    Text(
+                        text = name,
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = email,
+                        color = Color.White.copy(0.7f),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .align(Alignment.BottomStart)
+                .offset(x = 24.dp, y = 20.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFD6C2AE))
+                .border(6.dp, Color(0xFFF3F3F3), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = FeatherIcons.User,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = Color.White
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, locale = "ru")
+@Composable
+fun ProfileHeaderPreview() {
+    ProfileHeader()
+}
