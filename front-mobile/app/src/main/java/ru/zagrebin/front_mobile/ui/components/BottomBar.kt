@@ -1,4 +1,4 @@
-package ru.zagbrebin.front_mobile.ui.components
+package ru.zagrebin.front_mobile.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,8 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import ru.zagbrebin.front_mobile.ui.navigation.BottomNavItem
-import androidx.compose.material3.Icon
+import ru.zagrebin.front_mobile.ui.navigation.BottomNavItem
 
 @Composable
 fun BottomBar(
@@ -49,6 +50,7 @@ fun BottomBar(
     Surface(
         modifier = modifier
             .fillMaxWidth()
+//            .wrapContentHeight(align = Alignment.Bottom) // <- важно: прибили к низу
             .padding(horizontal = 28.dp)
             .padding(bottom = 20.dp),
         shape = RoundedCornerShape(28.dp),
@@ -63,6 +65,7 @@ fun BottomBar(
         ) {
             items.forEach { item ->
                 val selected = currentRoute == item.route
+
                 val backgroundColor by animateColorAsState(
                     targetValue = if (selected) Color.White.copy(alpha = 0.28f) else Color.Transparent,
                     label = "tabBg"
@@ -93,9 +96,7 @@ fun BottomBar(
                                     color = Color.White.copy(alpha = 0.24f),
                                     shape = RoundedCornerShape(999.dp)
                                 )
-                            } else {
-                                Modifier
-                            }
+                            } else Modifier
                         )
                         .clickable { onTabClick(item) }
                         .animateContentSize(),

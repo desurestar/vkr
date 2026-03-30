@@ -1,4 +1,4 @@
-package ru.zagbrebin.front_mobile.ui.navigation
+package ru.zagrebin.front_mobile.ui.navigation
 
 import androidx.compose.ui.graphics.vector.ImageVector
 import compose.icons.FeatherIcons

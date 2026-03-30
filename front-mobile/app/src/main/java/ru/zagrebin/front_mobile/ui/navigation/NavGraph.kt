@@ -6,7 +6,6 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import ru.zagbrebin.front_mobile.ui.navigation.BottomNavItem
 import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileScreen
 

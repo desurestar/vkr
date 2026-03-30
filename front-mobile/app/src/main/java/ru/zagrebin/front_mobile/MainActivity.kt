@@ -9,11 +9,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import ru.zaerebin.front_mobile.MainScreen
 import ru.zagrebin.front_mobile.ui.navigation.Screen
 import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
 import ru.zagrebin.front_mobile.ui.screens.login.LoginScreen
-import ru.zagrebin.front_mobile.ui.screens.profile.ProfileScreen
 import ru.zagrebin.front_mobile.ui.screens.register.RegisterScreen
 
 class MainActivity : ComponentActivity() {
