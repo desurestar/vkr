@@ -1,13 +1,28 @@
 package ru.zagrebin.front_mobile.ui.navigation
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Text
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
+import ru.zagrebin.front_mobile.ui.screens.feed.FeedScreen
+import ru.zagrebin.front_mobile.ui.screens.feed.FeedViewModel
+import ru.zagrebin.front_mobile.ui.screens.login.LoginScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileScreen
+import ru.zagrebin.front_mobile.ui.screens.publicProfile.PublicProfileScreen
+import ru.zagrebin.front_mobile.ui.screens.register.RegisterScreen
+import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsScreen
+import ru.zagrebin.front_mobile.ui.screens.statistics.StatisticsScreen
 
 @Composable
 fun NavGraph(
@@ -17,23 +32,83 @@ fun NavGraph(
     NavHost(
         navController = navController,
         startDestination = BottomNavItem.Recipes.route,
-        modifier = Modifier
+        modifier = Modifier.padding(paddingValues)
     ) {
 
         composable(BottomNavItem.Recipes.route) {
-            EntryOptionsScreen(navController)
+            FeedScreen(
+                onOpenRecipe = { postId ->
+                    navController.navigate(Screen.RecipeDetails.createRoute(postId))
+                },
+                onOpenPublicProfile = { userId ->
+                    navController.navigate(Screen.PublicProfile.createRoute(userId))
+                }
+            )
         }
 
         composable(BottomNavItem.Articles.route) {
-            ProfileScreen()
+            EntryOptionsScreen(navController)
+        }
+
+        // Auth routes are also part of the same NavHost, otherwise navigate("register") crashes.
+        composable(Screen.EntryOptions.route) {
+            EntryOptionsScreen(navController)
+        }
+
+        composable(Screen.Login.route) {
+            LoginScreen(navController)
+        }
+
+        composable(Screen.Register.route) {
+            RegisterScreen(navController)
         }
 
         composable(BottomNavItem.Statistics.route) {
-            ProfileScreen()
+            StatisticsScreen()
         }
 
         composable(BottomNavItem.Profile.route) {
             ProfileScreen()
+        }
+
+        composable(
+            route = Screen.RecipeDetails.route,
+            arguments = listOf(navArgument("postId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val postId = backStackEntry.arguments?.getInt("postId") ?: return@composable
+            val feedViewModel: FeedViewModel = viewModel()
+            val post = feedViewModel.getPostById(postId)
+
+            if (post != null) {
+                RecipeDetailsScreen(
+                    post = post,
+                    onBackClick = { navController.popBackStack() }
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Рецепт не найден")
+                }
+            }
+        }
+
+        composable(
+            route = Screen.PublicProfile.route,
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
+
+            PublicProfileScreen(
+                userId = userId,
+                onBackClick = { navController.popBackStack() },
+                onOpenRecipe = { postId ->
+                    navController.navigate(Screen.RecipeDetails.createRoute(postId))
+                }
+            )
         }
     }
 }

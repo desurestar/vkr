@@ -1,0 +1,32 @@
+package ru.zagrebin.front_mobile.ui.screens.statistics
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+@Composable
+fun StatisticsScreen(
+    viewModel: StatisticsViewModel = viewModel()
+) {
+    val state by viewModel.state.collectAsState()
+
+    StatisticsContent(
+        state = state,
+        onDayClick = viewModel::selectDay,
+        onAddWater = viewModel::addWater,
+        onAddMeal = viewModel::addMockMeal
+    )
+}
+
+@Preview(showBackground = true, locale = "ru")
+@Composable
+private fun StatisticsScreenPreview() {
+    StatisticsContent(
+        state = previewStatisticsUiState(),
+        onDayClick = {},
+        onAddWater = {},
+        onAddMeal = {}
+    )
+}
