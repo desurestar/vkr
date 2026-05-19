@@ -5,9 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
@@ -45,14 +48,21 @@ fun AddMealBottomSheet(
     var fats100 by rememberSaveable(mealType) { mutableStateOf("0") }
     var carbs100 by rememberSaveable(mealType) { mutableStateOf("0") }
     var kcal100 by rememberSaveable(mealType) { mutableStateOf("0") }
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFFEFEFEF)
+        sheetState = sheetState,
+        containerColor = Color(0xFFEFEFEF),
+        scrimColor = Color.Black.copy(alpha = 0.32f)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -160,7 +170,7 @@ fun AddMealBottomSheet(
                 color = Color(0xFF7C3AED),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 16.dp)
+                    .padding(top = 16.dp, bottom = 32.dp)
             ) {
                 Text(
                     text = "Добавить в ${mealType.title}",

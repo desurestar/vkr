@@ -1,5 +1,6 @@
 package ru.zagrebin.front_mobile.ui.screens.statistics
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,153 +24,217 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlin.math.min
 
 @Composable
 fun NutritionSummaryCard(day: StatisticsDay) {
     val meals = day.meals.values.flatten()
     val consumedKcal = meals.sumOf { it.kcal }
-    val proteins = meals.sumOf { it.proteins.toDouble() }.toFloat()
-    val fats = meals.sumOf { it.fats.toDouble() }.toFloat()
-    val carbs = meals.sumOf { it.carbs.toDouble() }.toFloat()
+    val proteins = meals.sumOf { it.proteins.toDouble() }.toInt()
+    val fats = meals.sumOf { it.fats.toDouble() }.toInt()
+    val carbs = meals.sumOf { it.carbs.toDouble() }.toInt()
     val remainingKcal = (day.goalKcal - consumedKcal).coerceAtLeast(0)
 
-    Surface(
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-        color = Color.White,
+    CaloriesCard(
+        remainingKcal = remainingKcal,
+        totalKcal = day.goalKcal,
+        consumedKcal = consumedKcal,
+        protein = MacroValue(proteins, 50),
+        fat = MacroValue(fats, 33),
+        carbs = MacroValue(carbs, 125),
         modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ArcCalorieProgress(
-                    consumed = consumedKcal,
-                    goal = day.goalKcal,
-                    remaining = remainingKcal,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
-                )
+    )
+}
 
-                Column(
-                    modifier = Modifier.weight(1f).padding(start = 8.dp, end = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    MacroStat(value = proteins, label = "Белки", icon = "🥚")
-                    MacroStat(value = fats, label = "Жиры", icon = "🧈")
-                    MacroStat(value = carbs, label = "Углеводы", icon = "🌾")
-                }
+@Composable
+private fun CaloriesCard(
+    remainingKcal: Int,
+    totalKcal: Int,
+    consumedKcal: Int,
+    protein: MacroValue,
+    fat: MacroValue,
+    carbs: MacroValue,
+    modifier: Modifier = Modifier
+) {
+    val progress = if (totalKcal <= 0) 0f
+    else (1f - min(1f, remainingKcal.toFloat() / totalKcal.toFloat()))
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ProgressArcWithText(
+                progress = progress,
+                size = 150.dp,
+                stroke = 12.dp,
+                trackColor = Color(0xFFE2E2E2),
+                progressColor = Color(0xFFD45A1A),
+                remainingKcal = remainingKcal,
+                totalKcal = totalKcal,
+                consumedKcal = consumedKcal
+            )
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                MacroRow(color = Color(0xFFB14C0C), title = "Белки", value = protein)
+                MacroRow(color = Color(0xFFFF8A5C), title = "Жиры", value = fat)
+                MacroRow(color = Color(0xFFE64A19), title = "Углеводы", value = carbs)
             }
         }
     }
 }
 
 @Composable
-private fun ArcCalorieProgress(
-    consumed: Int,
-    goal: Int,
-    remaining: Int,
-    modifier: Modifier = Modifier
+private fun ProgressArcWithText(
+    progress: Float,
+    size: Dp,
+    stroke: Dp,
+    trackColor: Color,
+    progressColor: Color,
+    remainingKcal: Int,
+    totalKcal: Int,
+    consumedKcal: Int
 ) {
-    val progress = (consumed.toFloat() / goal.toFloat()).coerceIn(0f, 1f)
-
-    Box(modifier = modifier.padding(horizontal = 10.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-        Canvas(
-            modifier = Modifier
-                .size(140.dp)
-                .padding(8.dp)
-        ) {
-            val stroke = 10.dp.toPx()
-
-            val diameter = size.minDimension * 1.4f
-            val arcSize = Size(diameter, diameter)
-
-            val topLeft = Offset(
-                (size.width - diameter) / 2f,
-                (size.height - diameter) / 2f
-            )
-
-            drawArc(
-                color = Color(0xFFDCDCDC),
-                startAngle = 180f,
-                sweepAngle = 180f,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(stroke, cap = StrokeCap.Round)
-            )
-
-            drawArc(
-                color = Color(0xFFE85318),
-                startAngle = 180f,
-                sweepAngle = 180f * progress,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(stroke, cap = StrokeCap.Round)
-            )
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.height(66.dp)
-        ) {
+    Box(
+        modifier = Modifier.size(size),
+        contentAlignment = Alignment.Center
+    ) {
+        ProgressArc(
+            progress = progress,
+            size = size,
+            stroke = stroke,
+            trackColor = trackColor,
+            progressColor = progressColor
+        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "$consumed ккал",
+                text = "$remainingKcal ккал",
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium
+                color = Color(0xFF2A2A2A)
             )
             Text(
-                text = "осталось из $goal",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                text = "осталось из $totalKcal",
+                fontSize = 12.sp,
+                color = Color(0xFF8A8A8A)
             )
+            Spacer(Modifier.height(4.dp))
             Text(
-                text = "Всего: $remaining",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFFB17C58)
+                text = "Всего: $consumedKcal",
+                fontSize = 12.sp,
+                color = Color(0xFFB3927D),
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
 }
 
 @Composable
-private fun MacroStat(value: Float, label: String, icon: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-
+private fun ProgressArc(
+    progress: Float,
+    size: Dp,
+    stroke: Dp,
+    trackColor: Color,
+    progressColor: Color
+) {
+    val strokePx = with(LocalDensity.current) { stroke.toPx() }
+    Canvas(
+        modifier = Modifier.size(size)
     ) {
-        Text(
-            text = value.pretty(),
-            color = Color(0xFFE85318),
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f)
+        val startAngle = 180f
+        val sweepAngle = 180f
+        val inset = strokePx / 2f
+        val arcSize = Size(size.toPx() - strokePx, size.toPx() - strokePx)
+        val topLeft = Offset(inset, inset)
+
+        drawArc(
+            color = trackColor,
+            startAngle = startAngle,
+            sweepAngle = sweepAngle,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(width = strokePx, cap = StrokeCap.Round)
         )
-        Text(
-            text = "•",
-            color = Color.Gray,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.weight(1f),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-        Text(
-            text = label,
-            color = Color(0xFF555555),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.weight(1f),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        drawArc(
+            color = progressColor,
+            startAngle = startAngle,
+            sweepAngle = sweepAngle * progress.coerceIn(0f, 1f),
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(width = strokePx, cap = StrokeCap.Round)
         )
     }
 }
+
+@Composable
+private fun MacroRow(color: Color, title: String, value: MacroValue) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = value.current.toString(),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        Text(
+            text = "/${value.total}г",
+            fontSize = 12.sp,
+            color = Color(0xFF8A8A8A)
+        )
+        Spacer(Modifier.width(6.dp))
+        Box(
+            modifier = Modifier
+                .size(4.dp)
+                .background(color, shape = RoundedCornerShape(2.dp))
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = title,
+            fontSize = 14.sp,
+            color = Color(0xFF8A8A8A)
+        )
+    }
+}
+
+data class MacroValue(val current: Int, val total: Int)
 
 @Preview(showBackground = true, locale = "ru")
 @Composable
 private fun NutritionSummaryCardPreview() {
-    NutritionSummaryCard(day = previewStatisticsDay())
+    MaterialTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF5F5F5))
+                .padding(16.dp)
+        ) {
+            CaloriesCard(
+                remainingKcal = 158,
+                totalKcal = 1000,
+                consumedKcal = 842,
+                protein = MacroValue(28, 50),
+                fat = MacroValue(41, 33),
+                carbs = MacroValue(85, 125)
+            )
+        }
+    }
 }
-

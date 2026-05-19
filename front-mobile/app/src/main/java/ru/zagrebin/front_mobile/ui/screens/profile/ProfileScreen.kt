@@ -2,15 +2,13 @@ package ru.zagrebin.front_mobile.ui.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,7 +29,9 @@ import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileStatsCard
 
 @Composable
 fun ProfileScreen(
-    viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    onOpenShoppingList: () -> Unit,
+    onOpenMyPosts: () -> Unit
 ) {
     val state = viewModel.state.collectAsState().value
 
@@ -82,13 +82,19 @@ fun ProfileScreen(
                     ProfileMenuItem(
                         icon = FeatherIcons.BookOpen,
                         title = "Мои посты",
-                        onClick = { viewModel.onEvent(ProfileEvent.OnMyPostsClick) }
+                        onClick = {
+                            viewModel.onEvent(ProfileEvent.OnMyPostsClick)
+                            onOpenMyPosts()
+                        }
                     )
 
                     ProfileMenuItem(
                         icon = FeatherIcons.Bookmark,
                         title = "Список покупок",
-                        onClick = { viewModel.onEvent(ProfileEvent.OnShoppingListClick) }
+                        onClick = {
+                            viewModel.onEvent(ProfileEvent.OnShoppingListClick)
+                            onOpenShoppingList()
+                        }
                     )
 
                     ProfileMenuItem(
@@ -128,5 +134,5 @@ fun ProfileScreen(
 @Preview(showBackground = true, locale = "ru")
 @Composable
 fun ProfileScreenPreview() {
-    ProfileScreen()
+    ProfileScreen(onOpenShoppingList = {}, onOpenMyPosts = {})
 }

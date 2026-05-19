@@ -14,11 +14,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsScreen
+import ru.zagrebin.front_mobile.ui.screens.articles.ArticlesFeedScreen
 import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedScreen
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedViewModel
 import ru.zagrebin.front_mobile.ui.screens.login.LoginScreen
+import ru.zagrebin.front_mobile.ui.screens.profile.MyPostsScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileScreen
+import ru.zagrebin.front_mobile.ui.screens.profile.ShoppingListScreen
 import ru.zagrebin.front_mobile.ui.screens.publicProfile.PublicProfileScreen
 import ru.zagrebin.front_mobile.ui.screens.register.RegisterScreen
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsScreen
@@ -47,7 +51,14 @@ fun NavGraph(
         }
 
         composable(BottomNavItem.Articles.route) {
-            EntryOptionsScreen(navController)
+            ArticlesFeedScreen(
+                onOpenArticle = { postId ->
+                    navController.navigate(Screen.ArticleDetails.createRoute(postId))
+                },
+                onOpenPublicProfile = { userId ->
+                    navController.navigate(Screen.PublicProfile.createRoute(userId))
+                }
+            )
         }
 
         // Auth routes are also part of the same NavHost, otherwise navigate("register") crashes.
@@ -68,7 +79,43 @@ fun NavGraph(
         }
 
         composable(BottomNavItem.Profile.route) {
-            ProfileScreen()
+            ProfileScreen(
+                onOpenShoppingList = { navController.navigate(Screen.ShoppingList.route) },
+                onOpenMyPosts = { navController.navigate(Screen.MyPosts.route) }
+            )
+        }
+
+        composable(Screen.ShoppingList.route) {
+            ShoppingListScreen(onBackClick = { navController.popBackStack() })
+        }
+
+        composable(Screen.MyPosts.route) {
+            MyPostsScreen(onBackClick = { navController.popBackStack() })
+        }
+
+        composable(
+            route = Screen.ArticleDetails.route,
+            arguments = listOf(navArgument("postId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val postId = backStackEntry.arguments?.getInt("postId") ?: return@composable
+            val feedViewModel: FeedViewModel = viewModel()
+            val post = feedViewModel.getPostById(postId)
+
+            if (post != null) {
+                ArticleDetailsScreen(
+                    article = post,
+                    onBackClick = { navController.popBackStack() }
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Статья не найдена")
+                }
+            }
         }
 
         composable(

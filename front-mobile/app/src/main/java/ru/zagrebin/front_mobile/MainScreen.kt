@@ -91,9 +91,9 @@ fun MainScreen() {
                         // Переход на другую вкладку: закрываем открытые вложенные страницы.
                         navController.navigate(item.route) {
                             launchSingleTop = true
-                            restoreState = false
+                            restoreState = true
                             popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = false
+                                saveState = true
                             }
                         }
                     }

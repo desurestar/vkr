@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -21,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ImageNotSupported
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -29,6 +32,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,11 +56,28 @@ fun RecipeDetailsScreen(
     post: PostCardState,
     onBackClick: () -> Unit
 ) {
+    var showComments by rememberSaveable { mutableStateOf(false) }
+    var showIngredientsPicker by rememberSaveable { mutableStateOf(false) }
+    val comments = remember { mutableStateListOf<RecipeCommentUi>() }
+    val ingredientOptions = remember(post.id) {
+        post.ingredients.mapIndexed { index, ingredient ->
+            IngredientPickUi(id = index, title = ingredient.text)
+        }
+    }
+    val selectedIngredients = remember(post.id) {
+        mutableStateMapOf<Int, Boolean>().apply {
+            ingredientOptions.forEach { option ->
+                this[option.id] = true
+            }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(AppPageBackgroundColor),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 96.dp)
     ) {
         item {
             RecipeTopBar(onBackClick = onBackClick)
@@ -84,7 +111,10 @@ fun RecipeDetailsScreen(
         }
 
         item {
-            IngredientsSection(post = post)
+            IngredientsSection(
+                post = post,
+                onAddToListClick = { showIngredientsPicker = true }
+            )
         }
 
         item {
@@ -137,8 +167,47 @@ fun RecipeDetailsScreen(
         }
 
         item {
+            RecipeCommentsButton(
+                count = comments.size,
+                onClick = { showComments = true },
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+
+        item {
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+
+    if (showComments) {
+        RecipeCommentsBottomSheet(
+            comments = comments,
+            onDismiss = { showComments = false },
+            onSendClick = { text, replyTo ->
+                comments.add(
+                    RecipeCommentUi(
+                        id = (comments.size + 1).toString(),
+                        authorName = "Вы",
+                        authorHandle = "@you",
+                        date = "сейчас",
+                        text = text,
+                        replyToName = replyTo?.authorName
+                    )
+                )
+            }
+        )
+    }
+
+    if (showIngredientsPicker) {
+        IngredientsPickBottomSheet(
+            ingredients = ingredientOptions,
+            selected = selectedIngredients,
+            onDismiss = { showIngredientsPicker = false },
+            onAddClick = {
+                showIngredientsPicker = false
+                // TODO: интеграция со списком покупок
+            }
+        )
     }
 }
 
@@ -207,7 +276,10 @@ private fun AuthorHeader(post: PostCardState) {
 }
 
 @Composable
-private fun IngredientsSection(post: PostCardState) {
+private fun IngredientsSection(
+    post: PostCardState,
+    onAddToListClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -219,11 +291,28 @@ private fun IngredientsSection(post: PostCardState) {
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "Ингредиенты",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Ингредиенты",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                Button(
+                    onClick = onAddToListClick,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF1E7DE),
+                        contentColor = Color(0xFF4A4A4A)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(text = "В список", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
 
             post.ingredients.forEach { ingredient ->
                 IngredientBulletItem(text = ingredient.text)
@@ -282,4 +371,3 @@ private fun NoImageStepPlaceholder() {
         }
     }
 }
-

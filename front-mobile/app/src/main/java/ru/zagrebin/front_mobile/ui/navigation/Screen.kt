@@ -13,4 +13,12 @@ sealed class Screen(val route: String){
     data object RecipeDetails : Screen("recipe/{postId}") {
         fun createRoute(postId: Int): String = "recipe/$postId"
     }
+
+    data object ArticleDetails : Screen("article/{postId}") {
+        fun createRoute(postId: Int): String = "article/$postId"
+    }
+
+    data object ShoppingList : Screen("shoppingList")
+
+    data object MyPosts : Screen("myPosts")
 }
