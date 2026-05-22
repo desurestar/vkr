@@ -18,6 +18,16 @@ data class MealEntry(
     val carbs: Float
 )
 
+data class MealDraft(
+    val title: String = "",
+    val portionGrams: Int = 0,
+    val isLiquid: Boolean = false,
+    val proteinsPer100: Float = 0f,
+    val fatsPer100: Float = 0f,
+    val carbsPer100: Float = 0f,
+    val kcalPer100: Int = 0
+)
+
 data class StatisticsDay(
     val id: Int,
     val dayNumber: String,
@@ -26,4 +36,3 @@ data class StatisticsDay(
     val waterConsumedMl: Int,
     val meals: Map<MealType, List<MealEntry>>
 )
-

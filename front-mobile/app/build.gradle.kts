@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.volley)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -69,5 +70,6 @@ dependencies {
 
 
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.activity:activity-ktx:1.8.2")
 
 }

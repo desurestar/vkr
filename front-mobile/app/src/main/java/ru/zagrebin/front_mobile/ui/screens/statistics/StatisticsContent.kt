@@ -27,7 +27,10 @@ fun StatisticsContent(
     state: StatisticsUiState,
     onDayClick: (Int) -> Unit,
     onAddWater: (Int) -> Unit,
-    onAddMeal: (MealType) -> Unit
+    onAddMeal: (MealType, MealDraft) -> Unit,
+    myRecipeOptions: List<ru.zagrebin.front_mobile.ui.components.postCard.PostCardState> = emptyList(),
+    savedRecipeOptions: List<ru.zagrebin.front_mobile.ui.components.postCard.PostCardState> = emptyList(),
+    allRecipeOptions: List<ru.zagrebin.front_mobile.ui.components.postCard.PostCardState> = emptyList()
 ) {
     var openedMealType by remember { mutableStateOf<MealType?>(null) }
 
@@ -91,10 +94,13 @@ fun StatisticsContent(
         AddMealBottomSheet(
             mealType = openedMealType!!,
             onDismiss = { openedMealType = null },
-            onAddClick = {
-                onAddMeal(openedMealType!!)
+            onAddClick = { type, draft ->
+                onAddMeal(type, draft)
                 openedMealType = null
-            }
+            },
+            myRecipeOptions = myRecipeOptions,
+            savedRecipeOptions = savedRecipeOptions,
+            allRecipeOptions = allRecipeOptions
         )
     }
 }
@@ -106,7 +112,6 @@ private fun StatisticsContentPreview() {
         state = previewStatisticsUiState(),
         onDayClick = {},
         onAddWater = {},
-        onAddMeal = {}
+        onAddMeal = { _, _ -> }
     )
 }
-

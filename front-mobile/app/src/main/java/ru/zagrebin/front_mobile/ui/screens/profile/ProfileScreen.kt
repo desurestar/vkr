@@ -31,7 +31,10 @@ import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileStatsCard
 fun ProfileScreen(
     viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     onOpenShoppingList: () -> Unit,
-    onOpenMyPosts: () -> Unit
+    onOpenMyPosts: () -> Unit,
+    onOpenEditAccount: () -> Unit,
+    onOpenPasswordSecurity: () -> Unit,
+    onOpenCreatePost: () -> Unit
 ) {
     val state = viewModel.state.collectAsState().value
 
@@ -58,7 +61,10 @@ fun ProfileScreen(
                     name = state.name,
                     email = state.email,
                     avatarUrl = state.avatarUrl,
-                    onCreateClick = { viewModel.onEvent(ProfileEvent.OnCreateClick) }
+                    onCreateClick = {
+                        viewModel.onEvent(ProfileEvent.OnCreateClick)
+                        onOpenCreatePost()
+                    }
                 )
             }
 
@@ -115,13 +121,19 @@ fun ProfileScreen(
                     ProfileMenuItem(
                         icon = FeatherIcons.User,
                         title = "Редактировать аккаунт",
-                        onClick = { viewModel.onEvent(ProfileEvent.OnEditAccountClick) }
+                        onClick = {
+                            viewModel.onEvent(ProfileEvent.OnEditAccountClick)
+                            onOpenEditAccount()
+                        }
                     )
 
                     ProfileMenuItem(
                         icon = FeatherIcons.Lock,
                         title = "Пароль и безопасность",
-                        onClick = { viewModel.onEvent(ProfileEvent.OnSecurityClick) }
+                        onClick = {
+                            viewModel.onEvent(ProfileEvent.OnSecurityClick)
+                            onOpenPasswordSecurity()
+                        }
                     )
                 }
             }
@@ -134,5 +146,11 @@ fun ProfileScreen(
 @Preview(showBackground = true, locale = "ru")
 @Composable
 fun ProfileScreenPreview() {
-    ProfileScreen(onOpenShoppingList = {}, onOpenMyPosts = {})
+    ProfileScreen(
+        onOpenShoppingList = {},
+        onOpenMyPosts = {},
+        onOpenEditAccount = {},
+        onOpenPasswordSecurity = {},
+        onOpenCreatePost = {}
+    )
 }

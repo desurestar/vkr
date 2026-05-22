@@ -20,11 +20,14 @@ import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedScreen
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedViewModel
 import ru.zagrebin.front_mobile.ui.screens.login.LoginScreen
+import ru.zagrebin.front_mobile.ui.screens.profile.EditAccountScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.MyPostsScreen
+import ru.zagrebin.front_mobile.ui.screens.profile.PasswordSecurityScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.ShoppingListScreen
 import ru.zagrebin.front_mobile.ui.screens.publicProfile.PublicProfileScreen
 import ru.zagrebin.front_mobile.ui.screens.register.RegisterScreen
+import ru.zagrebin.front_mobile.ui.screens.recipe.CreateRecipeScreen
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsScreen
 import ru.zagrebin.front_mobile.ui.screens.statistics.StatisticsScreen
 
@@ -81,7 +84,10 @@ fun NavGraph(
         composable(BottomNavItem.Profile.route) {
             ProfileScreen(
                 onOpenShoppingList = { navController.navigate(Screen.ShoppingList.route) },
-                onOpenMyPosts = { navController.navigate(Screen.MyPosts.route) }
+                onOpenMyPosts = { navController.navigate(Screen.MyPosts.route) },
+                onOpenEditAccount = { navController.navigate(Screen.EditAccount.route) },
+                onOpenPasswordSecurity = { navController.navigate(Screen.PasswordSecurity.route) },
+                onOpenCreatePost = { navController.navigate(Screen.CreateRecipe.route) }
             )
         }
 
@@ -91,6 +97,23 @@ fun NavGraph(
 
         composable(Screen.MyPosts.route) {
             MyPostsScreen(onBackClick = { navController.popBackStack() })
+        }
+
+        composable(Screen.EditAccount.route) {
+            EditAccountScreen(
+                onBackClick = { navController.popBackStack() },
+                onSaveClick = { _, _ -> navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.PasswordSecurity.route) {
+            PasswordSecurityScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.CreateRecipe.route) {
+            CreateRecipeScreen(onBackClick = { navController.popBackStack() })
         }
 
         composable(

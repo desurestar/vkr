@@ -21,4 +21,10 @@ sealed class Screen(val route: String){
     data object ShoppingList : Screen("shoppingList")
 
     data object MyPosts : Screen("myPosts")
+
+    data object EditAccount : Screen("editAccount")
+
+    data object PasswordSecurity : Screen("passwordSecurity")
+
+    data object CreateRecipe : Screen("createRecipe")
 }

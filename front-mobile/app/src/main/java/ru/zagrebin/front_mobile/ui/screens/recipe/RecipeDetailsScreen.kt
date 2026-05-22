@@ -47,6 +47,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
+import ru.zagrebin.front_mobile.ui.screens.statistics.AddMealBottomSheet
+import ru.zagrebin.front_mobile.ui.screens.statistics.MealDraft
+import ru.zagrebin.front_mobile.ui.screens.statistics.MealType
+import ru.zagrebin.front_mobile.ui.screens.statistics.StatisticsStore
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.StepBadgeBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.StepBadgeCornerRadius
@@ -58,6 +62,7 @@ fun RecipeDetailsScreen(
 ) {
     var showComments by rememberSaveable { mutableStateOf(false) }
     var showIngredientsPicker by rememberSaveable { mutableStateOf(false) }
+    var showAddMeal by rememberSaveable { mutableStateOf(false) }
     val comments = remember { mutableStateListOf<RecipeCommentUi>() }
     val ingredientOptions = remember(post.id) {
         post.ingredients.mapIndexed { index, ingredient ->
@@ -71,6 +76,17 @@ fun RecipeDetailsScreen(
             }
         }
     }
+    val recipeDraft = remember(post.id) {
+        MealDraft(
+            title = post.title,
+            portionGrams = 100,
+            isLiquid = false,
+            proteinsPer100 = post.proteinsPer100,
+            fatsPer100 = post.fatsPer100,
+            carbsPer100 = post.carbsPer100,
+            kcalPer100 = post.kcalPer100
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -80,7 +96,10 @@ fun RecipeDetailsScreen(
         contentPadding = PaddingValues(bottom = 96.dp)
     ) {
         item {
-            RecipeTopBar(onBackClick = onBackClick)
+            RecipeTopBar(
+                onBackClick = onBackClick,
+                onEatClick = { showAddMeal = true }
+            )
         }
 
         item {
@@ -209,10 +228,26 @@ fun RecipeDetailsScreen(
             }
         )
     }
+
+    if (showAddMeal) {
+        AddMealBottomSheet(
+            mealType = MealType.BREAKFAST,
+            onDismiss = { showAddMeal = false },
+            onAddClick = { type, draft ->
+                StatisticsStore.addMeal(type, draft)
+                showAddMeal = false
+            },
+            allowMealTypeSelection = true,
+            initialDraft = recipeDraft
+        )
+    }
 }
 
 @Composable
-private fun RecipeTopBar(onBackClick: () -> Unit) {
+private fun RecipeTopBar(
+    onBackClick: () -> Unit,
+    onEatClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -230,6 +265,18 @@ private fun RecipeTopBar(onBackClick: () -> Unit) {
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold
         )
+        Spacer(modifier = Modifier.weight(1f))
+        Button(
+            onClick = onEatClick,
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFF1E7DE),
+                contentColor = Color(0xFF4A4A4A)
+            ),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(text = "Я это съел", style = MaterialTheme.typography.bodyMedium)
+        }
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
 }
