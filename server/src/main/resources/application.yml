@@ -9,9 +9,9 @@ server:
 
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/vkr}
-    username: ${DB_USERNAME:vkr}
-    password: ${DB_PASSWORD:vkr}
+    url: jdbc:postgresql://localhost:5432/vkr
+    username: klows
+    password: 190485
   jpa:
     open-in-view: false
     hibernate:
