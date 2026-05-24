@@ -59,7 +59,7 @@ public class ProfileController {
 
     @GetMapping("/{userId}")
     public ApiModels.User publicProfile(@PathVariable Long userId) {
-        return db.toUser(db.getUserEntity(userId));
+        return db.getUser(userId);
     }
 
     @PostMapping("/{userId}/follow")
