@@ -40,6 +40,7 @@ interface FeedApi {
 
     @POST("api/v1/profile/{userId}/follow") suspend fun follow(@Path("userId") userId: Long)
     @DELETE("api/v1/profile/{userId}/follow") suspend fun unfollow(@Path("userId") userId: Long)
+    @GET("api/v1/profile/{userId}") suspend fun getPublicProfile(@Path("userId") userId: Long): UserProfileDto
 
     @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null): SearchResponse
 }
@@ -51,3 +52,14 @@ data class UpdatePasswordRequest(val oldPassword: String, val newPassword: Strin
 data class CommentRequest(val text: String)
 data class CommentDto(val id: Long, val authorId: Long, val text: String, val createdAt: String)
 data class SearchResponse(val posts: List<FeedItemDto> = emptyList(), val users: List<SessionUserDto> = emptyList())
+
+
+data class UserProfileDto(
+    val id: Long,
+    val email: String? = null,
+    val displayName: String? = null,
+    val bio: String? = null,
+    val avatarUrl: String? = null,
+    val following: Set<Long> = emptySet(),
+    val followers: Set<Long> = emptySet()
+)
