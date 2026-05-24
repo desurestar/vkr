@@ -1,8 +1,11 @@
 package ru.zagrebin.server.auth;
 
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 import ru.zagrebin.server.common.InMemoryStore;
 
@@ -21,7 +24,9 @@ public class AuthController {
     public record LoginRequest(@NotBlank String email, @NotBlank String password) {}
 
     @PostMapping("/register")
-    public Map<String, Object> register(@RequestBody RegisterRequest req, HttpSession session) {
+    public Map<String, Object> register(@Valid @RequestBody RegisterRequest req, HttpSession session) {
+        var emailExists = store.users.values().stream().anyMatch(u -> u.email().equalsIgnoreCase(req.email()));
+        if (emailExists) throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
         var id = store.userSeq.incrementAndGet();
         var user = new InMemoryStore.User(id, req.username(), req.email(), store.encoder.encode(req.password()), req.username(), "", null,
                 new HashSet<>(), new HashSet<>(), new ArrayList<>());
@@ -31,9 +36,12 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public Map<String, Object> login(@RequestBody LoginRequest req, HttpSession session) {
-        var user = store.users.values().stream().filter(u -> u.email().equalsIgnoreCase(req.email())).findFirst().orElseThrow();
-        if (!store.encoder.matches(req.password(), user.passwordHash())) throw new IllegalArgumentException("Invalid credentials");
+    public Map<String, Object> login(@Valid @RequestBody LoginRequest req, HttpSession session) {
+        var user = store.users.values().stream().filter(u -> u.email().equalsIgnoreCase(req.email())).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+        if (!store.encoder.matches(req.password(), user.passwordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        }
         session.setAttribute("uid", user.id());
         return Map.of("id", user.id(), "displayName", user.displayName());
     }
@@ -42,11 +50,15 @@ public class AuthController {
     public void logout(HttpSession session) { session.invalidate(); }
 
     @GetMapping("/me")
-    public InMemoryStore.User me(HttpSession session) { return store.users.get(requireUid(session)); }
+    public InMemoryStore.User me(HttpSession session) {
+        var user = store.users.get(requireUid(session));
+        if (user == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        return user;
+    }
 
     private Long requireUid(HttpSession session) {
         var uid = (Long) session.getAttribute("uid");
-        if (uid == null) throw new IllegalStateException("Unauthorized");
+        if (uid == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         return uid;
     }
 }
