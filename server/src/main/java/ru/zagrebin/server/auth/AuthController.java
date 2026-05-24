@@ -5,60 +5,37 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
-import ru.zagrebin.server.common.InMemoryStore;
+import org.springframework.web.server.ResponseStatusException;
+import ru.zagrebin.server.common.ApiModels;
+import ru.zagrebin.server.data.DbService;
+import ru.zagrebin.server.data.entity.UserEntity;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
-    private final InMemoryStore store;
-    public AuthController(InMemoryStore store) { this.store = store; }
-
+    private final DbService db;
+    public AuthController(DbService db) { this.db = db; }
     public record RegisterRequest(@NotBlank String username, @Email String email, @NotBlank String password) {}
     public record LoginRequest(@NotBlank String email, @NotBlank String password) {}
 
     @PostMapping("/register")
     public Map<String, Object> register(@Valid @RequestBody RegisterRequest req, HttpSession session) {
-        var emailExists = store.users.values().stream().anyMatch(u -> u.email().equalsIgnoreCase(req.email()));
-        if (emailExists) throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
-        var id = store.userSeq.incrementAndGet();
-        var user = new InMemoryStore.User(id, req.username(), req.email(), store.encoder.encode(req.password()), req.username(), "", null,
-                new HashSet<>(), new HashSet<>(), new ArrayList<>());
-        store.users.put(id, user);
-        session.setAttribute("uid", id);
-        return Map.of("id", id, "registeredAt", Instant.now().toString());
+        if (db.emailExists(req.email())) throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
+        var u = new UserEntity(); u.setUsername(req.username()); u.setEmail(req.email()); u.setPasswordHash(db.encoder.encode(req.password())); u.setDisplayName(req.username()); u.setBio("");
+        u = db.saveUser(u); session.setAttribute("uid", u.getId());
+        return Map.of("id", u.getId(), "registeredAt", Instant.now().toString());
     }
-
     @PostMapping("/login")
     public Map<String, Object> login(@Valid @RequestBody LoginRequest req, HttpSession session) {
-        var user = store.users.values().stream().filter(u -> u.email().equalsIgnoreCase(req.email())).findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
-        if (!store.encoder.matches(req.password(), user.passwordHash())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
-        }
-        session.setAttribute("uid", user.id());
-        return Map.of("id", user.id(), "displayName", user.displayName());
+        var user = db.findByEmail(req.email());
+        if (!db.encoder.matches(req.password(), user.getPasswordHash())) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        session.setAttribute("uid", user.getId()); return Map.of("id", user.getId(), "displayName", user.getDisplayName());
     }
-
-    @PostMapping("/logout")
-    public void logout(HttpSession session) { session.invalidate(); }
-
-    @GetMapping("/me")
-    public InMemoryStore.User me(HttpSession session) {
-        var user = store.users.get(requireUid(session));
-        if (user == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
-        return user;
-    }
-
-    private Long requireUid(HttpSession session) {
-        var uid = (Long) session.getAttribute("uid");
-        if (uid == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
-        return uid;
-    }
+    @PostMapping("/logout") public void logout(HttpSession session) { session.invalidate(); }
+    @GetMapping("/me") public ApiModels.User me(HttpSession session) { return db.toUser(db.getUserEntity(requireUid(session))); }
+    private Long requireUid(HttpSession session) { var uid = (Long) session.getAttribute("uid"); if (uid == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"); return uid; }
 }

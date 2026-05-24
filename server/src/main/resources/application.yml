@@ -6,3 +6,15 @@ server:
         http-only: true
         secure: false
       timeout: 7d
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/vkr}
+    username: ${DB_USERNAME:vkr}
+    password: ${DB_PASSWORD:vkr}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
