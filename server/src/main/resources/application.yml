@@ -1,0 +1,8 @@
+server:
+  port: 8080
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: false
+      timeout: 7d
