@@ -40,7 +40,7 @@ class AppContainer(context: Context) {
         .addConverterFactory(MoshiConverterFactory.create(moshi))
         .build()
 
-    private val feedApi: FeedApi = retrofit.create(FeedApi::class.java)
+    val feedApi: FeedApi = retrofit.create(FeedApi::class.java)
     private val repository = FeedRepository(
         db.feedDao(),
         feedApi,
