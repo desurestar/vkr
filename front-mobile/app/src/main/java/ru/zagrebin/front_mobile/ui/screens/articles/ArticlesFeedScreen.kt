@@ -32,11 +32,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -50,7 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.ui.components.postCard.ArticleCardContent
-import ru.zagrebin.front_mobile.ui.screens.feed.FeedViewModel
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.FilterButtonCornerRadius
 import ru.zagrebin.front_mobile.ui.theme.FilterButtonIconPadding
@@ -79,11 +82,12 @@ import ru.zagrebin.front_mobile.ui.theme.TransparentColor
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticlesFeedScreen(
-    viewModel: FeedViewModel = viewModel(),
+    viewModel: ArticlesViewModel = viewModel(),
     onOpenArticle: (Int) -> Unit = {},
     onOpenPublicProfile: (String) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -99,6 +103,17 @@ fun ArticlesFeedScreen(
     val showScrollToTop by remember {
         derivedStateOf {
             listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 500
+        }
+    }
+
+    LaunchedEffect(state.errorMessage) {
+        val message = state.errorMessage ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = message,
+            actionLabel = "Повторить"
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            viewModel.retryRefresh()
         }
     }
 
@@ -162,6 +177,13 @@ fun ArticlesFeedScreen(
                 )
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = ListBottomPadding)
+        )
     }
 
     if (isFilterSheetOpen) {
@@ -313,5 +335,3 @@ private fun FilterRangeRow(
         )
     }
 }
-
-

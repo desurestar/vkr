@@ -4,5 +4,7 @@ import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 
 data class FeedState(
     val posts: List<PostCardState> = emptyList(),
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val errorMessage: String? = null,
+    val isUsingFallback: Boolean = false
 )

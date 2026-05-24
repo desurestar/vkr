@@ -18,7 +18,6 @@ import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsScreen
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticlesFeedScreen
 import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedScreen
-import ru.zagrebin.front_mobile.ui.screens.feed.FeedViewModel
 import ru.zagrebin.front_mobile.ui.screens.login.LoginScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.EditAccountScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.MyPostsScreen
@@ -30,6 +29,10 @@ import ru.zagrebin.front_mobile.ui.screens.register.RegisterScreen
 import ru.zagrebin.front_mobile.ui.screens.recipe.CreateRecipeScreen
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsScreen
 import ru.zagrebin.front_mobile.ui.screens.statistics.StatisticsScreen
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
+import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
 
 @Composable
 fun NavGraph(
@@ -121,22 +124,40 @@ fun NavGraph(
             arguments = listOf(navArgument("postId") { type = NavType.IntType })
         ) { backStackEntry ->
             val postId = backStackEntry.arguments?.getInt("postId") ?: return@composable
-            val feedViewModel: FeedViewModel = viewModel()
-            val post = feedViewModel.getPostById(postId)
+            val detailsViewModel: ArticleDetailsViewModel = viewModel()
+            val state = detailsViewModel.state.collectAsState().value
 
-            if (post != null) {
-                ArticleDetailsScreen(
-                    article = post,
-                    onBackClick = { navController.popBackStack() }
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Статья не найдена")
+            LaunchedEffect(postId) {
+                detailsViewModel.load(postId)
+            }
+
+            when {
+                state.post != null -> {
+                    ArticleDetailsScreen(
+                        article = state.post,
+                        content = state.content,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+                state.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Загрузка статьи...")
+                    }
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Статья не найдена")
+                    }
                 }
             }
         }
@@ -146,22 +167,39 @@ fun NavGraph(
             arguments = listOf(navArgument("postId") { type = NavType.IntType })
         ) { backStackEntry ->
             val postId = backStackEntry.arguments?.getInt("postId") ?: return@composable
-            val feedViewModel: FeedViewModel = viewModel()
-            val post = feedViewModel.getPostById(postId)
+            val detailsViewModel: RecipeDetailsViewModel = viewModel()
+            val state = detailsViewModel.state.collectAsState().value
 
-            if (post != null) {
-                RecipeDetailsScreen(
-                    post = post,
-                    onBackClick = { navController.popBackStack() }
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Рецепт не найден")
+            LaunchedEffect(postId) {
+                detailsViewModel.load(postId)
+            }
+
+            when {
+                state.post != null -> {
+                    RecipeDetailsScreen(
+                        post = state.post,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+                state.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Загрузка рецепта...")
+                    }
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Рецепт не найден")
+                    }
                 }
             }
         }

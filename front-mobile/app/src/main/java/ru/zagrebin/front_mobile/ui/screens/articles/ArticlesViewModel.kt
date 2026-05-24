@@ -1,4 +1,4 @@
-package ru.zagrebin.front_mobile.ui.screens.feed
+package ru.zagrebin.front_mobile.ui.screens.articles
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -13,16 +13,16 @@ import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.data.repository.RefreshResult
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
-import ru.zagrebin.front_mobile.ui.data.RecipeRepository
+import ru.zagrebin.front_mobile.ui.screens.feed.FeedState
 
-class FeedViewModel(application: Application) : AndroidViewModel(application) {
+class ArticlesViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
     private val query = MutableStateFlow("")
     private val errorMessage = MutableStateFlow<String?>(null)
     private val isUsingFallback = MutableStateFlow(false)
 
     val state: StateFlow<FeedState> = combine(
-        container.observeRecipesFeedUseCase(),
+        container.observeArticlesFeedUseCase(),
         query,
         errorMessage,
         isUsingFallback
@@ -39,7 +39,7 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun retryRefresh() {
         viewModelScope.launch {
-            val result = container.refreshRecipesFeedUseCase()
+            val result = container.refreshArticlesFeedUseCase()
             when (result) {
                 RefreshResult.Success -> {
                     errorMessage.value = null
@@ -53,13 +53,8 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onSearch(newQuery: String) {
-        query.value = newQuery
-    }
-
+    fun onSearch(newQuery: String) { query.value = newQuery }
     fun onTagClick(postId: Int, tagId: Int) = Unit
-
-    fun getPostById(postId: Int): PostCardState? = RecipeRepository.getPostById(postId)
 
     private fun FeedItem.toUi(): PostCardState = PostCardState(
         id = id,

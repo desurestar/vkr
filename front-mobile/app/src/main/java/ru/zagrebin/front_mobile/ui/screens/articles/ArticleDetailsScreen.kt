@@ -40,6 +40,7 @@ import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 @Composable
 fun ArticleDetailsScreen(
     article: PostCardState,
+    content: String,
     onBackClick: () -> Unit
 ) {
     var showComments by rememberSaveable { mutableStateOf(false) }
@@ -76,7 +77,11 @@ fun ArticleDetailsScreen(
             }
 
             Text(
-                text = "Полный текст статьи будет здесь. Добавьте описание, шаги или рекомендации.",
+                text = if (content.isBlank()) {
+                    "Полный текст статьи будет здесь. Добавьте описание, шаги или рекомендации."
+                } else {
+                    content
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color(0xFF3A3A3A)
             )
