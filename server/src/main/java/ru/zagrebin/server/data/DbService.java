@@ -3,6 +3,8 @@ package ru.zagrebin.server.data;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import ru.zagrebin.server.common.ApiModels;
 import ru.zagrebin.server.data.entity.*;
 import ru.zagrebin.server.data.repo.*;
@@ -36,11 +38,23 @@ public class DbService {
     }
 
     public UserEntity getUserEntity(Long id) {
-        return users.findById(id).orElseThrow();
+        return users.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     public PostEntity getPostEntity(Long id) {
-        return posts.findById(id).orElseThrow();
+        return posts.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public ApiModels.Post getPost(Long id) {
+        return toPost(getPostEntity(id));
+    }
+
+    @Transactional(readOnly = true)
+    public ApiModels.User getUser(Long id) {
+        return toUser(getUserEntity(id));
     }
 
     public ApiModels.User toUser(UserEntity u) {
@@ -149,7 +163,8 @@ public class DbService {
     }
 
     public UserEntity findByEmail(String email) {
-        return users.findByEmailIgnoreCase(email).orElseThrow();
+        return users.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
     }
 
     public List<ApiModels.User> allUsers() {

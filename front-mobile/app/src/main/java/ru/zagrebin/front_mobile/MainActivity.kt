@@ -9,6 +9,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
 import ru.zagrebin.front_mobile.ui.navigation.Screen
 import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
 import ru.zagrebin.front_mobile.ui.screens.login.LoginScreen
@@ -18,6 +19,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
+        AuthSessionState.init(applicationContext)
         enableEdgeToEdge()
         setContent {
             MainScreen()

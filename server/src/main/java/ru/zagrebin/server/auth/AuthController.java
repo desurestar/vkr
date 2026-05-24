@@ -83,7 +83,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ApiModels.User me(HttpSession session) {
-        return db.toUser(db.getUserEntity(requireUid(session)));
+        return db.getUser(requireUid(session));
     }
 
     private Long requireUid(HttpSession session) {

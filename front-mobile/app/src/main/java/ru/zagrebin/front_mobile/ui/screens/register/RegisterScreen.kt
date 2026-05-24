@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 
 
 import androidx.compose.ui.res.painterResource
@@ -51,6 +52,7 @@ import ru.zagrebin.front_mobile.ui.navigation.BottomNavItem
 
 @Composable
 fun RegisterScreen(navController: NavController) {
+    val context = LocalContext.current
 
     var login by remember { mutableStateOf("") }
     var email by remember {mutableStateOf("")}
@@ -124,7 +126,7 @@ fun RegisterScreen(navController: NavController) {
                         Button(
                             onClick = {
                                 if (login.isNotBlank() && email.isNotBlank() && password.isNotBlank()) {
-                                    AuthSessionState.setAuthorized(true)
+                                    AuthSessionState.setAuthorized(context, true)
                                     navController.navigate(BottomNavItem.Profile.route) {
                                         popUpTo(Screen.EntryOptions.route) { inclusive = true }
                                     }
