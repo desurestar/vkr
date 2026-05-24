@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,8 @@ import androidx.navigation.compose.rememberNavController
 import ru.zagrebin.front_mobile.ui.components.BottomBar
 import ru.zagrebin.front_mobile.ui.navigation.NavGraph
 import ru.zagrebin.front_mobile.ui.navigation.BottomNavItem
+import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
+import ru.zagrebin.front_mobile.ui.navigation.Screen
 
 @Composable
 fun MainScreen() {
@@ -46,6 +49,7 @@ fun MainScreen() {
         )
     }
     var selectedBottomRoute by remember { mutableStateOf(BottomNavItem.Recipes.route) }
+    val isAuthorized by AuthSessionState.isAuthorized.collectAsState()
 
     LaunchedEffect(currentRoute) {
         if (currentRoute in bottomRoutes) {
@@ -74,6 +78,10 @@ fun MainScreen() {
             BottomBar(
                 currentRoute = selectedBottomRoute,
                 onTabClick = { item ->
+                    if (item.route == BottomNavItem.Profile.route && !isAuthorized) {
+                        navController.navigate(Screen.EntryOptions.route)
+                        return@BottomBar
+                    }
                     val isReselect = item.route == selectedBottomRoute
                     selectedBottomRoute = item.route
 

@@ -46,6 +46,8 @@ import compose.icons.feathericons.User
 import ru.zagrebin.front_mobile.R
 import ru.zagrebin.front_mobile.ui.components.AnimatedLabelTextField
 import ru.zagrebin.front_mobile.ui.navigation.Screen
+import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
+import ru.zagrebin.front_mobile.ui.navigation.BottomNavItem
 
 @Composable
 fun RegisterScreen(navController: NavController) {
@@ -120,7 +122,14 @@ fun RegisterScreen(navController: NavController) {
                         Spacer(modifier = Modifier.height(60.dp))
 
                         Button(
-                            onClick = {},
+                            onClick = {
+                                if (login.isNotBlank() && email.isNotBlank() && password.isNotBlank()) {
+                                    AuthSessionState.setAuthorized(true)
+                                    navController.navigate(BottomNavItem.Profile.route) {
+                                        popUpTo(Screen.EntryOptions.route) { inclusive = true }
+                                    }
+                                }
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp),
