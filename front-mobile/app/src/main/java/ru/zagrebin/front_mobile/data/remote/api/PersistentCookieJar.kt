@@ -4,6 +4,7 @@ import android.content.Context
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 
 class PersistentCookieJar(context: Context) : CookieJar {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -35,7 +36,10 @@ class PersistentCookieJar(context: Context) : CookieJar {
 
     private fun readAllCookies(): List<Cookie> {
         val raw = prefs.getStringSet(KEY_COOKIES, emptySet()) ?: emptySet()
-        return raw.mapNotNull(Cookie::parse).distinctBy { "${it.name}|${it.domain}|${it.path}" }
+        val fallbackUrl = "https://localhost/".toHttpUrl()
+        return raw.mapNotNull { cookieHeader ->
+            Cookie.parse(fallbackUrl, cookieHeader)
+        }.distinctBy { "${it.name}|${it.domain}|${it.path}" }
     }
 
     private fun writeAllCookies(cookies: List<Cookie>) {

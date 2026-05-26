@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.moshi)
     implementation(libs.okhttp.logging)
+    implementation(libs.okhttp.urlconnection)
     implementation(libs.moshi)
     implementation(libs.moshi.kotlin)
 }
