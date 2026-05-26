@@ -24,30 +24,23 @@ import java.net.CookieManager
 import java.net.CookiePolicy
 
 class AppContainer(context: Context) {
-    private val db = Room.databaseBuilder(context, AppDatabase::class.java, "vkr.db")
-        .fallbackToDestructiveMigration()
-        .build()
-
-    private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BASIC
+    private val appContext = context.applicationContext
+    private val db = dbInstance ?: synchronized(lock) {
+        dbInstance ?: Room.databaseBuilder(appContext, AppDatabase::class.java, "vkr.db")
+            .fallbackToDestructiveMigration()
+            .build()
+            .also { dbInstance = it }
     }
-    private val cookieManager = CookieManager().apply {
-        setCookiePolicy(CookiePolicy.ACCEPT_ALL)
-    }
-    private val okHttpClient = OkHttpClient.Builder()
-        .cookieJar(JavaNetCookieJar(cookieManager))
-        .addInterceptor(logging)
-        .build()
-    private val moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
-    private val retrofit = Retrofit.Builder()
-        .baseUrl(BASE_URL)
-        .client(okHttpClient)
-        .addConverterFactory(MoshiConverterFactory.create(moshi))
-        .build()
 
-    val feedApi: FeedApi = retrofit.create(FeedApi::class.java)
+    val feedApi: FeedApi = feedApiInstance ?: synchronized(lock) {
+        feedApiInstance ?: Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(okHttpClientInstance)
+            .addConverterFactory(MoshiConverterFactory.create(moshiInstance))
+            .build()
+            .create(FeedApi::class.java)
+            .also { feedApiInstance = it }
+    }
     private val repository = FeedRepository(
         db.feedDao(),
         feedApi,
@@ -67,5 +60,28 @@ class AppContainer(context: Context) {
     private companion object {
         const val BASE_URL = "http://192.168.4.103:8080/"
         // const val BASE_URL = "http://10.0.2.2:8080/"
+
+        private val lock = Any()
+        @Volatile private var dbInstance: AppDatabase? = null
+        @Volatile private var feedApiInstance: FeedApi? = null
+
+        private val moshiInstance: Moshi by lazy {
+            Moshi.Builder()
+                .add(KotlinJsonAdapterFactory())
+                .build()
+        }
+
+        private val okHttpClientInstance: OkHttpClient by lazy {
+            val logging = HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BASIC
+            }
+            val cookieManager = CookieManager().apply {
+                setCookiePolicy(CookiePolicy.ACCEPT_ALL)
+            }
+            OkHttpClient.Builder()
+                .cookieJar(JavaNetCookieJar(cookieManager))
+                .addInterceptor(logging)
+                .build()
+        }
     }
 }
