@@ -19,6 +19,7 @@ import compose.icons.feathericons.BookOpen
 import compose.icons.feathericons.Bookmark
 import compose.icons.feathericons.Folder
 import compose.icons.feathericons.Lock
+import compose.icons.feathericons.LogOut
 import compose.icons.feathericons.User
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileEvent
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileHeader
@@ -35,7 +36,8 @@ fun ProfileScreen(
     onOpenEditAccount: () -> Unit,
     onOpenPasswordSecurity: () -> Unit,
     onOpenCreateRecipe: () -> Unit,
-    onOpenCreateArticle: () -> Unit
+    onOpenCreateArticle: () -> Unit,
+    onLogout: () -> Unit
 ) {
     val state = viewModel.state.collectAsState().value
 
@@ -144,6 +146,18 @@ fun ProfileScreen(
             }
 
             item { Spacer(Modifier.height(40.dp)) }
+
+            item {
+                ProfileMenuGroup {
+                    ProfileMenuItem(
+                        icon = FeatherIcons.LogOut,
+                        title = "Выйти из аккаунта",
+                        onClick = onLogout
+                    )
+                }
+            }
+
+            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 }
@@ -157,6 +171,7 @@ fun ProfileScreenPreview() {
         onOpenEditAccount = {},
         onOpenPasswordSecurity = {},
         onOpenCreateRecipe = {},
-        onOpenCreateArticle = {}
+        onOpenCreateArticle = {},
+        onLogout = {}
     )
 }

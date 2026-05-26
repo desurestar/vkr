@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch
 import androidx.navigation.compose.rememberNavController
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Lock
@@ -45,6 +47,8 @@ import compose.icons.feathericons.User
 
 
 import ru.zagrebin.front_mobile.R
+import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.remote.api.AuthRequest
 import ru.zagrebin.front_mobile.ui.components.AnimatedLabelTextField
 import ru.zagrebin.front_mobile.ui.navigation.Screen
 import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
@@ -53,6 +57,8 @@ import ru.zagrebin.front_mobile.ui.navigation.BottomNavItem
 @Composable
 fun RegisterScreen(navController: NavController) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val api = AppContainer(context).feedApi
 
     var login by remember { mutableStateOf("") }
     var email by remember {mutableStateOf("")}
@@ -126,9 +132,15 @@ fun RegisterScreen(navController: NavController) {
                         Button(
                             onClick = {
                                 if (login.isNotBlank() && email.isNotBlank() && password.isNotBlank()) {
-                                    AuthSessionState.setAuthorized(context, true)
-                                    navController.navigate(BottomNavItem.Profile.route) {
-                                        popUpTo(Screen.EntryOptions.route) { inclusive = true }
+                                    scope.launch {
+                                        runCatching {
+                                            api.register(AuthRequest(email = email.trim(), password = password, username = login.trim()))
+                                        }.onSuccess {
+                                            AuthSessionState.setAuthorized(context, true)
+                                            navController.navigate(BottomNavItem.Profile.route) {
+                                                popUpTo(Screen.EntryOptions.route) { inclusive = true }
+                                            }
+                                        }
                                     }
                                 }
                             },

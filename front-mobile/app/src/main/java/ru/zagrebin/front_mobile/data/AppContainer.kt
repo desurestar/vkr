@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -19,6 +20,8 @@ import ru.zagrebin.front_mobile.domain.usecase.RefreshArticleDetailsUseCase
 import ru.zagrebin.front_mobile.domain.usecase.RefreshArticlesFeedUseCase
 import ru.zagrebin.front_mobile.domain.usecase.RefreshRecipesFeedUseCase
 import ru.zagrebin.front_mobile.domain.usecase.RefreshRecipeDetailsUseCase
+import java.net.CookieManager
+import java.net.CookiePolicy
 
 class AppContainer(context: Context) {
     private val db = Room.databaseBuilder(context, AppDatabase::class.java, "vkr.db")
@@ -28,7 +31,11 @@ class AppContainer(context: Context) {
     private val logging = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BASIC
     }
+    private val cookieManager = CookieManager().apply {
+        setCookiePolicy(CookiePolicy.ACCEPT_ALL)
+    }
     private val okHttpClient = OkHttpClient.Builder()
+        .cookieJar(JavaNetCookieJar(cookieManager))
         .addInterceptor(logging)
         .build()
     private val moshi = Moshi.Builder()

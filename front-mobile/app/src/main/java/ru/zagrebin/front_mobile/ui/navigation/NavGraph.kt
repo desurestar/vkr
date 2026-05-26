@@ -32,6 +32,10 @@ import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsScreen
 import ru.zagrebin.front_mobile.ui.screens.statistics.StatisticsScreen
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
+import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
 
@@ -40,6 +44,10 @@ fun NavGraph(
     navController: NavHostController,
     paddingValues: PaddingValues
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val api = AppContainer(context).feedApi
+
     NavHost(
         navController = navController,
         startDestination = BottomNavItem.Recipes.route,
@@ -92,7 +100,16 @@ fun NavGraph(
                 onOpenEditAccount = { navController.navigate(Screen.EditAccount.route) },
                 onOpenPasswordSecurity = { navController.navigate(Screen.PasswordSecurity.route) },
                 onOpenCreateRecipe = { navController.navigate(Screen.CreateRecipe.route) },
-                onOpenCreateArticle = { navController.navigate(Screen.CreateArticle.route) }
+                onOpenCreateArticle = { navController.navigate(Screen.CreateArticle.route) },
+                onLogout = {
+                    scope.launch {
+                        runCatching { api.logout() }
+                        AuthSessionState.setAuthorized(context, false)
+                        navController.navigate(Screen.EntryOptions.route) {
+                            popUpTo(navController.graph.id) { inclusive = true }
+                        }
+                    }
+                }
             )
         }
 
