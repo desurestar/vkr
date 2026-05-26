@@ -41,6 +41,12 @@ public class AuthController {
         if (db.emailExists(req.email())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
         }
+        if (db.usernameExists(req.username())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already registered");
+        }
+        if (req.password().length() < 6) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 6 characters");
+        }
 
         var u = new UserEntity();
         u.setUsername(req.username());
@@ -62,7 +68,7 @@ public class AuthController {
     public Map<String, Object> login(@Valid @RequestBody LoginRequest req,
                                      HttpSession session) {
 
-        var user = db.findByEmail(req.email());
+        var user = db.findByEmailOrUsername(req.email());
 
         if (!encoder.matches(req.password(), user.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");

@@ -162,8 +162,18 @@ public class DbService {
         return users.existsByEmailIgnoreCase(email);
     }
 
+    public boolean usernameExists(String username) {
+        return users.existsByUsernameIgnoreCase(username);
+    }
+
     public UserEntity findByEmail(String email) {
         return users.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+    }
+
+    public UserEntity findByEmailOrUsername(String loginOrEmail) {
+        return users.findByEmailIgnoreCase(loginOrEmail)
+                .or(() -> users.findByUsernameIgnoreCase(loginOrEmail))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
     }
 
