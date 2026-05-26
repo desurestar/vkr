@@ -46,7 +46,7 @@ interface FeedApi {
 }
 
 data class AuthRequest(val email: String, val password: String, val username: String? = null)
-data class SessionUserDto(val id: Long, val displayName: String? = null, val email: String? = null)
+data class SessionUserDto(val id: Long, val username: String? = null, val displayName: String? = null, val email: String? = null)
 data class UpdateProfileRequest(val displayName: String, val bio: String, val avatarUrl: String?)
 data class UpdatePasswordRequest(val oldPassword: String, val newPassword: String)
 data class CommentRequest(val text: String)
@@ -57,6 +57,7 @@ data class SearchResponse(val posts: List<FeedItemDto> = emptyList(), val users:
 data class UserProfileDto(
     val id: Long,
     val email: String? = null,
+    val username: String? = null,
     val displayName: String? = null,
     val bio: String? = null,
     val avatarUrl: String? = null,
