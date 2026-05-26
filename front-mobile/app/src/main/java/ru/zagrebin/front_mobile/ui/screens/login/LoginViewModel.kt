@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.data.remote.api.AuthRequest
 
@@ -37,8 +38,13 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 api.login(AuthRequest(email = current.loginOrEmail.trim(), password = current.password))
             }.onSuccess {
                 _state.value = _state.value.copy(isLoading = false, isSuccess = true)
-            }.onFailure {
-                _state.value = _state.value.copy(isLoading = false, error = "Неверный логин или пароль")
+            }.onFailure { throwable ->
+                val message = if ((throwable as? HttpException)?.code() == 401) {
+                    "Неверный логин/email или пароль"
+                } else {
+                    "Ошибка сети. Проверьте подключение к интернету"
+                }
+                _state.value = _state.value.copy(isLoading = false, error = message)
             }
 
         }

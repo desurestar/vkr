@@ -53,6 +53,7 @@ import ru.zagrebin.front_mobile.ui.components.AnimatedLabelTextField
 import ru.zagrebin.front_mobile.ui.navigation.Screen
 import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
 import ru.zagrebin.front_mobile.ui.navigation.BottomNavItem
+import retrofit2.HttpException
 
 @Composable
 fun RegisterScreen(navController: NavController) {
@@ -63,6 +64,8 @@ fun RegisterScreen(navController: NavController) {
     var login by remember { mutableStateOf("") }
     var email by remember {mutableStateOf("")}
     var password by remember {mutableStateOf("")}
+    var error by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -131,19 +134,39 @@ fun RegisterScreen(navController: NavController) {
 
                         Button(
                             onClick = {
-                                if (login.isNotBlank() && email.isNotBlank() && password.isNotBlank()) {
-                                    scope.launch {
-                                        runCatching {
-                                            api.register(AuthRequest(email = email.trim(), password = password, username = login.trim()))
-                                        }.onSuccess {
-                                            AuthSessionState.setAuthorized(context, true)
-                                            navController.navigate(BottomNavItem.Profile.route) {
-                                                popUpTo(Screen.EntryOptions.route) { inclusive = true }
-                                            }
+                                val trimmedLogin = login.trim()
+                                val trimmedEmail = email.trim()
+                                if (trimmedLogin.isBlank() || trimmedEmail.isBlank() || password.isBlank()) {
+                                    error = "Заполните все поля"
+                                    return@Button
+                                }
+                                if (password.length < 6) {
+                                    error = "Минимальная длина пароля — 6 символов"
+                                    return@Button
+                                }
+                                scope.launch {
+                                    isLoading = true
+                                    error = null
+                                    runCatching {
+                                        api.register(AuthRequest(email = trimmedEmail, password = password, username = trimmedLogin))
+                                    }.onSuccess {
+                                        AuthSessionState.setAuthorized(context, true)
+                                        navController.navigate(BottomNavItem.Profile.route) {
+                                            popUpTo(Screen.EntryOptions.route) { inclusive = true }
                                         }
+                                    }.onFailure { throwable ->
+                                        error = (throwable as? HttpException)?.let { http ->
+                                            when (http.code()) {
+                                                400 -> "Пароль должен быть не короче 6 символов"
+                                                409 -> "Аккаунт с таким логином или почтой уже существует"
+                                                else -> "Не удалось зарегистрироваться"
+                                            }
+                                        } ?: "Не удалось зарегистрироваться"
                                     }
+                                    isLoading = false
                                 }
                             },
+                            enabled = !isLoading,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp),
@@ -156,7 +179,12 @@ fun RegisterScreen(navController: NavController) {
                             ),
 
                         ) {
-                            Text("Создать аккаутн", fontSize = 17.sp, color = Color(0xFF1E1C1F))
+                            Text(if (isLoading) "Загрузка" else "Создать аккаунт", fontSize = 17.sp, color = Color(0xFF1E1C1F))
+                        }
+
+                        error?.let {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(text = it, color = Color.Red)
                         }
 
                         Spacer(modifier = Modifier.height(60.dp))
