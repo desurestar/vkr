@@ -10,7 +10,7 @@ class ProfileRepository(private val api: FeedApi) {
         val publicProfile = api.getPublicProfile(me.id)
         return ProfileData(
             id = me.id,
-            name = publicProfile.displayName ?: me.displayName ?: me.email ?: "",
+            name = publicProfile.displayName ?: me.displayName ?: publicProfile.username ?: me.username ?: me.email ?: "",
             email = publicProfile.email ?: me.email ?: "",
             bio = publicProfile.bio.orEmpty(),
             avatarUrl = publicProfile.avatarUrl,
@@ -24,7 +24,7 @@ class ProfileRepository(private val api: FeedApi) {
         val publicProfile = api.getPublicProfile(updated.id)
         return ProfileData(
             id = updated.id,
-            name = publicProfile.displayName ?: updated.displayName ?: updated.email ?: "",
+            name = publicProfile.displayName ?: updated.displayName ?: publicProfile.username ?: updated.username ?: updated.email ?: "",
             email = publicProfile.email ?: updated.email ?: "",
             bio = publicProfile.bio.orEmpty(),
             avatarUrl = publicProfile.avatarUrl,
