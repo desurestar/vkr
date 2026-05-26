@@ -34,7 +34,8 @@ fun ProfileScreen(
     onOpenMyPosts: () -> Unit,
     onOpenEditAccount: () -> Unit,
     onOpenPasswordSecurity: () -> Unit,
-    onOpenCreatePost: () -> Unit
+    onOpenCreateRecipe: () -> Unit,
+    onOpenCreateArticle: () -> Unit
 ) {
     val state = viewModel.state.collectAsState().value
 
@@ -61,9 +62,13 @@ fun ProfileScreen(
                     name = state.name,
                     email = state.email,
                     avatarUrl = state.avatarUrl,
-                    onCreateClick = {
-                        viewModel.onEvent(ProfileEvent.OnCreateClick)
-                        onOpenCreatePost()
+                    onCreateRecipeClick = {
+                        viewModel.onEvent(ProfileEvent.OnCreateRecipeClick)
+                        onOpenCreateRecipe()
+                    },
+                    onCreateArticleClick = {
+                        viewModel.onEvent(ProfileEvent.OnCreateArticleClick)
+                        onOpenCreateArticle()
                     }
                 )
             }
@@ -151,6 +156,7 @@ fun ProfileScreenPreview() {
         onOpenMyPosts = {},
         onOpenEditAccount = {},
         onOpenPasswordSecurity = {},
-        onOpenCreatePost = {}
+        onOpenCreateRecipe = {},
+        onOpenCreateArticle = {}
     )
 }

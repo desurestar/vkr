@@ -20,6 +20,10 @@ class FakeFeedApi : FeedApi {
     override suspend fun unlike(postId: Int) {}
     override suspend fun follow(userId: Long) {}
     override suspend fun unfollow(userId: Long) {}
+    override suspend fun getPublicProfile(userId: Long): UserProfileDto {
+        TODO("Not yet implemented")
+    }
+
     override suspend fun search(query: String, type: String?, tag: String?): SearchResponse = SearchResponse()
 
     private fun sample(offset: Int, prefix: String): List<FeedItemDto> = List(10) { index ->

@@ -16,6 +16,7 @@ import androidx.navigation.navArgument
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsScreen
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticlesFeedScreen
+import ru.zagrebin.front_mobile.ui.screens.articles.CreateArticleScreen
 import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedScreen
 import ru.zagrebin.front_mobile.ui.screens.login.LoginScreen
@@ -90,7 +91,8 @@ fun NavGraph(
                 onOpenMyPosts = { navController.navigate(Screen.MyPosts.route) },
                 onOpenEditAccount = { navController.navigate(Screen.EditAccount.route) },
                 onOpenPasswordSecurity = { navController.navigate(Screen.PasswordSecurity.route) },
-                onOpenCreatePost = { navController.navigate(Screen.CreateRecipe.route) }
+                onOpenCreateRecipe = { navController.navigate(Screen.CreateRecipe.route) },
+                onOpenCreateArticle = { navController.navigate(Screen.CreateArticle.route) }
             )
         }
 
@@ -117,6 +119,10 @@ fun NavGraph(
 
         composable(Screen.CreateRecipe.route) {
             CreateRecipeScreen(onBackClick = { navController.popBackStack() })
+        }
+
+        composable(Screen.CreateArticle.route) {
+            CreateArticleScreen(onBackClick = { navController.popBackStack() })
         }
 
         composable(

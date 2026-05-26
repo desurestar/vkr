@@ -27,7 +27,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.Button
@@ -58,7 +57,8 @@ fun ProfileHeader(
     name: String = "Иван Иванов",
     email: String = "test@email.ru",
     avatarUrl: String? = null,
-    onCreateClick: () -> Unit = {},
+    onCreateRecipeClick: () -> Unit = {},
+    onCreateArticleClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var isMenuOpen by remember { mutableStateOf(false) }
@@ -148,7 +148,7 @@ fun ProfileHeader(
                                         .fillMaxWidth()
                                         .clickable {
                                             expanded = false
-                                            onCreateClick()
+                                            onCreateRecipeClick()
                                         }
                                         .padding(vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -163,12 +163,12 @@ fun ProfileHeader(
                                         .fillMaxWidth()
                                         .clickable {
                                             expanded = false
-                                            onCreateClick()
+                                            onCreateArticleClick()
                                         }
                                         .padding(vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Article, null)
+                                    Icon(Icons.AutoMirrored.Filled.Article, null)
                                     Spacer(Modifier.width(8.dp))
                                     Text("Статья")
                                 }
