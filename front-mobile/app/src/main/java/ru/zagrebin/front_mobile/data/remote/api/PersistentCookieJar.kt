@@ -15,12 +15,12 @@ class PersistentCookieJar(context: Context) : CookieJar {
         val all = readAllCookies().toMutableList()
         cookies.forEach { incoming ->
             all.removeAll { existing ->
-                existing.name == incoming.name &&
-                    existing.domain == incoming.domain &&
-                    existing.path == incoming.path
+                existing.cookie.name == incoming.name &&
+                    existing.cookie.domain == incoming.domain &&
+                    existing.cookie.path == incoming.path
             }
             if (!incoming.persistent || incoming.expiresAt >= System.currentTimeMillis()) {
-                all.add(incoming)
+                all.add(CookieEntry(url, incoming))
             }
         }
         writeAllCookies(all)
@@ -29,22 +29,38 @@ class PersistentCookieJar(context: Context) : CookieJar {
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         val now = System.currentTimeMillis()
         val all = readAllCookies().toMutableList()
-        val valid = all.filter { it.expiresAt >= now }
+        val valid = all.filter { it.cookie.expiresAt >= now }
         if (valid.size != all.size) writeAllCookies(valid)
-        return valid.filter { it.matches(url) }
+        return valid.map { it.cookie }.filter { it.matches(url) }
     }
 
-    private fun readAllCookies(): List<Cookie> {
+    private fun readAllCookies(): List<CookieEntry> {
         val raw = prefs.getStringSet(KEY_COOKIES, emptySet()) ?: emptySet()
-        val fallbackUrl = "https://localhost/".toHttpUrl()
-        return raw.mapNotNull { cookieHeader ->
-            Cookie.parse(fallbackUrl, cookieHeader)
-        }.distinctBy { "${it.name}|${it.domain}|${it.path}" }
+        return raw.mapNotNull { encoded ->
+            decodeCookie(encoded)
+        }.distinctBy { "${it.cookie.name}|${it.cookie.domain}|${it.cookie.path}" }
     }
 
-    private fun writeAllCookies(cookies: List<Cookie>) {
-        prefs.edit().putStringSet(KEY_COOKIES, cookies.map { it.toString() }.toSet()).apply()
+    private fun writeAllCookies(cookies: List<CookieEntry>) {
+        prefs.edit().putStringSet(KEY_COOKIES, cookies.map { encodeCookie(it) }.toSet()).apply()
     }
+
+    private fun encodeCookie(entry: CookieEntry): String {
+        return "${entry.url.scheme}|${entry.url.host}|${entry.cookie}"
+    }
+
+    private fun decodeCookie(encoded: String): CookieEntry? {
+        val parts = encoded.split('|', limit = 3)
+        if (parts.size < 3) return null
+        val scheme = parts[0]
+        val host = parts[1]
+        val header = parts[2]
+        val origin = "$scheme://$host/".toHttpUrl()
+        val cookie = Cookie.parse(origin, header) ?: return null
+        return CookieEntry(origin, cookie)
+    }
+
+    private data class CookieEntry(val url: HttpUrl, val cookie: Cookie)
 
     companion object {
         private const val PREFS_NAME = "http_cookies"
