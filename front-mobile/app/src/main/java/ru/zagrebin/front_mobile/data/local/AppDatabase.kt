@@ -19,7 +19,7 @@ import ru.zagrebin.front_mobile.data.local.entities.RecipeDetailsEntity
         ArticleDetailsEntity::class,
         ProfileEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
