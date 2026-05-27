@@ -8,21 +8,21 @@ class RemotePublicProfileRepository(private val api: FeedApi) : PublicProfileRep
         val id = userId.toLong()
         val profile = api.getPublicProfile(id)
         val posts = (api.getRecipesFeed() + api.getArticlesFeed())
-            .filter { it.authorId.toLongOrNull() == id }
+            .filter { it.authorId.asLongOrNull() == id }
             .sortedByDescending { it.id }
             .map { item ->
                 PostCardState(
                     id = item.id,
-                    authorId = item.authorId,
-                    authorName = item.authorName,
-                    authorHandle = item.authorHandle,
-                    date = item.date,
-                    title = item.title,
-                    imageUrl = item.imageUrl,
-                    likes = item.likes,
-                    time = item.time,
-                    calories = item.calories,
-                    views = item.views
+                    authorId = item.authorId.asString(),
+                    authorName = item.authorName ?: "",
+                    authorHandle = item.authorHandle ?: "",
+                    date = item.date ?: "",
+                    title = item.title ?: "",
+                    imageUrl = item.imageUrl ?: "",
+                    likes = item.likes?.toString() ?: "",
+                    time = item.time?.toString() ?: "",
+                    calories = item.calories?.toString() ?: "",
+                    views = item.views?.toString() ?: ""
                 )
             }
 
@@ -43,4 +43,18 @@ class RemotePublicProfileRepository(private val api: FeedApi) : PublicProfileRep
         if (isFollowing) api.follow(id) else api.unfollow(id)
         return isFollowing
     }
+}
+
+private fun Any?.asLongOrNull(): Long? = when (this) {
+    null -> null
+    is Number -> this.toLong()
+    is String -> this.toLongOrNull()
+    else -> null
+}
+
+private fun Any?.asString(): String = when (this) {
+    null -> ""
+    is String -> this
+    is Number -> this.toString()
+    else -> this.toString()
 }

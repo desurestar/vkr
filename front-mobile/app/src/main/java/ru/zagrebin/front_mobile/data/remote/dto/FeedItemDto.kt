@@ -1,15 +1,15 @@
 package ru.zagrebin.front_mobile.data.remote.dto
 
 data class FeedItemDto(
-    val id: Int,
-    val authorId: String,
-    val authorName: String,
-    val authorHandle: String,
-    val date: String,
-    val title: String,
-    val imageUrl: String,
-    val likes: String,
-    val time: String,
-    val calories: String,
-    val views: String
+    val id: Int = 0,
+    val authorId: Any? = null,
+    val authorName: String? = null,
+    val authorHandle: String? = null,
+    val date: String? = null,
+    val title: String? = null,
+    val imageUrl: String? = null,
+    val likes: Any? = null,
+    val time: Any? = null,
+    val calories: Any? = null,
+    val views: Any? = null
 )

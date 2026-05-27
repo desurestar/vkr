@@ -106,16 +106,16 @@ private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
     FeedItemEntity(
         id = id,
         type = type,
-        authorId = authorId,
-        authorName = authorName,
-        authorHandle = authorHandle,
-        date = formatDate(date),
-        title = title,
-        imageUrl = imageUrl,
-        likes = likes,
-        time = time,
-        calories = calories,
-        views = views
+        authorId = authorId.asString(),
+        authorName = authorName.orEmpty(),
+        authorHandle = authorHandle.orEmpty(),
+        date = formatDate(date.orEmpty()),
+        title = title.orEmpty(),
+        imageUrl = imageUrl.orEmpty(),
+        likes = formatCount(likes),
+        time = formatMinutes(time),
+        calories = formatCalories(calories),
+        views = formatCount(views)
     )
 
 private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = RecipeDetailsEntity(
@@ -157,6 +157,34 @@ private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = A
 private fun formatDate(value: String): String = runCatching {
     OffsetDateTime.parse(value).format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
 }.getOrDefault(value)
+
+private fun Any?.asString(): String = when (this) {
+    null -> ""
+    is String -> this
+    is Number -> this.toString()
+    else -> this.toString()
+}
+
+private fun formatCount(value: Any?): String = when (value) {
+    null -> ""
+    is String -> value
+    is Number -> value.toLong().toString()
+    else -> value.toString()
+}
+
+private fun formatMinutes(value: Any?): String = when (value) {
+    null -> ""
+    is String -> value
+    is Number -> "${value.toLong()} мин"
+    else -> value.toString()
+}
+
+private fun formatCalories(value: Any?): String = when (value) {
+    null -> ""
+    is String -> value
+    is Number -> "${value.toLong()} ккал"
+    else -> value.toString()
+}
 
 enum class RefreshResult {
     Success,
