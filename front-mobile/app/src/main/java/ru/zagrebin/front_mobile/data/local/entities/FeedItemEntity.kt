@@ -1,11 +1,10 @@
 package ru.zagrebin.front_mobile.data.local.entities
 
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 
-@Entity(tableName = "feed_items")
+@Entity(tableName = "feed_items", primaryKeys = ["id", "type"])
 data class FeedItemEntity(
-    @PrimaryKey val id: Int,
+    val id: Int,
     val type: String,
     val authorId: String,
     val authorName: String,
