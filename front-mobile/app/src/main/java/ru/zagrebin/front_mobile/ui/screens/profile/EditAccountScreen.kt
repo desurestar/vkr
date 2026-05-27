@@ -73,7 +73,6 @@ fun EditAccountScreen(
     var cropScale by rememberSaveable { mutableStateOf(1f) }
     var cropOffsetX by rememberSaveable { mutableStateOf(0f) }
     var cropOffsetY by rememberSaveable { mutableStateOf(0f) }
-    var showErrors by rememberSaveable { mutableStateOf(false) }
 
     val pickMediaLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -92,7 +91,6 @@ fun EditAccountScreen(
     }
 
     val trimmedName = name.trim()
-    val isNameValid = trimmedName.length >= 2
 
     LaunchedEffect(avatarUri) {
         cropScale = 1f
@@ -236,7 +234,7 @@ fun EditAccountScreen(
                         onValueChange = { name = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        isError = showErrors && !isNameValid,
+                        isError = false,
                         shape = RoundedCornerShape(12.dp),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.White,
@@ -245,12 +243,7 @@ fun EditAccountScreen(
                             unfocusedIndicatorColor = Color.Transparent
                         ),
                         supportingText = {
-                            val hint = if (showErrors && !isNameValid) {
-                                "Введите имя (минимум 2 символа)"
-                            } else {
-                                "Например: Анна Иванова"
-                            }
-                            Text(text = hint, color = if (showErrors && !isNameValid) Color(0xFFD32F2F) else Color(0xFF8A8A8A))
+                            Text(text = "Оставьте пустым, если не хотите указывать", color = Color(0xFF8A8A8A))
                         }
                     )
                 }
@@ -263,8 +256,6 @@ fun EditAccountScreen(
                 ) {
                     Button(
                         onClick = {
-                            showErrors = true
-                            if (!isNameValid) return@Button
                             onSaveClick(trimmedName, avatarUri)
                         },
                         shape = RoundedCornerShape(12.dp),

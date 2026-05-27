@@ -208,12 +208,23 @@ fun ProfileHeader(
                 .border(6.dp, Color(0xFFF3F3F3), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = FeatherIcons.User,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = Color.White
-            )
+            if (!avatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = "Аватар профиля",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = FeatherIcons.User,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = Color.White
+                )
+            }
         }
 
     }

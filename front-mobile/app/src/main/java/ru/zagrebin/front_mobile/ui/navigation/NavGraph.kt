@@ -24,6 +24,7 @@ import ru.zagrebin.front_mobile.ui.screens.profile.EditAccountScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.MyPostsScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.PasswordSecurityScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileScreen
+import ru.zagrebin.front_mobile.ui.screens.profile.ProfileViewModel
 import ru.zagrebin.front_mobile.ui.screens.profile.ShoppingListScreen
 import ru.zagrebin.front_mobile.ui.screens.publicProfile.PublicProfileScreen
 import ru.zagrebin.front_mobile.ui.screens.register.RegisterScreen
@@ -126,12 +127,18 @@ fun NavGraph(
         }
 
         composable(Screen.EditAccount.route) {
+            val profileViewModel: ProfileViewModel = viewModel()
+            val profileState = profileViewModel.state.collectAsState().value
+
             EditAccountScreen(
+                initialName = profileState.name,
+                initialAvatarUrl = profileState.avatarUrl,
                 onBackClick = { navController.popBackStack() },
                 onSaveClick = { name, avatarUri ->
                     scope.launch {
                         val avatarUrl = avatarUri?.let { persistAvatarToAppStorage(context, it) }
                         runCatching { profileRepository.updateProfile(name, "", avatarUrl) }
+                        profileViewModel.loadProfile()
                         navController.popBackStack()
                     }
                 }
