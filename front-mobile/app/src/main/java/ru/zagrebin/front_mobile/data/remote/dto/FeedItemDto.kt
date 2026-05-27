@@ -6,10 +6,13 @@ data class FeedItemDto(
     val authorName: String? = null,
     val authorHandle: String? = null,
     val date: String? = null,
+    val createdAt: String? = null,
     val title: String? = null,
     val imageUrl: String? = null,
     val likes: Any? = null,
     val time: Any? = null,
     val calories: Any? = null,
-    val views: Any? = null
+    val views: Any? = null,
+    val cookTimeMinutes: Int? = null,
+    val kcalPer100: Double? = null
 )

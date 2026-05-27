@@ -60,8 +60,40 @@ class FakeFeedApi : FeedApi {
     }
 
     private fun sample(offset: Int, prefix: String): List<FeedItemDto> = List(10) { index ->
-        FeedItemDto(offset + index, if (index % 2 == 0) "42" else "77", "Дмитрий Загребин", "@Dima123", "22.05.2026", "$prefix #${index + 1}", "", "${30 + index}k", "${20 + index} мин", "${200 + index * 5} ккал", "${50 + index}k")
+        FeedItemDto(
+            id = offset + index,
+            authorId = if (index % 2 == 0) "42" else "77",
+            authorName = "Дмитрий Загребин",
+            authorHandle = "@Dima123",
+            date = "22.05.2026",
+            title = "$prefix #${index + 1}",
+            imageUrl = "",
+            likes = "${30 + index}k",
+            time = "${20 + index} мин",
+            calories = "${200 + index * 5} ккал",
+            views = "${50 + index}k"
+        )
     }
-    private fun sampleRecipeDetails(id: Int) = RecipeDetailsDto(id, "42", "Дмитрий Загребин", "@Dima123", "22.05.2026", "Рецепт #$id", "", "38.6k", "35 мин", "250 ккал", "53.7k", id % 2 == 0, 9.5f, 6.2f, 18.4f, 145, listOf(RecipeTagDto(1, "#ужин")), listOf(RecipeIngredientDto("Творог - 500 г")), listOf(RecipeStepDto(1, "Шаг 1", "Описание", null)))
+    private fun sampleRecipeDetails(id: Int) = RecipeDetailsDto(
+        id = id,
+        authorId = "42",
+        authorName = "Дмитрий Загребин",
+        authorHandle = "@Dima123",
+        date = "22.05.2026",
+        title = "Рецепт #$id",
+        imageUrl = "",
+        likes = "38.6k",
+        time = "35 мин",
+        calories = "250 ккал",
+        views = "53.7k",
+        isSaved = id % 2 == 0,
+        proteinsPer100 = 9.5,
+        fatsPer100 = 6.2,
+        carbsPer100 = 18.4,
+        kcalPer100 = 145.0,
+        tags = listOf(RecipeTagDto(1, "#ужин")),
+        ingredients = listOf(RecipeIngredientDto(text = "Творог - 500 г")),
+        steps = listOf(RecipeStepDto(id = 1, title = "Шаг 1", description = "Описание", imageUrl = null))
+    )
     private fun sampleArticleDetails(id: Int) = ArticleDetailsDto(id, "77", "Анна Калинина", "@anna", "20.05.2026", "Статья #$id", "", "12.4k", "18.2k", "Контент", id % 2 == 1)
 }
