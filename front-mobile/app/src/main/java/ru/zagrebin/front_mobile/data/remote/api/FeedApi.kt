@@ -14,16 +14,16 @@ import ru.zagrebin.front_mobile.data.remote.dto.ServerPostDto
 
 interface FeedApi {
     @GET("api/v1/feed/recipes")
-    suspend fun getRecipesFeed(@Query("q") query: String? = null): List<ServerPostDto>
+    suspend fun getRecipesFeed(@Query("q") query: String? = null): List<FeedItemDto>
 
     @GET("api/v1/feed/articles")
-    suspend fun getArticlesFeed(@Query("q") query: String? = null): List<ServerPostDto>
+    suspend fun getArticlesFeed(@Query("q") query: String? = null): List<FeedItemDto>
 
     @GET("api/v1/recipes/{id}")
-    suspend fun getRecipeDetails(@Path("id") id: Int): ServerPostDto
+    suspend fun getRecipeDetails(@Path("id") id: Int): RecipeDetailsDto
 
     @GET("api/v1/articles/{id}")
-    suspend fun getArticleDetails(@Path("id") id: Int): ServerPostDto
+    suspend fun getArticleDetails(@Path("id") id: Int): ArticleDetailsDto
 
     @POST("api/v1/auth/register") suspend fun register(@Body request: AuthRequest): SessionUserDto
     @POST("api/v1/auth/login") suspend fun login(@Body request: AuthRequest): SessionUserDto

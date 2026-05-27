@@ -26,6 +26,22 @@ class FakeFeedApi : FeedApi {
 
     override suspend fun search(query: String, type: String?, tag: String?): SearchResponse = SearchResponse()
 
+    override suspend fun createRecipe(request: CreateRecipeRequest): ServerPostDto {
+        delay(150)
+        return ServerPostDto(
+            id = 999,
+            authorId = 1,
+            type = "recipe",
+            title = request.title,
+            summary = request.summary,
+            content = request.content,
+            likes = 0,
+            createdAt = "2026-05-27T00:00:00Z",
+            cookTimeMinutes = request.cookTimeMinutes,
+            tags = request.tags
+        )
+    }
+
     private fun sample(offset: Int, prefix: String): List<FeedItemDto> = List(10) { index ->
         FeedItemDto(offset + index, if (index % 2 == 0) "42" else "77", "Дмитрий Загребин", "@Dima123", "22.05.2026", "$prefix #${index + 1}", "", "${30 + index}k", "${20 + index} мин", "${200 + index * 5} ккал", "${50 + index}k")
     }

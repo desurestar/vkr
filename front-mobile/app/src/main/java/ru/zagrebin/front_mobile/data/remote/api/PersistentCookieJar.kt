@@ -1,6 +1,7 @@
 package ru.zagrebin.front_mobile.data.remote.api
 
 import android.content.Context
+import android.util.Base64
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -46,19 +47,62 @@ class PersistentCookieJar(context: Context) : CookieJar {
     }
 
     private fun encodeCookie(entry: CookieEntry): String {
-        return "${entry.url.scheme}|${entry.url.host}|${entry.cookie}"
+        val cookie = entry.cookie
+        val parts = listOf(
+            entry.url.scheme,
+            entry.url.host,
+            cookie.name,
+            cookie.value,
+            cookie.domain,
+            cookie.path,
+            cookie.expiresAt.toString(),
+            cookie.secure.toString(),
+            cookie.httpOnly.toString(),
+            cookie.hostOnly.toString(),
+            cookie.persistent.toString()
+        ).map { encodePart(it) }
+        return parts.joinToString("|")
     }
 
     private fun decodeCookie(encoded: String): CookieEntry? {
-        val parts = encoded.split('|', limit = 3)
-        if (parts.size < 3) return null
-        val scheme = parts[0]
-        val host = parts[1]
-        val header = parts[2]
+        val parts = encoded.split('|')
+        if (parts.size < 11) return null
+        val decoded = parts.map { decodePart(it) }
+        val scheme = decoded[0]
+        val host = decoded[1]
+        val name = decoded[2]
+        val value = decoded[3]
+        val domain = decoded[4]
+        val path = decoded[5]
+        val expiresAt = decoded[6].toLongOrNull() ?: return null
+        val secure = decoded[7].toBoolean()
+        val httpOnly = decoded[8].toBoolean()
+        val hostOnly = decoded[9].toBoolean()
+        val persistent = decoded[10].toBoolean()
+
         val origin = "$scheme://$host/".toHttpUrl()
-        val cookie = Cookie.parse(origin, header) ?: return null
+        val builder = Cookie.Builder()
+            .name(name)
+            .value(value)
+            .path(path)
+        if (hostOnly) {
+            builder.hostOnlyDomain(domain)
+        } else {
+            builder.domain(domain)
+        }
+        if (secure) builder.secure()
+        if (httpOnly) builder.httpOnly()
+        if (persistent) builder.expiresAt(expiresAt)
+
+        val cookie = runCatching { builder.build() }.getOrNull() ?: return null
         return CookieEntry(origin, cookie)
     }
+
+    private fun encodePart(value: String): String =
+        Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+
+    private fun decodePart(value: String): String =
+        String(Base64.decode(value, Base64.NO_WRAP), Charsets.UTF_8)
 
     private data class CookieEntry(val url: HttpUrl, val cookie: Cookie)
 

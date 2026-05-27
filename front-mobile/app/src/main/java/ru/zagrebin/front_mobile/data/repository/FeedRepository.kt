@@ -10,7 +10,8 @@ import ru.zagrebin.front_mobile.data.local.entities.FeedItemEntity
 import ru.zagrebin.front_mobile.data.local.entities.RecipeDetailsEntity
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
-import ru.zagrebin.front_mobile.data.remote.dto.ServerPostDto
+import ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto
+import ru.zagrebin.front_mobile.data.remote.dto.RecipeDetailsDto
 import ru.zagrebin.front_mobile.domain.model.ArticleDetails
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.domain.model.RecipeDetails
@@ -101,56 +102,56 @@ class FeedRepository(
     }
 }
 
-private fun ServerPostDto.toEntity(type: String): FeedItemEntity =
+private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
     FeedItemEntity(
         id = id,
         type = type,
-        authorId = authorId.toString(),
-        authorName = "Пользователь #$authorId",
-        authorHandle = "@user$authorId",
-        date = formatDate(createdAt),
+        authorId = authorId,
+        authorName = authorName,
+        authorHandle = authorHandle,
+        date = formatDate(date),
         title = title,
-        imageUrl = "",
-        likes = likes.toString(),
-        time = "${cookTimeMinutes ?: 0} мин",
-        calories = "-",
-        views = "-"
+        imageUrl = imageUrl,
+        likes = likes,
+        time = time,
+        calories = calories,
+        views = views
     )
 
-private fun ServerPostDto.toRecipeDetailsEntity(): RecipeDetailsEntity = RecipeDetailsEntity(
+private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = RecipeDetailsEntity(
     id = id,
-    authorId = authorId.toString(),
-    authorName = "Пользователь #$authorId",
-    authorHandle = "@user$authorId",
-    date = formatDate(createdAt),
+    authorId = authorId,
+    authorName = authorName,
+    authorHandle = authorHandle,
+    date = formatDate(date),
     title = title,
-    imageUrl = "",
-    likes = likes.toString(),
-    time = "${cookTimeMinutes ?: 0} мин",
-    calories = "-",
-    views = "-",
-    isSaved = false,
-    proteinsPer100 = 0f,
-    fatsPer100 = 0f,
-    carbsPer100 = 0f,
-    kcalPer100 = 0,
-    tags = tags.mapIndexed { index, tag -> RecipeTag(index + 1, tag) },
-    ingredients = listOf(RecipeIngredient(summary ?: "")),
-    steps = listOf(RecipeStep(1, "Приготовление", content ?: "", null))
+    imageUrl = imageUrl,
+    likes = likes,
+    time = time,
+    calories = calories,
+    views = views,
+    isSaved = isSaved,
+    proteinsPer100 = proteinsPer100,
+    fatsPer100 = fatsPer100,
+    carbsPer100 = carbsPer100,
+    kcalPer100 = kcalPer100,
+    tags = tags.map { RecipeTag(it.id, it.name) },
+    ingredients = ingredients.map { RecipeIngredient(it.text) },
+    steps = steps.map { RecipeStep(it.id, it.title, it.description, it.imageUrl) }
 )
 
-private fun ServerPostDto.toArticleDetailsEntity(): ArticleDetailsEntity = ArticleDetailsEntity(
+private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = ArticleDetailsEntity(
     id = id,
-    authorId = authorId.toString(),
-    authorName = "Пользователь #$authorId",
-    authorHandle = "@user$authorId",
-    date = formatDate(createdAt),
+    authorId = authorId,
+    authorName = authorName,
+    authorHandle = authorHandle,
+    date = formatDate(date),
     title = title,
-    imageUrl = "",
-    likes = likes.toString(),
-    views = "-",
-    content = content ?: summary.orEmpty(),
-    isSaved = false
+    imageUrl = imageUrl,
+    likes = likes,
+    views = views,
+    content = content,
+    isSaved = isSaved
 )
 
 private fun formatDate(value: String): String = runCatching {

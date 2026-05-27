@@ -5,12 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e533caad-b72f-452d-b663-95f10b18ecfe" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../front-mobile/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/AndroidManifest.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/AppContainer.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/AppContainer.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/remote/api/FakeFeedApi.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/remote/api/FakeFeedApi.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/screens/recipe/CreateRecipeScreen.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/screens/recipe/CreateRecipeScreen.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/res/xml/network_security_config.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/res/xml/network_security_config.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -96,6 +90,8 @@
       <workItem from="1779647761150" duration="1653000" />
       <workItem from="1779687895529" duration="19000" />
       <workItem from="1779772984014" duration="827000" />
+      <workItem from="1779868241734" duration="60000" />
+      <workItem from="1779891720007" duration="1048000" />
     </task>
     <servers />
   </component>
