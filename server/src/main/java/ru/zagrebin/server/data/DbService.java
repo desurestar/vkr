@@ -22,18 +22,21 @@ public class DbService {
     private final PostRepository posts;
     private final CommentRepository comments;
     private final ShoppingItemRepository shopping;
+    private final TagRepository tags;
     private final BCryptPasswordEncoder encoder;
 
     public DbService(UserRepository users,
                      PostRepository posts,
                      CommentRepository comments,
                      ShoppingItemRepository shopping,
+                     TagRepository tags,
                      BCryptPasswordEncoder encoder) {
 
         this.users = users;
         this.posts = posts;
         this.comments = comments;
         this.shopping = shopping;
+        this.tags = tags;
         this.encoder = encoder;
     }
 
@@ -82,7 +85,9 @@ public class DbService {
                 p.getLikes(),
                 p.getCreatedAt(),
                 p.getCookTimeMinutes(),
-                p.getTags(),
+                p.getTags().stream().map(this::toTag).toList(),
+                p.getIngredients().stream().map(x -> new ApiModels.Ingredient(x.getName(), x.getAmount(), x.getUnit())).toList(),
+                p.getSteps().stream().map(x -> new ApiModels.RecipeStep(x.getStepNumber(), x.getDescription(), x.getImageUrl())).toList(),
                 comments.findByPostId(p.getId()).stream().map(this::toComment).toList()
         );
     }
@@ -117,7 +122,7 @@ public class DbService {
 
         var p = posts.findByTitleContainingIgnoreCase(query).stream()
                 .filter(x -> type == null || x.getType().equalsIgnoreCase(type))
-                .filter(x -> tag == null || x.getTags().contains(tag))
+                .filter(x -> tag == null || x.getTags().stream().anyMatch(t -> t.getName().equalsIgnoreCase(tag)))
                 .map(this::toPost)
                 .toList();
 
@@ -141,7 +146,29 @@ public class DbService {
         post.setCreatedAt(Instant.now());
         post.setLikes(0);
         if (request.tags() != null) {
-            post.getTags().addAll(request.tags());
+            post.getTags().addAll(request.tags().stream()
+                    .map(this::findOrCreateTag)
+                    .toList());
+        }
+        if (request.ingredients() != null) {
+            for (var i : request.ingredients()) {
+                var e = new RecipeIngredientEntity();
+                e.setPost(post);
+                e.setName(i.name());
+                e.setAmount(i.amount());
+                e.setUnit(i.unit());
+                post.getIngredients().add(e);
+            }
+        }
+        if (request.steps() != null) {
+            for (var st : request.steps()) {
+                var e = new RecipeStepEntity();
+                e.setPost(post);
+                e.setStepNumber(st.number());
+                e.setDescription(st.description());
+                e.setImageUrl(st.imageUrl());
+                post.getSteps().add(e);
+            }
         }
         return toPost(posts.save(post));
     }
@@ -198,4 +225,25 @@ public class DbService {
     public List<ApiModels.User> allUsers() {
         return users.findAll().stream().map(this::toUser).toList();
     }
+
+
+    public List<ApiModels.Tag> tags(String q) {
+        var list = (q == null || q.isBlank()) ? tags.findAll() : tags.findByNameContainingIgnoreCase(q);
+        return list.stream().map(this::toTag).toList();
+    }
+
+    private ApiModels.Tag toTag(TagEntity t) {
+        return new ApiModels.Tag(t.getId(), t.getName(), t.getLabel(), t.getColor());
+    }
+
+    private TagEntity findOrCreateTag(String name) {
+        return tags.findByNameIgnoreCase(name).orElseGet(() -> {
+            var t = new TagEntity();
+            t.setName(name);
+            t.setLabel(name);
+            t.setColor("#B57A1D");
+            return tags.save(t);
+        });
+    }
+
 }
