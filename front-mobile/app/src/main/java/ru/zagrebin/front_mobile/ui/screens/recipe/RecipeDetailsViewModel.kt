@@ -7,12 +7,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.repository.RefreshResult
 import ru.zagrebin.front_mobile.domain.model.RecipeDetails
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.components.postCard.RecipeIngredientState
@@ -28,15 +29,19 @@ data class RecipeDetailsUiState(
 class RecipeDetailsViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
     private val currentId = MutableStateFlow<Int?>(null)
+    private val isRefreshing = MutableStateFlow(false)
+    private val hasLoadError = MutableStateFlow(false)
 
     val state: StateFlow<RecipeDetailsUiState> = currentId
         .flatMapLatest { id ->
             if (id == null) flowOf(null) else container.observeRecipeDetailsUseCase(id)
         }
-        .map { details ->
+        .combine(isRefreshing) { details, refreshing -> details to refreshing }
+        .combine(hasLoadError) { (details, refreshing), loadError ->
             val hasRequest = currentId.value != null
+            val shouldShowLoading = hasRequest && details == null && refreshing && !loadError
             RecipeDetailsUiState(
-                isLoading = hasRequest && details == null,
+                isLoading = shouldShowLoading,
                 post = details?.toUi()
             )
         }
@@ -45,8 +50,13 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
     fun load(postId: Int) {
         if (currentId.value == postId) return
         currentId.value = postId
+        isRefreshing.value = true
+        hasLoadError.value = false
         viewModelScope.launch {
-            runCatching { container.refreshRecipeDetailsUseCase(postId) }
+            val result = runCatching { container.refreshRecipeDetailsUseCase(postId) }
+                .getOrDefault(RefreshResult.Fallback)
+            hasLoadError.value = result == RefreshResult.Fallback
+            isRefreshing.value = false
         }
     }
 
