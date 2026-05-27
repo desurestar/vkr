@@ -81,6 +81,7 @@ public class DbService {
                 p.getContent(),
                 p.getLikes(),
                 p.getCreatedAt(),
+                p.getCookTimeMinutes(),
                 p.getTags(),
                 comments.findByPostId(p.getId()).stream().map(this::toComment).toList()
         );
@@ -126,6 +127,23 @@ public class DbService {
                 .toList();
 
         return Map.of("posts", p, "users", u);
+    }
+
+
+    public ApiModels.Post createRecipe(Long uid, ApiModels.CreateRecipeRequest request) {
+        var post = new PostEntity();
+        post.setAuthor(getUserEntity(uid));
+        post.setType("RECIPE");
+        post.setTitle(request.title());
+        post.setSummary(request.summary());
+        post.setContent(request.content());
+        post.setCookTimeMinutes(request.cookTimeMinutes());
+        post.setCreatedAt(Instant.now());
+        post.setLikes(0);
+        if (request.tags() != null) {
+            post.getTags().addAll(request.tags());
+        }
+        return toPost(posts.save(post));
     }
 
     public CommentEntity createComment(Long postId, Long uid, String text) {

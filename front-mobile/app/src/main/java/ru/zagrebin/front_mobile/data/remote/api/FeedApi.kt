@@ -10,19 +10,20 @@ import retrofit2.http.Query
 import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
 import ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeDetailsDto
+import ru.zagrebin.front_mobile.data.remote.dto.ServerPostDto
 
 interface FeedApi {
     @GET("api/v1/feed/recipes")
-    suspend fun getRecipesFeed(@Query("q") query: String? = null): List<FeedItemDto>
+    suspend fun getRecipesFeed(@Query("q") query: String? = null): List<ServerPostDto>
 
     @GET("api/v1/feed/articles")
-    suspend fun getArticlesFeed(@Query("q") query: String? = null): List<FeedItemDto>
+    suspend fun getArticlesFeed(@Query("q") query: String? = null): List<ServerPostDto>
 
     @GET("api/v1/recipes/{id}")
-    suspend fun getRecipeDetails(@Path("id") id: Int): RecipeDetailsDto
+    suspend fun getRecipeDetails(@Path("id") id: Int): ServerPostDto
 
     @GET("api/v1/articles/{id}")
-    suspend fun getArticleDetails(@Path("id") id: Int): ArticleDetailsDto
+    suspend fun getArticleDetails(@Path("id") id: Int): ServerPostDto
 
     @POST("api/v1/auth/register") suspend fun register(@Body request: AuthRequest): SessionUserDto
     @POST("api/v1/auth/login") suspend fun login(@Body request: AuthRequest): SessionUserDto
@@ -43,6 +44,7 @@ interface FeedApi {
     @GET("api/v1/profile/{userId}") suspend fun getPublicProfile(@Path("userId") userId: Long): UserProfileDto
 
     @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null): SearchResponse
+    @POST("api/v1/recipes") suspend fun createRecipe(@Body request: CreateRecipeRequest): ServerPostDto
 }
 
 data class AuthRequest(val email: String, val password: String, val username: String? = null)
@@ -51,7 +53,7 @@ data class UpdateProfileRequest(val displayName: String, val bio: String, val av
 data class UpdatePasswordRequest(val oldPassword: String, val newPassword: String)
 data class CommentRequest(val text: String)
 data class CommentDto(val id: Long, val authorId: Long, val text: String, val createdAt: String)
-data class SearchResponse(val posts: List<FeedItemDto> = emptyList(), val users: List<SessionUserDto> = emptyList())
+data class SearchResponse(val posts: List<ServerPostDto> = emptyList(), val users: List<SessionUserDto> = emptyList())
 
 
 data class UserProfileDto(
@@ -64,3 +66,5 @@ data class UserProfileDto(
     val following: Set<Long> = emptySet(),
     val followers: Set<Long> = emptySet()
 )
+
+data class CreateRecipeRequest(val title: String, val summary: String, val content: String, val cookTimeMinutes: Int, val tags: List<String>)
