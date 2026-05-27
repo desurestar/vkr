@@ -137,6 +137,7 @@ fun NavGraph(
                 onSaveClick = { name, avatarUri ->
                     scope.launch {
                         val avatarUrl = avatarUri?.let { persistAvatarToAppStorage(context, it) }
+                            ?: profileState.avatarUrl
                         runCatching { profileRepository.updateProfile(name, "", avatarUrl) }
                         profileViewModel.loadProfile()
                         navController.popBackStack()

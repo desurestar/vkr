@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,7 +30,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -46,8 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -70,9 +66,6 @@ fun EditAccountScreen(
     var name by rememberSaveable { mutableStateOf(initialName) }
     var avatarUri by remember { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
-    var cropScale by rememberSaveable { mutableStateOf(1f) }
-    var cropOffsetX by rememberSaveable { mutableStateOf(0f) }
-    var cropOffsetY by rememberSaveable { mutableStateOf(0f) }
 
     val pickMediaLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -92,10 +85,10 @@ fun EditAccountScreen(
 
     val trimmedName = name.trim()
 
-    LaunchedEffect(avatarUri) {
-        cropScale = 1f
-        cropOffsetX = 0f
-        cropOffsetY = 0f
+    LaunchedEffect(initialName) {
+        if (name.isBlank() && initialName.isNotBlank()) {
+            name = initialName
+        }
     }
 
     Surface(
@@ -135,19 +128,6 @@ fun EditAccountScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(CircleShape)
-                                    .pointerInput(displayModel) {
-                                        detectDragGestures { change, dragAmount ->
-                                            change.consume()
-                                            cropOffsetX += dragAmount.x
-                                            cropOffsetY += dragAmount.y
-                                        }
-                                    }
-                                    .graphicsLayer(
-                                        scaleX = cropScale,
-                                        scaleY = cropScale,
-                                        translationX = cropOffsetX,
-                                        translationY = cropOffsetY
-                                    )
                             )
                         } else {
                             Icon(
@@ -155,30 +135,6 @@ fun EditAccountScreen(
                                 contentDescription = null,
                                 tint = Color(0xFF8A8A8A),
                                 modifier = Modifier.size(48.dp)
-                            )
-                        }
-                    }
-
-                    if (avatarUri != null) {
-                        Text(
-                            text = "Перемещайте фото и меняйте масштаб",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF8A8A8A)
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "Масштаб",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF8A8A8A)
-                            )
-                            Slider(
-                                value = cropScale,
-                                onValueChange = { cropScale = it },
-                                valueRange = 1f..3f,
-                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
@@ -250,10 +206,19 @@ fun EditAccountScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Box(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                 ) {
+                    OutlinedButton(
+                        onClick = onBackClick,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "Отмена",
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+                        )
+                    }
                     Button(
                         onClick = {
                             onSaveClick(trimmedName, avatarUri)
