@@ -183,7 +183,7 @@ fun NavGraph(
                                     title = title,
                                     summary = summary,
                                     content = content,
-                                    imageUrl = steps.firstOrNull { !it.photoUri.isNullOrBlank() }?.photoUri,
+                                    imageUrl = steps.firstOrNull { it.photoUri != null }?.photoUri?.toString(),
                                     cookTimeMinutes = cookTime,
                                     proteinsPer100 = proteins,
                                     fatsPer100 = fats,
