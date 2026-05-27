@@ -20,6 +20,7 @@ public class PostEntity {
     private String summary;
     @Column(columnDefinition = "TEXT")
     private String content;
+    private String imageUrl;
     private int likes;
     private Integer cookTimeMinutes;
     @Column(name = "proteins_per_100")
@@ -58,6 +59,8 @@ public class PostEntity {
     public void setSummary(String summary) { this.summary = summary; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public int getLikes() { return likes; }
     public void setLikes(int likes) { this.likes = likes; }
     public Integer getCookTimeMinutes() { return cookTimeMinutes; }
