@@ -16,6 +16,7 @@ CREATE TABLE post (
     summary VARCHAR(255),
     content TEXT,
     likes INT NOT NULL DEFAULT 0,
+    cook_time_minutes INT,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 

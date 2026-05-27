@@ -16,6 +16,7 @@ public class PostController {
     @GetMapping("/feed/recipes") public List<ApiModels.Post> recipes(@RequestParam Optional<String> q) { return db.postsByType("RECIPE", q.orElse(null)); }
     @GetMapping("/feed/articles") public List<ApiModels.Post> articles(@RequestParam Optional<String> q) { return db.postsByType("ARTICLE", q.orElse(null)); }
     @GetMapping("/recipes/{id}") public ApiModels.Post recipe(@PathVariable Long id) { return db.getPost(id); }
+    @PostMapping("/recipes") public ApiModels.Post createRecipe(@RequestBody ApiModels.CreateRecipeRequest req, HttpSession s) { return db.createRecipe(requireUid(s), req); }
     @GetMapping("/articles/{id}") public ApiModels.Post article(@PathVariable Long id) { return db.getPost(id); }
 
     @PostMapping("/posts/{id}/comments")

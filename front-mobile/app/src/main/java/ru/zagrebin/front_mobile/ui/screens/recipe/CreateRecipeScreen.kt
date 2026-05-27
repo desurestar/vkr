@@ -78,7 +78,8 @@ private const val MAX_TAGS = 10
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun CreateRecipeScreen(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onPublish: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>) -> Unit = { _, _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     var postTitle by rememberSaveable { mutableStateOf("") }
@@ -89,6 +90,7 @@ fun CreateRecipeScreen(
     var fats by rememberSaveable { mutableStateOf("") }
     var carbs by rememberSaveable { mutableStateOf("") }
     var calories by rememberSaveable { mutableStateOf("") }
+    var cookTimeMinutes by rememberSaveable { mutableStateOf("") }
     var showErrors by rememberSaveable { mutableStateOf(false) }
 
     val selectedTags = remember { mutableStateListOf<String>() }
@@ -122,7 +124,8 @@ fun CreateRecipeScreen(
     val tagsValid = selectedTags.isNotEmpty() && selectedTags.size <= MAX_TAGS
     val ingredientsValid = ingredients.isNotEmpty()
     val stepsValid = steps.isNotEmpty()
-    val isFormValid = postTitleValid && dishTitleValid && nutrientsValid && tagsValid && ingredientsValid && stepsValid
+    val cookTimeValid = cookTimeMinutes.toIntOrNull() != null
+    val isFormValid = postTitleValid && dishTitleValid && nutrientsValid && cookTimeValid && tagsValid && ingredientsValid && stepsValid
 
     if (showTagSheet) {
         TagPickBottomSheet(
@@ -312,6 +315,17 @@ fun CreateRecipeScreen(
                     )
                 }
 
+                TextField(
+                    value = cookTimeMinutes,
+                    onValueChange = { cookTimeMinutes = it },
+                    placeholder = { Text("Время приготовления (мин)") },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = showErrors && !cookTimeValid,
+                    colors = inputColors()
+                )
+
                 NutrientsBlock(
                     proteins = proteins,
                     fats = fats,
@@ -343,6 +357,7 @@ fun CreateRecipeScreen(
                         onClick = {
                             showErrors = true
                             if (!isFormValid) return@Button
+                            onPublish(postTitle.trim(), dishTitle.trim(), steps.joinToString("\n") { it.description }, cookTimeMinutes.toInt(), selectedTags.toList())
                         },
                         enabled = isFormValid,
                         shape = RoundedCornerShape(18.dp),

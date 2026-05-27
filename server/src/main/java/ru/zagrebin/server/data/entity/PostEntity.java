@@ -20,6 +20,7 @@ public class PostEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
     private int likes;
+    private Integer cookTimeMinutes;
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -44,6 +45,8 @@ public class PostEntity {
     public void setContent(String content) { this.content = content; }
     public int getLikes() { return likes; }
     public void setLikes(int likes) { this.likes = likes; }
+    public Integer getCookTimeMinutes() { return cookTimeMinutes; }
+    public void setCookTimeMinutes(Integer cookTimeMinutes) { this.cookTimeMinutes = cookTimeMinutes; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public List<String> getTags() { return tags; }

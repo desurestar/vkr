@@ -10,13 +10,15 @@ import ru.zagrebin.front_mobile.data.local.entities.FeedItemEntity
 import ru.zagrebin.front_mobile.data.local.entities.RecipeDetailsEntity
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
-import ru.zagrebin.front_mobile.data.remote.dto.RecipeDetailsDto
+import ru.zagrebin.front_mobile.data.remote.dto.ServerPostDto
 import ru.zagrebin.front_mobile.domain.model.ArticleDetails
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.domain.model.RecipeDetails
 import ru.zagrebin.front_mobile.domain.model.RecipeIngredient
 import ru.zagrebin.front_mobile.domain.model.RecipeStep
 import ru.zagrebin.front_mobile.domain.model.RecipeTag
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 
 class FeedRepository(
     private val feedDao: FeedDao,
@@ -44,12 +46,12 @@ class FeedRepository(
         articleDetailsDao.observeById(id).map { it?.toDomain() }
 
     suspend fun refreshRecipeDetails(id: Int): RefreshResult = runCatching {
-        recipeDetailsDao.upsert(feedApi.getRecipeDetails(id).toEntity())
+        recipeDetailsDao.upsert(feedApi.getRecipeDetails(id).toRecipeDetailsEntity())
         RefreshResult.Success
     }.getOrElse { RefreshResult.Fallback }
 
     suspend fun refreshArticleDetails(id: Int): RefreshResult = runCatching {
-        articleDetailsDao.upsert(feedApi.getArticleDetails(id).toEntity())
+        articleDetailsDao.upsert(feedApi.getArticleDetails(id).toArticleDetailsEntity())
         RefreshResult.Success
     }.getOrElse { RefreshResult.Fallback }
 
@@ -99,57 +101,61 @@ class FeedRepository(
     }
 }
 
-private fun ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto.toEntity(type: String): FeedItemEntity =
+private fun ServerPostDto.toEntity(type: String): FeedItemEntity =
     FeedItemEntity(
-        id,
-        type,
-        authorId,
-        authorName,
-        authorHandle,
-        date,
-        title,
-        imageUrl,
-        likes,
-        time,
-        calories,
-        views
+        id = id,
+        type = type,
+        authorId = authorId.toString(),
+        authorName = "Пользователь #$authorId",
+        authorHandle = "@user$authorId",
+        date = formatDate(createdAt),
+        title = title,
+        imageUrl = "",
+        likes = likes.toString(),
+        time = "${cookTimeMinutes ?: 0} мин",
+        calories = "-",
+        views = "-"
     )
 
-private fun RecipeDetailsDto.toEntity(): RecipeDetailsEntity = RecipeDetailsEntity(
+private fun ServerPostDto.toRecipeDetailsEntity(): RecipeDetailsEntity = RecipeDetailsEntity(
     id = id,
-    authorId = authorId,
-    authorName = authorName,
-    authorHandle = authorHandle,
-    date = date,
+    authorId = authorId.toString(),
+    authorName = "Пользователь #$authorId",
+    authorHandle = "@user$authorId",
+    date = formatDate(createdAt),
     title = title,
-    imageUrl = imageUrl,
-    likes = likes,
-    time = time,
-    calories = calories,
-    views = views,
-    isSaved = isSaved,
-    proteinsPer100 = proteinsPer100,
-    fatsPer100 = fatsPer100,
-    carbsPer100 = carbsPer100,
-    kcalPer100 = kcalPer100,
-    tags = tags.map { RecipeTag(it.id, it.name) },
-    ingredients = ingredients.map { RecipeIngredient(it.text) },
-    steps = steps.map { RecipeStep(it.id, it.title, it.description, it.imageUrl) }
+    imageUrl = "",
+    likes = likes.toString(),
+    time = "${cookTimeMinutes ?: 0} мин",
+    calories = "-",
+    views = "-",
+    isSaved = false,
+    proteinsPer100 = 0f,
+    fatsPer100 = 0f,
+    carbsPer100 = 0f,
+    kcalPer100 = 0,
+    tags = tags.mapIndexed { index, tag -> RecipeTag(index + 1, tag) },
+    ingredients = listOf(RecipeIngredient(summary ?: "")),
+    steps = listOf(RecipeStep(1, "Приготовление", content ?: "", null))
 )
 
-private fun ArticleDetailsDto.toEntity(): ArticleDetailsEntity = ArticleDetailsEntity(
+private fun ServerPostDto.toArticleDetailsEntity(): ArticleDetailsEntity = ArticleDetailsEntity(
     id = id,
-    authorId = authorId,
-    authorName = authorName,
-    authorHandle = authorHandle,
-    date = date,
+    authorId = authorId.toString(),
+    authorName = "Пользователь #$authorId",
+    authorHandle = "@user$authorId",
+    date = formatDate(createdAt),
     title = title,
-    imageUrl = imageUrl,
-    likes = likes,
-    views = views,
-    content = content,
-    isSaved = isSaved
+    imageUrl = "",
+    likes = likes.toString(),
+    views = "-",
+    content = content ?: summary.orEmpty(),
+    isSaved = false
 )
+
+private fun formatDate(value: String): String = runCatching {
+    OffsetDateTime.parse(value).format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+}.getOrDefault(value)
 
 enum class RefreshResult {
     Success,

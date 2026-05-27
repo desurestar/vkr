@@ -37,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
@@ -154,7 +155,15 @@ fun NavGraph(
         }
 
         composable(Screen.CreateRecipe.route) {
-            CreateRecipeScreen(onBackClick = { navController.popBackStack() })
+            CreateRecipeScreen(
+                onBackClick = { navController.popBackStack() },
+                onPublish = { title, summary, content, cookTime, tags ->
+                    scope.launch {
+                        runCatching { api.createRecipe(CreateRecipeRequest(title, summary, content, cookTime, tags)) }
+                        navController.popBackStack()
+                    }
+                }
+            )
         }
 
         composable(Screen.CreateArticle.route) {
