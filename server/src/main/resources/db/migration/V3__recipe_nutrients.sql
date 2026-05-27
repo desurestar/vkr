@@ -1,0 +1,5 @@
+ALTER TABLE post
+    ADD COLUMN proteins_per_100 NUMERIC,
+    ADD COLUMN fats_per_100 NUMERIC,
+    ADD COLUMN carbs_per_100 NUMERIC,
+    ADD COLUMN kcal_per_100 NUMERIC;

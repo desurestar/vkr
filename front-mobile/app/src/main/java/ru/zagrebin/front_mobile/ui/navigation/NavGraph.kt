@@ -33,11 +33,17 @@ import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsScreen
 import ru.zagrebin.front_mobile.ui.screens.statistics.StatisticsScreen
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeIngredient
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
+import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeStep
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
@@ -155,11 +161,51 @@ fun NavGraph(
         }
 
         composable(Screen.CreateRecipe.route) {
+            var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
+
+            LaunchedEffect(Unit) {
+                runCatching { api.getTags() }
+                    .onSuccess { tags ->
+                        availableTags = tags.map { tag ->
+                            tag.label?.takeIf { it.isNotBlank() } ?: tag.name
+                        }
+                    }
+            }
+
             CreateRecipeScreen(
                 onBackClick = { navController.popBackStack() },
-                onPublish = { title, summary, content, cookTime, tags ->
+                availableTags = availableTags,
+                onPublish = { title, summary, content, cookTime, tags, ingredients, steps, proteins, fats, carbs, kcal ->
                     scope.launch {
-                        runCatching { api.createRecipe(CreateRecipeRequest(title, summary, content, cookTime, tags)) }
+                        runCatching {
+                            api.createRecipe(
+                                CreateRecipeRequest(
+                                    title = title,
+                                    summary = summary,
+                                    content = content,
+                                    cookTimeMinutes = cookTime,
+                                    proteinsPer100 = proteins,
+                                    fatsPer100 = fats,
+                                    carbsPer100 = carbs,
+                                    kcalPer100 = kcal,
+                                    tags = tags,
+                                    ingredients = ingredients.map { ingredient ->
+                                        CreateRecipeIngredient(
+                                            name = ingredient.name,
+                                            amount = ingredient.amount.toDouble(),
+                                            unit = ingredient.unit
+                                        )
+                                    },
+                                    steps = steps.map { step ->
+                                        CreateRecipeStep(
+                                            number = step.number,
+                                            description = step.description,
+                                            imageUrl = step.photoUri?.toString()
+                                        )
+                                    }
+                                )
+                            )
+                        }
                         navController.popBackStack()
                     }
                 }

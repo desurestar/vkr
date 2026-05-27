@@ -1,6 +1,7 @@
 package ru.zagrebin.server.data.entity;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +22,14 @@ public class PostEntity {
     private String content;
     private int likes;
     private Integer cookTimeMinutes;
+    @Column(name = "proteins_per_100")
+    private BigDecimal proteinsPer100;
+    @Column(name = "fats_per_100")
+    private BigDecimal fatsPer100;
+    @Column(name = "carbs_per_100")
+    private BigDecimal carbsPer100;
+    @Column(name = "kcal_per_100")
+    private BigDecimal kcalPer100;
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -53,6 +62,14 @@ public class PostEntity {
     public void setLikes(int likes) { this.likes = likes; }
     public Integer getCookTimeMinutes() { return cookTimeMinutes; }
     public void setCookTimeMinutes(Integer cookTimeMinutes) { this.cookTimeMinutes = cookTimeMinutes; }
+    public BigDecimal getProteinsPer100() { return proteinsPer100; }
+    public void setProteinsPer100(BigDecimal proteinsPer100) { this.proteinsPer100 = proteinsPer100; }
+    public BigDecimal getFatsPer100() { return fatsPer100; }
+    public void setFatsPer100(BigDecimal fatsPer100) { this.fatsPer100 = fatsPer100; }
+    public BigDecimal getCarbsPer100() { return carbsPer100; }
+    public void setCarbsPer100(BigDecimal carbsPer100) { this.carbsPer100 = carbsPer100; }
+    public BigDecimal getKcalPer100() { return kcalPer100; }
+    public void setKcalPer100(BigDecimal kcalPer100) { this.kcalPer100 = kcalPer100; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public List<TagEntity> getTags() { return tags; }
