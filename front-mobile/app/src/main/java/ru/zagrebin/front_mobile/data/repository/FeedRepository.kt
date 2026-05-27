@@ -12,6 +12,8 @@ import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
 import ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeDetailsDto
+import ru.zagrebin.front_mobile.data.remote.dto.RecipeIngredientDto
+import ru.zagrebin.front_mobile.data.remote.dto.RecipeStepDto
 import ru.zagrebin.front_mobile.domain.model.ArticleDetails
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.domain.model.RecipeDetails
