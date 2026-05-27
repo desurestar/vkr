@@ -20,6 +20,7 @@ import ru.zagrebin.front_mobile.domain.model.RecipeStep
 import ru.zagrebin.front_mobile.domain.model.RecipeTag
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 class FeedRepository(
     private val feedDao: FeedDao,
@@ -109,35 +110,37 @@ private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
         authorId = authorId.asString(),
         authorName = authorName.orEmpty(),
         authorHandle = authorHandle.orEmpty(),
-        date = formatDate(date.orEmpty()),
+        date = formatDate(preferValue(date, createdAt)),
         title = title.orEmpty(),
         imageUrl = imageUrl.orEmpty(),
         likes = formatCount(likes),
-        time = formatMinutes(time),
-        calories = formatCalories(calories),
-        views = formatCount(views)
+        time = formatMinutes(preferValue(time, cookTimeMinutes)),
+        calories = formatCalories(preferValue(calories, kcalPer100)),
+        views = formatViews(views)
     )
 
 private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = RecipeDetailsEntity(
     id = id,
-    authorId = authorId,
-    authorName = authorName,
-    authorHandle = authorHandle,
-    date = formatDate(date),
-    title = title,
-    imageUrl = imageUrl,
-    likes = likes,
-    time = time,
-    calories = calories,
-    views = views,
+    authorId = authorId.asString(),
+    authorName = authorName.orEmpty(),
+    authorHandle = authorHandle.orEmpty(),
+    date = formatDate(preferValue(date, createdAt)),
+    title = title.orEmpty(),
+    imageUrl = imageUrl.orEmpty(),
+    likes = formatCount(likes),
+    time = formatMinutes(preferValue(time, cookTimeMinutes)),
+    calories = formatCalories(preferValue(calories, kcalPer100)),
+    views = formatViews(views),
     isSaved = isSaved,
-    proteinsPer100 = proteinsPer100,
-    fatsPer100 = fatsPer100,
-    carbsPer100 = carbsPer100,
-    kcalPer100 = kcalPer100,
+    proteinsPer100 = (proteinsPer100 ?: 0.0).toFloat(),
+    fatsPer100 = (fatsPer100 ?: 0.0).toFloat(),
+    carbsPer100 = (carbsPer100 ?: 0.0).toFloat(),
+    kcalPer100 = (kcalPer100 ?: 0.0).roundToInt(),
     tags = tags.map { RecipeTag(it.id, it.name) },
-    ingredients = ingredients.map { RecipeIngredient(it.text) },
-    steps = steps.map { RecipeStep(it.id, it.title, it.description, it.imageUrl) }
+    ingredients = ingredients.map { RecipeIngredient(it.toText()) },
+    steps = steps.mapIndexed { index, step ->
+        RecipeStep(step.resolveId(index), step.resolveTitle(index), step.description.orEmpty(), step.imageUrl)
+    }
 )
 
 private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = ArticleDetailsEntity(
@@ -154,9 +157,19 @@ private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = A
     isSaved = isSaved
 )
 
-private fun formatDate(value: String): String = runCatching {
-    OffsetDateTime.parse(value).format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
-}.getOrDefault(value)
+private fun formatDate(value: Any?): String {
+    val raw = value.asString()
+    if (raw.isBlank()) return ""
+    return runCatching {
+        OffsetDateTime.parse(raw).format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+    }.getOrDefault(raw)
+}
+
+private fun preferValue(primary: Any?, fallback: Any?): Any? = when (primary) {
+    null -> fallback
+    is String -> if (primary.isBlank()) fallback else primary
+    else -> primary
+}
 
 private fun Any?.asString(): String = when (this) {
     null -> ""
@@ -168,6 +181,13 @@ private fun Any?.asString(): String = when (this) {
 private fun formatCount(value: Any?): String = when (value) {
     null -> ""
     is String -> value
+    is Number -> value.toLong().toString()
+    else -> value.toString()
+}
+
+private fun formatViews(value: Any?): String = when (value) {
+    null -> "0"
+    is String -> if (value.isBlank()) "0" else value
     is Number -> value.toLong().toString()
     else -> value.toString()
 }
@@ -184,6 +204,29 @@ private fun formatCalories(value: Any?): String = when (value) {
     is String -> value
     is Number -> "${value.toLong()} ккал"
     else -> value.toString()
+}
+
+private fun RecipeIngredientDto.toText(): String {
+    if (!text.isNullOrBlank()) return text
+    val amountText = amount?.let { formatAmount(it) }.orEmpty()
+    val unitText = unit.orEmpty()
+    val amountUnit = listOf(amountText, unitText).filter { it.isNotBlank() }.joinToString(" ")
+    val nameText = name.orEmpty()
+    return listOf(nameText, amountUnit).filter { it.isNotBlank() }.joinToString(" - ")
+}
+
+private fun RecipeStepDto.resolveId(index: Int): Int = id ?: number ?: index + 1
+
+private fun RecipeStepDto.resolveTitle(index: Int): String = when {
+    !title.isNullOrBlank() -> title
+    number != null -> "Шаг $number"
+    else -> "Шаг ${index + 1}"
+}
+
+private fun formatAmount(value: Double): String = if (value % 1.0 == 0.0) {
+    value.toLong().toString()
+} else {
+    value.toString()
 }
 
 enum class RefreshResult {
