@@ -52,6 +52,7 @@ fun NavGraph(
     val scope = rememberCoroutineScope()
     val api = AppContainer(context).feedApi
     val profileRepository = AppContainer(context).let { ProfileRepository(it.feedApi, it.db.profileDao()) }
+    val profileViewModel: ProfileViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -100,6 +101,7 @@ fun NavGraph(
 
         composable(BottomNavItem.Profile.route) {
             ProfileScreen(
+                viewModel = profileViewModel,
                 onOpenShoppingList = { navController.navigate(Screen.ShoppingList.route) },
                 onOpenMyPosts = { navController.navigate(Screen.MyPosts.route) },
                 onOpenEditAccount = { navController.navigate(Screen.EditAccount.route) },
@@ -127,7 +129,6 @@ fun NavGraph(
         }
 
         composable(Screen.EditAccount.route) {
-            val profileViewModel: ProfileViewModel = viewModel()
             val profileState = profileViewModel.state.collectAsState().value
 
             EditAccountScreen(
