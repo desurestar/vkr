@@ -114,7 +114,7 @@ private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
         authorHandle = authorHandle.orEmpty(),
         date = formatDate(preferValue(date, createdAt)),
         title = title.orEmpty(),
-        imageUrl = imageUrl.orEmpty(),
+        imageUrl = imageUrl.normalizeImageUrl(),
         likes = formatCount(likes),
         time = formatMinutes(preferValue(time, cookTimeMinutes)),
         calories = formatCalories(preferValue(calories, kcalPer100)),
@@ -128,7 +128,7 @@ private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = Reci
     authorHandle = authorHandle.orEmpty(),
     date = formatDate(preferValue(date, createdAt)),
     title = title.orEmpty(),
-    imageUrl = imageUrl.orEmpty(),
+    imageUrl = imageUrl.normalizeImageUrl(steps),
     likes = formatCount(likes),
     time = formatMinutes(preferValue(time, cookTimeMinutes)),
     calories = formatCalories(preferValue(calories, kcalPer100)),
@@ -141,7 +141,7 @@ private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = Reci
     tags = tags.map { RecipeTag(it.id, it.name) },
     ingredients = ingredients.map { RecipeIngredient(it.toText()) },
     steps = steps.mapIndexed { index, step ->
-        RecipeStep(step.resolveId(index), step.resolveTitle(index), step.description.orEmpty(), step.imageUrl)
+        RecipeStep(step.resolveId(index), step.resolveTitle(index), step.description.orEmpty(), step.imageUrl.normalizeImageUrl())
     }
 )
 
@@ -231,6 +231,26 @@ private fun formatAmount(value: Double): String = if (value % 1.0 == 0.0) {
     value.toString()
 }
 
+
+private fun String?.normalizeImageUrl(steps: List<RecipeStepDto> = emptyList()): String {
+    val primary = this.cleanImageUrl()
+    if (primary.isNotBlank()) return primary
+
+    return steps.asSequence()
+        .mapNotNull { it.imageUrl.cleanImageUrl().takeIf(String::isNotBlank) }
+        .firstOrNull()
+        .orEmpty()
+}
+
+private fun String?.cleanImageUrl(): String {
+    val value = this?.trim().orEmpty()
+    if (value.isBlank()) return ""
+    return when {
+        value.startsWith("http://", ignoreCase = true) -> value
+        value.startsWith("https://", ignoreCase = true) -> value
+        else -> ""
+    }
+}
 enum class RefreshResult {
     Success,
     Fallback
