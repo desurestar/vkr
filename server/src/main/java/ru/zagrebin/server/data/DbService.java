@@ -78,10 +78,14 @@ public class DbService {
         return new ApiModels.Post(
                 p.getId(),
                 p.getAuthor().getId(),
+                p.getAuthor().getDisplayName() != null && !p.getAuthor().getDisplayName().isBlank() ? p.getAuthor().getDisplayName() : p.getAuthor().getUsername(),
+                p.getAuthor().getUsername(),
+                p.getAuthor().getAvatarUrl(),
                 p.getType(),
                 p.getTitle(),
                 p.getSummary(),
                 p.getContent(),
+                p.getImageUrl(),
                 p.getLikes(),
                 p.getCreatedAt(),
                 p.getCookTimeMinutes(),
@@ -146,6 +150,7 @@ public class DbService {
         post.setTitle(request.title());
         post.setSummary(request.summary());
         post.setContent(request.content());
+        post.setImageUrl(request.imageUrl());
         post.setCookTimeMinutes(request.cookTimeMinutes());
         post.setProteinsPer100(request.proteinsPer100());
         post.setFatsPer100(request.fatsPer100());

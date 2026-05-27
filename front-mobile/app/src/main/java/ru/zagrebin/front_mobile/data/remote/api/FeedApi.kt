@@ -73,6 +73,7 @@ data class CreateRecipeRequest(
     val title: String,
     val summary: String,
     val content: String,
+    val imageUrl: String? = null,
     val cookTimeMinutes: Int,
     val proteinsPer100: Double,
     val fatsPer100: Double,

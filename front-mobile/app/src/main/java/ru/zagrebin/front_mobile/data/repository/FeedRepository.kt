@@ -248,6 +248,8 @@ private fun String?.cleanImageUrl(): String {
     return when {
         value.startsWith("http://", ignoreCase = true) -> value
         value.startsWith("https://", ignoreCase = true) -> value
+        value.startsWith("content://", ignoreCase = true) -> value
+        value.startsWith("file://", ignoreCase = true) -> value
         else -> ""
     }
 }
