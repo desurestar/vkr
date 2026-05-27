@@ -24,10 +24,16 @@ public class PostEntity {
     @Column(nullable = false)
     private Instant createdAt;
 
-    @ElementCollection
-    @CollectionTable(name = "post_tags", joinColumns = @JoinColumn(name = "post_id"))
-    @Column(name = "tag")
-    private List<String> tags = new ArrayList<>();
+    @ManyToMany
+    @JoinTable(name = "post_tag", joinColumns = @JoinColumn(name = "post_id"), inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private List<TagEntity> tags = new ArrayList<>();
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RecipeIngredientEntity> ingredients = new ArrayList<>();
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("stepNumber ASC")
+    private List<RecipeStepEntity> steps = new ArrayList<>();
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CommentEntity> comments = new ArrayList<>();
@@ -49,6 +55,8 @@ public class PostEntity {
     public void setCookTimeMinutes(Integer cookTimeMinutes) { this.cookTimeMinutes = cookTimeMinutes; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public List<String> getTags() { return tags; }
+    public List<TagEntity> getTags() { return tags; }
+    public List<RecipeIngredientEntity> getIngredients() { return ingredients; }
+    public List<RecipeStepEntity> getSteps() { return steps; }
     public List<CommentEntity> getComments() { return comments; }
 }
