@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -123,7 +125,7 @@ fun RecipeDetailsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .aspectRatio(1.6f)
+                        .aspectRatio(16f / 9f)
                         .clip(RoundedCornerShape(16.dp))
                 )
             }
@@ -176,7 +178,7 @@ fun RecipeDetailsScreen(
                         contentDescription = step.title,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1.5f)
+                            .aspectRatio(16f / 9f)
                             .clip(RoundedCornerShape(14.dp))
                     )
                 } else {
@@ -289,6 +291,7 @@ private fun AuthorHeader(post: PostCardState) {
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val avatarUrl = "https://ui-avatars.com/api/?background=D8C2A0&color=FFFFFF&name=${post.authorName.replace(" ", "+")}"
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -296,6 +299,12 @@ private fun AuthorHeader(post: PostCardState) {
                 .background(Color(0xFFD8C2A0)),
             contentAlignment = Alignment.Center
         ) {
+            AsyncImage(
+                model = avatarUrl,
+                contentDescription = "Аватар автора",
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop
+            )
             Icon(
                 imageVector = Icons.Default.Person,
                 contentDescription = null,
