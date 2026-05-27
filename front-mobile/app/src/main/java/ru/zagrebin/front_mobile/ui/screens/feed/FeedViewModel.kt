@@ -13,7 +13,6 @@ import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.data.repository.RefreshResult
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
-import ru.zagrebin.front_mobile.ui.data.RecipeRepository
 
 class FeedViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
@@ -59,7 +58,6 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onTagClick(postId: Int, tagId: Int) = Unit
 
-    fun getPostById(postId: Int): PostCardState? = RecipeRepository.getPostById(postId)
 
     private fun FeedItem.toUi(): PostCardState = PostCardState(
         id = id,

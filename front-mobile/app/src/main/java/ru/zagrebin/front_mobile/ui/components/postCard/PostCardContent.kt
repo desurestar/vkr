@@ -53,6 +53,7 @@ fun PostCardContent(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
+            .clickable { onOpenRecipe(state.id) }
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
 
