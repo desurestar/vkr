@@ -42,6 +42,23 @@ class FakeFeedApi : FeedApi {
         )
     }
 
+    override suspend fun getTags(query: String?): List<TagDto> {
+        delay(80)
+        val tags = listOf(
+            TagDto(1, "Завтрак", "Завтрак", "#B57A1D"),
+            TagDto(2, "Обед", "Обед", "#B57A1D"),
+            TagDto(3, "Ужин", "Ужин", "#B57A1D"),
+            TagDto(4, "ПП", "ПП", "#B57A1D"),
+            TagDto(5, "Веган", "Веган", "#B57A1D")
+        )
+        val queryValue = query?.trim().orEmpty()
+        return if (queryValue.isBlank()) {
+            tags
+        } else {
+            tags.filter { it.name.contains(queryValue, ignoreCase = true) }
+        }
+    }
+
     private fun sample(offset: Int, prefix: String): List<FeedItemDto> = List(10) { index ->
         FeedItemDto(offset + index, if (index % 2 == 0) "42" else "77", "Дмитрий Загребин", "@Dima123", "22.05.2026", "$prefix #${index + 1}", "", "${30 + index}k", "${20 + index} мин", "${200 + index * 5} ккал", "${50 + index}k")
     }

@@ -85,6 +85,10 @@ public class DbService {
                 p.getLikes(),
                 p.getCreatedAt(),
                 p.getCookTimeMinutes(),
+                p.getProteinsPer100(),
+                p.getFatsPer100(),
+                p.getCarbsPer100(),
+                p.getKcalPer100(),
                 p.getTags().stream().map(this::toTag).toList(),
                 p.getIngredients().stream().map(x -> new ApiModels.Ingredient(x.getName(), x.getAmount(), x.getUnit())).toList(),
                 p.getSteps().stream().map(x -> new ApiModels.RecipeStep(x.getStepNumber(), x.getDescription(), x.getImageUrl())).toList(),
@@ -143,6 +147,10 @@ public class DbService {
         post.setSummary(request.summary());
         post.setContent(request.content());
         post.setCookTimeMinutes(request.cookTimeMinutes());
+        post.setProteinsPer100(request.proteinsPer100());
+        post.setFatsPer100(request.fatsPer100());
+        post.setCarbsPer100(request.carbsPer100());
+        post.setKcalPer100(request.kcalPer100());
         post.setCreatedAt(Instant.now());
         post.setLikes(0);
         if (request.tags() != null) {

@@ -11,6 +11,7 @@ import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
 import ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeDetailsDto
 import ru.zagrebin.front_mobile.data.remote.dto.ServerPostDto
+import ru.zagrebin.front_mobile.data.remote.dto.TagDto
 
 interface FeedApi {
     @GET("api/v1/feed/recipes")
@@ -45,6 +46,7 @@ interface FeedApi {
 
     @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null): SearchResponse
     @POST("api/v1/recipes") suspend fun createRecipe(@Body request: CreateRecipeRequest): ServerPostDto
+    @GET("api/v1/tags") suspend fun getTags(@Query("q") query: String? = null): List<TagDto>
 }
 
 data class AuthRequest(val email: String, val password: String, val username: String? = null)
@@ -67,4 +69,19 @@ data class UserProfileDto(
     val followers: Set<Long> = emptySet()
 )
 
-data class CreateRecipeRequest(val title: String, val summary: String, val content: String, val cookTimeMinutes: Int, val tags: List<String>)
+data class CreateRecipeRequest(
+    val title: String,
+    val summary: String,
+    val content: String,
+    val cookTimeMinutes: Int,
+    val proteinsPer100: Double,
+    val fatsPer100: Double,
+    val carbsPer100: Double,
+    val kcalPer100: Double,
+    val tags: List<String>,
+    val ingredients: List<CreateRecipeIngredient>,
+    val steps: List<CreateRecipeStep>
+)
+
+data class CreateRecipeIngredient(val name: String, val amount: Double, val unit: String)
+data class CreateRecipeStep(val number: Int, val description: String, val imageUrl: String? = null)

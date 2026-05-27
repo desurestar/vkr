@@ -79,7 +79,8 @@ private const val MAX_TAGS = 10
 @Composable
 fun CreateRecipeScreen(
     onBackClick: () -> Unit = {},
-    onPublish: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>) -> Unit = { _, _, _, _, _ -> }
+    availableTags: List<String> = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
+    onPublish: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     var postTitle by rememberSaveable { mutableStateOf("") }
@@ -129,7 +130,7 @@ fun CreateRecipeScreen(
 
     if (showTagSheet) {
         TagPickBottomSheet(
-            tags = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
+            tags = availableTags,
             selected = selectedTags,
             onDismiss = { showTagSheet = false },
             onAddClick = { showTagSheet = false }
@@ -357,7 +358,19 @@ fun CreateRecipeScreen(
                         onClick = {
                             showErrors = true
                             if (!isFormValid) return@Button
-                            onPublish(postTitle.trim(), dishTitle.trim(), steps.joinToString("\n") { it.description }, cookTimeMinutes.toInt(), selectedTags.toList())
+                            onPublish(
+                                postTitle.trim(),
+                                dishTitle.trim(),
+                                steps.joinToString("\n") { it.description },
+                                cookTimeMinutes.toInt(),
+                                selectedTags.toList(),
+                                ingredients.toList(),
+                                steps.toList(),
+                                proteins.toDouble(),
+                                fats.toDouble(),
+                                carbs.toDouble(),
+                                calories.toDouble()
+                            )
                         },
                         enabled = isFormValid,
                         shape = RoundedCornerShape(18.dp),
