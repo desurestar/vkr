@@ -36,8 +36,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
+import android.net.Uri
+import java.io.File
 
 @Composable
 fun NavGraph(
@@ -47,6 +50,7 @@ fun NavGraph(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val api = AppContainer(context).feedApi
+    val profileRepository = AppContainer(context).let { ProfileRepository(it.feedApi, it.db.profileDao()) }
 
     NavHost(
         navController = navController,
@@ -124,7 +128,13 @@ fun NavGraph(
         composable(Screen.EditAccount.route) {
             EditAccountScreen(
                 onBackClick = { navController.popBackStack() },
-                onSaveClick = { _, _ -> navController.popBackStack() }
+                onSaveClick = { name, avatarUri ->
+                    scope.launch {
+                        val avatarUrl = avatarUri?.let { persistAvatarToAppStorage(context, it) }
+                        runCatching { profileRepository.updateProfile(name, "", avatarUrl) }
+                        navController.popBackStack()
+                    }
+                }
             )
         }
 
@@ -242,4 +252,15 @@ fun NavGraph(
             )
         }
     }
+}
+
+private fun persistAvatarToAppStorage(context: android.content.Context, sourceUri: Uri): String? {
+    return runCatching {
+        val dir = File(context.filesDir, "avatars").apply { mkdirs() }
+        val target = File(dir, "my_avatar.jpg")
+        context.contentResolver.openInputStream(sourceUri)?.use { input ->
+            target.outputStream().use { output -> input.copyTo(output) }
+        } ?: return null
+        Uri.fromFile(target).toString()
+    }.getOrNull()
 }
