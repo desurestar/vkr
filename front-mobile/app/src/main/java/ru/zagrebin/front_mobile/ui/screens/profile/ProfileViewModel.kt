@@ -12,7 +12,9 @@ import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileEvent
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = ProfileRepository(AppContainer(application).feedApi)
+    private val repository = AppContainer(application).let {
+        ProfileRepository(it.feedApi, it.db.profileDao())
+    }
 
     private val _state = MutableStateFlow(ProfileState(isLoading = true))
     val state: StateFlow<ProfileState> = _state.asStateFlow()

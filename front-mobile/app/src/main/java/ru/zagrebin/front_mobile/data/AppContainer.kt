@@ -23,7 +23,7 @@ import ru.zagrebin.front_mobile.domain.usecase.RefreshRecipeDetailsUseCase
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
-    private val db = dbInstance ?: synchronized(lock) {
+    val db = dbInstance ?: synchronized(lock) {
         dbInstance ?: Room.databaseBuilder(appContext, AppDatabase::class.java, "vkr.db")
             .fallbackToDestructiveMigration()
             .build()
