@@ -53,13 +53,20 @@ import ru.zagrebin.front_mobile.ui.components.AnimatedLabelTextField
 import ru.zagrebin.front_mobile.ui.navigation.Screen
 import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
 import ru.zagrebin.front_mobile.ui.navigation.BottomNavItem
+import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
 import retrofit2.HttpException
 
 @Composable
 fun RegisterScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val api = AppContainer(context).feedApi
+    val appContainer = AppContainer(context)
+    val api = appContainer.feedApi
+    val profileRepository = ProfileRepository(
+        appContainer.feedApi,
+        appContainer.db.profileDao(),
+        appContainer.networkConnectionChecker
+    )
 
     var login by remember { mutableStateOf("") }
     var email by remember {mutableStateOf("")}
@@ -149,6 +156,7 @@ fun RegisterScreen(navController: NavController) {
                                     error = null
                                     runCatching {
                                         api.register(AuthRequest(email = trimmedEmail, password = password, username = trimmedLogin))
+                                            .also { user -> profileRepository.cacheAuthenticatedProfile(user) }
                                     }.onSuccess {
                                         AuthSessionState.setAuthorized(context, true)
                                         navController.navigate(BottomNavItem.Profile.route) {

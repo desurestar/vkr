@@ -19,6 +19,15 @@ class ProfileRepository(
 ) {
     fun observeMyProfile(): Flow<ProfileData?> = profileDao.observeProfile().map { it?.toModel() }
 
+    suspend fun cacheAuthenticatedProfile(user: SessionUserDto): ProfileData {
+        val publicProfile = runCatching { api.getPublicProfile(user.id) }.getOrNull()
+        return user.toProfileData(publicProfile).also { cacheProfile(it) }
+    }
+
+    suspend fun clearProfile() {
+        profileDao.clear()
+    }
+
     suspend fun refreshMyProfile(): RefreshResult {
         if (!networkConnectionChecker.isNetworkAvailable()) return RefreshResult.Fallback
         return runCatching {

@@ -57,8 +57,10 @@ fun NavGraph(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val api = AppContainer(context).feedApi
-    val profileRepository = AppContainer(context).let { ProfileRepository(it.feedApi, it.db.profileDao(), it.networkConnectionChecker) }
+    val isAuthorized by AuthSessionState.isAuthorized.collectAsState()
+    val appContainer = AppContainer(context)
+    val api = appContainer.feedApi
+    val profileRepository = ProfileRepository(appContainer.feedApi, appContainer.db.profileDao(), appContainer.networkConnectionChecker)
     val profileViewModel: ProfileViewModel = viewModel()
 
     NavHost(
@@ -107,6 +109,12 @@ fun NavGraph(
         }
 
         composable(BottomNavItem.Profile.route) {
+            LaunchedEffect(isAuthorized) {
+                if (isAuthorized) {
+                    profileViewModel.loadProfile()
+                }
+            }
+
             ProfileScreen(
                 viewModel = profileViewModel,
                 onOpenShoppingList = { navController.navigate(Screen.ShoppingList.route) },
@@ -118,6 +126,7 @@ fun NavGraph(
                 onLogout = {
                     scope.launch {
                         runCatching { api.logout() }
+                        profileRepository.clearProfile()
                         AuthSessionState.setAuthorized(context, false)
                         navController.navigate(Screen.EntryOptions.route) {
                             popUpTo(navController.graph.id) { inclusive = true }
