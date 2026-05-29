@@ -58,7 +58,7 @@ fun NavGraph(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val api = AppContainer(context).feedApi
-    val profileRepository = AppContainer(context).let { ProfileRepository(it.feedApi, it.db.profileDao()) }
+    val profileRepository = AppContainer(context).let { ProfileRepository(it.feedApi, it.db.profileDao(), it.networkConnectionChecker) }
     val profileViewModel: ProfileViewModel = viewModel()
 
     NavHost(

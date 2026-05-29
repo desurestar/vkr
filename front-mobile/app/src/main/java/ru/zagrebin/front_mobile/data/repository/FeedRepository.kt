@@ -14,6 +14,7 @@ import ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeDetailsDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeIngredientDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeStepDto
+import ru.zagrebin.front_mobile.data.sync.NetworkConnectionChecker
 import ru.zagrebin.front_mobile.domain.model.ArticleDetails
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.domain.model.RecipeDetails
@@ -28,20 +29,19 @@ class FeedRepository(
     private val feedDao: FeedDao,
     private val feedApi: FeedApi,
     private val recipeDetailsDao: RecipeDetailsDao,
-    private val articleDetailsDao: ArticleDetailsDao
+    private val articleDetailsDao: ArticleDetailsDao,
+    private val networkConnectionChecker: NetworkConnectionChecker
 ) {
     fun observeRecipes(): Flow<List<FeedItem>> = feedDao.observeByType(TYPE_RECIPE).map { it.toDomain() }
     fun observeArticles(): Flow<List<FeedItem>> = feedDao.observeByType(TYPE_ARTICLE).map { it.toDomain() }
 
-    suspend fun refreshRecipes(): RefreshResult = runCatching {
-        feedDao.upsertAll(feedApi.getRecipesFeed().map { it.toEntity(TYPE_RECIPE) })
-        RefreshResult.Success
-    }.getOrElse { RefreshResult.Fallback }
+    suspend fun refreshRecipes(): RefreshResult = refreshFromServer {
+        feedDao.replaceByType(TYPE_RECIPE, feedApi.getRecipesFeed().map { it.toEntity(TYPE_RECIPE) })
+    }
 
-    suspend fun refreshArticles(): RefreshResult = runCatching {
-        feedDao.upsertAll(feedApi.getArticlesFeed().map { it.toEntity(TYPE_ARTICLE) })
-        RefreshResult.Success
-    }.getOrElse { RefreshResult.Fallback }
+    suspend fun refreshArticles(): RefreshResult = refreshFromServer {
+        feedDao.replaceByType(TYPE_ARTICLE, feedApi.getArticlesFeed().map { it.toEntity(TYPE_ARTICLE) })
+    }
 
     fun observeRecipeDetails(id: Int): Flow<RecipeDetails?> =
         recipeDetailsDao.observeById(id).map { it?.toDomain() }
@@ -49,15 +49,21 @@ class FeedRepository(
     fun observeArticleDetails(id: Int): Flow<ArticleDetails?> =
         articleDetailsDao.observeById(id).map { it?.toDomain() }
 
-    suspend fun refreshRecipeDetails(id: Int): RefreshResult = runCatching {
+    suspend fun refreshRecipeDetails(id: Int): RefreshResult = refreshFromServer {
         recipeDetailsDao.upsert(feedApi.getRecipeDetails(id).toRecipeDetailsEntity())
-        RefreshResult.Success
-    }.getOrElse { RefreshResult.Fallback }
+    }
 
-    suspend fun refreshArticleDetails(id: Int): RefreshResult = runCatching {
+    suspend fun refreshArticleDetails(id: Int): RefreshResult = refreshFromServer {
         articleDetailsDao.upsert(feedApi.getArticleDetails(id).toArticleDetailsEntity())
-        RefreshResult.Success
-    }.getOrElse { RefreshResult.Fallback }
+    }
+
+    private suspend fun refreshFromServer(syncBlock: suspend () -> Unit): RefreshResult {
+        if (!networkConnectionChecker.isNetworkAvailable()) return RefreshResult.Fallback
+        return runCatching {
+            syncBlock()
+            RefreshResult.Success
+        }.getOrElse { RefreshResult.Fallback }
+    }
 
     private fun List<FeedItemEntity>.toDomain(): List<FeedItem> = map {
         FeedItem(it.id, it.authorId, it.authorName, it.authorHandle, it.date, it.title, it.imageUrl, it.likes, it.time, it.calories, it.views)

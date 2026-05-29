@@ -12,6 +12,7 @@ import ru.zagrebin.front_mobile.data.local.AppDatabase
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.remote.api.PersistentCookieJar
 import ru.zagrebin.front_mobile.data.repository.FeedRepository
+import ru.zagrebin.front_mobile.data.sync.NetworkConnectionChecker
 import ru.zagrebin.front_mobile.domain.usecase.ObserveArticleDetailsUseCase
 import ru.zagrebin.front_mobile.domain.usecase.ObserveArticlesFeedUseCase
 import ru.zagrebin.front_mobile.domain.usecase.ObserveRecipeDetailsUseCase
@@ -50,11 +51,14 @@ class AppContainer(context: Context) {
             .also { feedApiInstance = it }
     }
 
+    val networkConnectionChecker = NetworkConnectionChecker(appContext)
+
     private val repository = FeedRepository(
         db.feedDao(),
         feedApi,
         db.recipeDetailsDao(),
-        db.articleDetailsDao()
+        db.articleDetailsDao(),
+        networkConnectionChecker
     )
 
     val observeRecipesFeedUseCase = ObserveRecipesFeedUseCase(repository)
