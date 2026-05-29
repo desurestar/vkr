@@ -7,12 +7,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.repository.RefreshResult
 import ru.zagrebin.front_mobile.domain.model.ArticleDetails
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 
@@ -26,17 +27,23 @@ data class ArticleDetailsUiState(
 class ArticleDetailsViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
     private val currentId = MutableStateFlow<Int?>(null)
+    private val isRefreshing = MutableStateFlow(false)
+    private val hasLoadError = MutableStateFlow(false)
+    private val canShowCache = MutableStateFlow(false)
 
     val state: StateFlow<ArticleDetailsUiState> = currentId
         .flatMapLatest { id ->
             if (id == null) flowOf(null) else container.observeArticleDetailsUseCase(id)
         }
-        .map { details ->
+        .combine(isRefreshing) { details, refreshing -> details to refreshing }
+        .combine(hasLoadError) { (details, refreshing), loadError -> Triple(details, refreshing, loadError) }
+        .combine(canShowCache) { (details, refreshing, loadError), showCache ->
             val hasRequest = currentId.value != null
+            val visibleDetails = if (showCache) details else null
             ArticleDetailsUiState(
-                isLoading = hasRequest && details == null,
-                post = details?.toUi(),
-                content = details?.content.orEmpty()
+                isLoading = hasRequest && visibleDetails == null && refreshing && !loadError,
+                post = visibleDetails?.toUi(),
+                content = visibleDetails?.content.orEmpty()
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ArticleDetailsUiState())
@@ -44,8 +51,15 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
     fun load(postId: Int) {
         if (currentId.value == postId) return
         currentId.value = postId
+        isRefreshing.value = true
+        hasLoadError.value = false
+        canShowCache.value = false
         viewModelScope.launch {
-            runCatching { container.refreshArticleDetailsUseCase(postId) }
+            val result = runCatching { container.refreshArticleDetailsUseCase(postId) }
+                .getOrDefault(RefreshResult.Fallback)
+            hasLoadError.value = result == RefreshResult.Fallback
+            canShowCache.value = true
+            isRefreshing.value = false
         }
     }
 

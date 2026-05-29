@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagScreen
 
 @Composable
@@ -86,7 +87,7 @@ fun ArticleCardContent(
             Spacer(Modifier.height(10.dp))
 
             AsyncImage(
-                model = state.imageUrl,
+                model = rememberExplicitCacheImageRequest(state.imageUrl),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()

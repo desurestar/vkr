@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
+import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 import ru.zagrebin.front_mobile.ui.screens.statistics.AddMealBottomSheet
 import ru.zagrebin.front_mobile.ui.screens.statistics.MealDraft
 import ru.zagrebin.front_mobile.ui.screens.statistics.MealType
@@ -119,7 +120,7 @@ fun RecipeDetailsScreen(
         item {
             if (post.imageUrl.isNotBlank()) {
                 AsyncImage(
-                    model = post.imageUrl,
+                    model = rememberExplicitCacheImageRequest(post.imageUrl),
                     contentDescription = post.title,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -173,7 +174,7 @@ fun RecipeDetailsScreen(
 
                 if (!step.imageUrl.isNullOrBlank()) {
                     AsyncImage(
-                        model = step.imageUrl,
+                        model = rememberExplicitCacheImageRequest(step.imageUrl),
                         contentDescription = step.title,
                         modifier = Modifier
                             .fillMaxWidth()

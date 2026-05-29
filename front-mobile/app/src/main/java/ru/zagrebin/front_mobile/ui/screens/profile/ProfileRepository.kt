@@ -10,15 +10,17 @@ class ProfileRepository(private val api: FeedApi, private val profileDao: Profil
     suspend fun getMyProfile(): ProfileData {
         return runCatching {
             val me = api.me()
-            val publicProfile = api.getPublicProfile(me.id)
+            val publicProfile = runCatching { api.getPublicProfile(me.id) }.getOrNull()
+            val publicName = publicProfile?.displayName ?: publicProfile?.username
+            val publicEmail = publicProfile?.email
             ProfileData(
             id = me.id,
-            name = publicProfile.displayName ?: me.displayName ?: publicProfile.username ?: me.username ?: me.email ?: "",
-            email = publicProfile.email ?: me.email ?: "",
-            bio = publicProfile.bio.orEmpty(),
-            avatarUrl = publicProfile.avatarUrl,
-            followingCount = publicProfile.following.size,
-            followersCount = publicProfile.followers.size
+            name = publicName ?: me.displayName ?: me.username ?: me.email ?: "",
+            email = publicEmail ?: me.email ?: "",
+            bio = publicProfile?.bio.orEmpty(),
+            avatarUrl = publicProfile?.avatarUrl,
+            followingCount = publicProfile?.following?.size ?: 0,
+            followersCount = publicProfile?.followers?.size ?: 0
             ).also { cacheProfile(it) }
         }.getOrElse {
             profileDao.getProfile()?.toModel() ?: throw it
