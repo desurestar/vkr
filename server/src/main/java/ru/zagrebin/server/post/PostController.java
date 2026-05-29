@@ -1,7 +1,9 @@
 package ru.zagrebin.server.post;
 
 import jakarta.servlet.http.HttpSession;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import ru.zagrebin.server.common.ApiModels;
 import ru.zagrebin.server.data.DbService;
 
@@ -28,5 +30,11 @@ public class PostController {
     @DeleteMapping("/posts/{id}/likes") public Map<String, String> unlike(@PathVariable Long id, HttpSession s) { requireUid(s); return Map.of("status", "unliked"); }
     @PostMapping("/recipes/{id}/shopping-list") public Map<String, String> addRecipeToShopping(@PathVariable Long id, HttpSession s) { db.addShopping(requireUid(s), "From recipe #" + id, "1"); return Map.of("status", "added"); }
 
-    private Long requireUid(HttpSession session) { var uid = (Long) session.getAttribute("uid"); if (uid == null) throw new IllegalStateException("Unauthorized"); return uid; }
+    private Long requireUid(HttpSession session) {
+        var uid = (Long) session.getAttribute("uid");
+        if (uid == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+        return uid;
+    }
 }
