@@ -13,6 +13,9 @@ interface FeedDao {
     @Query("SELECT * FROM feed_items WHERE type = :type ORDER BY id DESC")
     fun observeByType(type: String): Flow<List<FeedItemEntity>>
 
+    @Query("SELECT * FROM feed_items WHERE type = :type ORDER BY id DESC")
+    suspend fun getByType(type: String): List<FeedItemEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<FeedItemEntity>)
 

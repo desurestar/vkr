@@ -53,22 +53,23 @@ class AppContainer(context: Context) {
 
     val networkConnectionChecker = NetworkConnectionChecker(appContext)
 
-    private val repository = FeedRepository(
+    val feedRepository = FeedRepository(
         db.feedDao(),
         feedApi,
         db.recipeDetailsDao(),
         db.articleDetailsDao(),
+        db.tagDao(),
         networkConnectionChecker
     )
 
-    val observeRecipesFeedUseCase = ObserveRecipesFeedUseCase(repository)
-    val refreshRecipesFeedUseCase = RefreshRecipesFeedUseCase(repository)
-    val observeArticlesFeedUseCase = ObserveArticlesFeedUseCase(repository)
-    val refreshArticlesFeedUseCase = RefreshArticlesFeedUseCase(repository)
-    val observeRecipeDetailsUseCase = ObserveRecipeDetailsUseCase(repository)
-    val refreshRecipeDetailsUseCase = RefreshRecipeDetailsUseCase(repository)
-    val observeArticleDetailsUseCase = ObserveArticleDetailsUseCase(repository)
-    val refreshArticleDetailsUseCase = RefreshArticleDetailsUseCase(repository)
+    val observeRecipesFeedUseCase = ObserveRecipesFeedUseCase(feedRepository)
+    val refreshRecipesFeedUseCase = RefreshRecipesFeedUseCase(feedRepository)
+    val observeArticlesFeedUseCase = ObserveArticlesFeedUseCase(feedRepository)
+    val refreshArticlesFeedUseCase = RefreshArticlesFeedUseCase(feedRepository)
+    val observeRecipeDetailsUseCase = ObserveRecipeDetailsUseCase(feedRepository)
+    val refreshRecipeDetailsUseCase = RefreshRecipeDetailsUseCase(feedRepository)
+    val observeArticleDetailsUseCase = ObserveArticleDetailsUseCase(feedRepository)
+    val refreshArticleDetailsUseCase = RefreshArticleDetailsUseCase(feedRepository)
 
     private companion object {
         // const val BASE_URL = "http://192.168.4.103:8080/"

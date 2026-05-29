@@ -3,17 +3,13 @@ package ru.zagrebin.front_mobile.ui.screens.recipe
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
-import ru.zagrebin.front_mobile.data.repository.RefreshResult
 import ru.zagrebin.front_mobile.domain.model.RecipeDetails
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.components.postCard.RecipeIngredientState
@@ -25,37 +21,34 @@ data class RecipeDetailsUiState(
     val post: PostCardState? = null
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class RecipeDetailsViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
-    private val currentId = MutableStateFlow<Int?>(null)
+    private val details = MutableStateFlow<RecipeDetails?>(null)
     private val isRefreshing = MutableStateFlow(false)
     private val hasLoadError = MutableStateFlow(false)
+    private var currentId: Int? = null
 
-    val state: StateFlow<RecipeDetailsUiState> = currentId
-        .flatMapLatest { id ->
-            if (id == null) flowOf(null) else container.observeRecipeDetailsUseCase(id)
-        }
-        .combine(isRefreshing) { details, refreshing -> details to refreshing }
-        .combine(hasLoadError) { (details, refreshing), loadError ->
-            val hasRequest = currentId.value != null
-            val shouldShowLoading = hasRequest && details == null && refreshing && !loadError
-            RecipeDetailsUiState(
-                isLoading = shouldShowLoading,
-                post = details?.toUi()
-            )
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipeDetailsUiState())
+    val state: StateFlow<RecipeDetailsUiState> = combine(
+        details,
+        isRefreshing,
+        hasLoadError
+    ) { loadedDetails, refreshing, loadError ->
+        RecipeDetailsUiState(
+            isLoading = currentId != null && loadedDetails == null && refreshing && !loadError,
+            post = loadedDetails?.toUi()
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipeDetailsUiState())
 
     fun load(postId: Int) {
-        if (currentId.value == postId) return
-        currentId.value = postId
+        if (currentId == postId) return
+        currentId = postId
+        details.value = null
         isRefreshing.value = true
         hasLoadError.value = false
         viewModelScope.launch {
-            val result = runCatching { container.refreshRecipeDetailsUseCase(postId) }
-                .getOrDefault(RefreshResult.Fallback)
-            hasLoadError.value = result == RefreshResult.Fallback
+            val result = runCatching { container.feedRepository.loadRecipeDetails(postId) }.getOrNull()
+            details.value = result?.data
+            hasLoadError.value = result == null || (result.isFromCache && result.data == null)
             isRefreshing.value = false
         }
     }

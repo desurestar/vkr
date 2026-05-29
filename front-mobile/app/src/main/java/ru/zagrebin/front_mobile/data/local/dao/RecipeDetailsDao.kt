@@ -12,6 +12,9 @@ interface RecipeDetailsDao {
     @Query("SELECT * FROM recipe_details WHERE id = :id")
     fun observeById(id: Int): Flow<RecipeDetailsEntity?>
 
+    @Query("SELECT * FROM recipe_details WHERE id = :id")
+    suspend fun getById(id: Int): RecipeDetailsEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: RecipeDetailsEntity)
 }

@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
-import ru.zagrebin.front_mobile.data.repository.RefreshResult
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.data.RecipeRepository
@@ -18,16 +17,17 @@ import ru.zagrebin.front_mobile.ui.data.RecipeRepository
 class FeedViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
     private val query = MutableStateFlow("")
+    private val posts = MutableStateFlow<List<FeedItem>>(emptyList())
     private val errorMessage = MutableStateFlow<String?>(null)
     private val isUsingFallback = MutableStateFlow(false)
 
     val state: StateFlow<FeedState> = combine(
-        container.observeRecipesFeedUseCase(),
+        posts,
         query,
         errorMessage,
         isUsingFallback
-    ) { posts, q, error, fallback ->
-        val mapped = posts.map { it.toUi() }.let { list ->
+    ) { loadedPosts, q, error, fallback ->
+        val mapped = loadedPosts.map { it.toUi() }.let { list ->
             if (q.isBlank()) list else list.filter { it.title.contains(q, true) }
         }
         FeedState(posts = mapped, searchQuery = q, errorMessage = error, isUsingFallback = fallback)
@@ -39,16 +39,14 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun retryRefresh() {
         viewModelScope.launch {
-            val result = container.refreshRecipesFeedUseCase()
-            when (result) {
-                RefreshResult.Success -> {
-                    errorMessage.value = null
-                    isUsingFallback.value = false
-                }
-                RefreshResult.Fallback -> {
-                    errorMessage.value = "Сервер недоступен. Показан офлайн-кеш."
-                    isUsingFallback.value = true
-                }
+            val result = container.feedRepository.loadRecipes()
+            posts.value = result.data
+            if (result.isFromCache) {
+                errorMessage.value = "Сервер недоступен. Показан офлайн-кеш."
+                isUsingFallback.value = true
+            } else {
+                errorMessage.value = null
+                isUsingFallback.value = false
             }
         }
     }

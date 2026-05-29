@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
-import ru.zagrebin.front_mobile.data.repository.RefreshResult
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileEvent
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
@@ -18,15 +17,16 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val repository = AppContainer(application).let {
         ProfileRepository(it.feedApi, it.db.profileDao(), it.networkConnectionChecker)
     }
+    private val profile = MutableStateFlow<ProfileData?>(null)
     private val isRefreshing = MutableStateFlow(false)
     private val errorMessage = MutableStateFlow<String?>(null)
 
     val state: StateFlow<ProfileState> = combine(
-        repository.observeMyProfile(),
+        profile,
         isRefreshing,
         errorMessage
-    ) { profile, refreshing, error ->
-        profile?.toState(isLoading = false, error = error)
+    ) { loadedProfile, refreshing, error ->
+        loadedProfile?.toState(isLoading = false, error = error)
             ?: ProfileState(isLoading = refreshing, error = error)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileState(isLoading = true))
 
@@ -36,10 +36,14 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             isRefreshing.value = true
             errorMessage.value = null
-            val result = repository.refreshMyProfile()
-            if (result == RefreshResult.Fallback) {
-                errorMessage.value = "Сервер недоступен. Показан офлайн-кеш."
-            }
+            runCatching { repository.getMyProfile() }
+                .onSuccess { result ->
+                    profile.value = result.profile
+                    errorMessage.value = if (result.isFromCache) "Сервер недоступен. Показан офлайн-кеш." else null
+                }
+                .onFailure { error ->
+                    errorMessage.value = error.message ?: "Не удалось загрузить профиль"
+                }
             isRefreshing.value = false
         }
     }
