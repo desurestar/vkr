@@ -29,21 +29,18 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
     private val currentId = MutableStateFlow<Int?>(null)
     private val isRefreshing = MutableStateFlow(false)
     private val hasLoadError = MutableStateFlow(false)
-    private val canShowCache = MutableStateFlow(false)
 
     val state: StateFlow<ArticleDetailsUiState> = currentId
         .flatMapLatest { id ->
             if (id == null) flowOf(null) else container.observeArticleDetailsUseCase(id)
         }
         .combine(isRefreshing) { details, refreshing -> details to refreshing }
-        .combine(hasLoadError) { (details, refreshing), loadError -> Triple(details, refreshing, loadError) }
-        .combine(canShowCache) { (details, refreshing, loadError), showCache ->
+        .combine(hasLoadError) { (details, refreshing), loadError ->
             val hasRequest = currentId.value != null
-            val visibleDetails = if (showCache) details else null
             ArticleDetailsUiState(
-                isLoading = hasRequest && visibleDetails == null && refreshing && !loadError,
-                post = visibleDetails?.toUi(),
-                content = visibleDetails?.content.orEmpty()
+                isLoading = hasRequest && details == null && refreshing && !loadError,
+                post = details?.toUi(),
+                content = details?.content.orEmpty()
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ArticleDetailsUiState())
@@ -53,12 +50,10 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
         currentId.value = postId
         isRefreshing.value = true
         hasLoadError.value = false
-        canShowCache.value = false
         viewModelScope.launch {
             val result = runCatching { container.refreshArticleDetailsUseCase(postId) }
                 .getOrDefault(RefreshResult.Fallback)
             hasLoadError.value = result == RefreshResult.Fallback
-            canShowCache.value = true
             isRefreshing.value = false
         }
     }
