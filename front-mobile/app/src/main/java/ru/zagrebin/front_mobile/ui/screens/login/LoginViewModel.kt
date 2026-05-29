@@ -9,9 +9,16 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.data.remote.api.AuthRequest
+import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
-    private val api = AppContainer(application).feedApi
+    private val appContainer = AppContainer(application)
+    private val api = appContainer.feedApi
+    private val profileRepository = ProfileRepository(
+        appContainer.feedApi,
+        appContainer.db.profileDao(),
+        appContainer.networkConnectionChecker
+    )
     private val _state = MutableStateFlow(LoginState())
     val state: StateFlow<LoginState> = _state
 
@@ -36,6 +43,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
             runCatching {
                 api.login(AuthRequest(email = current.loginOrEmail.trim(), password = current.password))
+                    .also { user -> profileRepository.cacheAuthenticatedProfile(user) }
             }.onSuccess {
                 _state.value = _state.value.copy(isLoading = false, isSuccess = true)
             }.onFailure { throwable ->
