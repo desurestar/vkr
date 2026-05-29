@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import ru.zagrebin.front_mobile.ui.common.rememberCachedImageRequest
+import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeCommentUi
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeCommentsBottomSheet
@@ -68,7 +68,7 @@ fun ArticleDetailsScreen(
 
             if (article.imageUrl.isNotBlank()) {
                 AsyncImage(
-                    model = rememberCachedImageRequest(article.imageUrl),
+                    model = rememberExplicitCacheImageRequest(article.imageUrl),
                     contentDescription = article.title,
                     modifier = Modifier
                         .fillMaxWidth()
