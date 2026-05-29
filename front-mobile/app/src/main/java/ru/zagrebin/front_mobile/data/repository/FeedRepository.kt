@@ -5,9 +5,12 @@ import kotlinx.coroutines.flow.map
 import ru.zagrebin.front_mobile.data.local.dao.ArticleDetailsDao
 import ru.zagrebin.front_mobile.data.local.dao.FeedDao
 import ru.zagrebin.front_mobile.data.local.dao.RecipeDetailsDao
+import ru.zagrebin.front_mobile.data.local.dao.TagDao
 import ru.zagrebin.front_mobile.data.local.entities.ArticleDetailsEntity
 import ru.zagrebin.front_mobile.data.local.entities.FeedItemEntity
 import ru.zagrebin.front_mobile.data.local.entities.RecipeDetailsEntity
+import ru.zagrebin.front_mobile.data.local.entities.TagEntity
+import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
 import ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto
@@ -30,18 +33,23 @@ class FeedRepository(
     private val feedApi: FeedApi,
     private val recipeDetailsDao: RecipeDetailsDao,
     private val articleDetailsDao: ArticleDetailsDao,
+    private val tagDao: TagDao,
     private val networkConnectionChecker: NetworkConnectionChecker
 ) {
     fun observeRecipes(): Flow<List<FeedItem>> = feedDao.observeByType(TYPE_RECIPE).map { it.toDomain() }
     fun observeArticles(): Flow<List<FeedItem>> = feedDao.observeByType(TYPE_ARTICLE).map { it.toDomain() }
 
-    suspend fun refreshRecipes(): RefreshResult = refreshFromServer {
-        feedDao.replaceByType(TYPE_RECIPE, feedApi.getRecipesFeed().map { it.toEntity(TYPE_RECIPE) })
+    suspend fun loadRecipes(): ServerFirstResult<List<FeedItem>> = loadFeedItems(TYPE_RECIPE) {
+        feedApi.getRecipesFeed()
     }
 
-    suspend fun refreshArticles(): RefreshResult = refreshFromServer {
-        feedDao.replaceByType(TYPE_ARTICLE, feedApi.getArticlesFeed().map { it.toEntity(TYPE_ARTICLE) })
+    suspend fun refreshRecipes(): RefreshResult = loadRecipes().toRefreshResult()
+
+    suspend fun loadArticles(): ServerFirstResult<List<FeedItem>> = loadFeedItems(TYPE_ARTICLE) {
+        feedApi.getArticlesFeed()
     }
+
+    suspend fun refreshArticles(): RefreshResult = loadArticles().toRefreshResult()
 
     fun observeRecipeDetails(id: Int): Flow<RecipeDetails?> =
         recipeDetailsDao.observeById(id).map { it?.toDomain() }
@@ -49,12 +57,58 @@ class FeedRepository(
     fun observeArticleDetails(id: Int): Flow<ArticleDetails?> =
         articleDetailsDao.observeById(id).map { it?.toDomain() }
 
-    suspend fun refreshRecipeDetails(id: Int): RefreshResult = refreshFromServer {
-        recipeDetailsDao.upsert(feedApi.getRecipeDetails(id).toRecipeDetailsEntity())
+    suspend fun loadRecipeDetails(id: Int): ServerFirstResult<RecipeDetails?> {
+        if (networkConnectionChecker.isNetworkAvailable()) {
+            runCatching { feedApi.getRecipeDetails(id).toRecipeDetailsEntity() }
+                .onSuccess { entity ->
+                    recipeDetailsDao.upsert(entity)
+                    return ServerFirstResult(entity.toDomain(), isFromCache = false)
+                }
+        }
+
+        return ServerFirstResult(recipeDetailsDao.getById(id)?.toDomain(), isFromCache = true)
     }
+
+    suspend fun refreshRecipeDetails(id: Int): RefreshResult = loadRecipeDetails(id).toRefreshResult()
 
     suspend fun refreshArticleDetails(id: Int): RefreshResult = refreshFromServer {
         articleDetailsDao.upsert(feedApi.getArticleDetails(id).toArticleDetailsEntity())
+    }
+
+    suspend fun loadTagLabels(): ServerFirstResult<List<String>> {
+        if (networkConnectionChecker.isNetworkAvailable()) {
+            runCatching { feedApi.getTags() }
+                .onSuccess { tags ->
+                    tagDao.replaceAll(tags.map { TagEntity(it.id, it.name, it.label) })
+                    return ServerFirstResult(tags.map { it.label?.takeIf(String::isNotBlank) ?: it.name }, isFromCache = false)
+                }
+        }
+
+        return ServerFirstResult(
+            tagDao.getAll().map { it.label?.takeIf(String::isNotBlank) ?: it.name },
+            isFromCache = true
+        )
+    }
+
+    suspend fun createRecipe(request: CreateRecipeRequest): RefreshResult {
+        if (!networkConnectionChecker.isNetworkAvailable()) return RefreshResult.Fallback
+        return runCatching {
+            feedApi.createRecipe(request)
+            loadRecipes()
+            RefreshResult.Success
+        }.getOrElse { RefreshResult.Fallback }
+    }
+
+    private suspend fun loadFeedItems(type: String, remoteRequest: suspend () -> List<FeedItemDto>): ServerFirstResult<List<FeedItem>> {
+        if (networkConnectionChecker.isNetworkAvailable()) {
+            runCatching { remoteRequest().map { it.toEntity(type) } }
+                .onSuccess { items ->
+                    feedDao.replaceByType(type, items)
+                    return ServerFirstResult(items.toDomain(), isFromCache = false)
+                }
+        }
+
+        return ServerFirstResult(feedDao.getByType(type).toDomain(), isFromCache = true)
     }
 
     private suspend fun refreshFromServer(syncBlock: suspend () -> Unit): RefreshResult {
@@ -110,6 +164,11 @@ class FeedRepository(
         const val TYPE_ARTICLE = "article"
     }
 }
+
+data class ServerFirstResult<T>(val data: T, val isFromCache: Boolean)
+
+private fun <T> ServerFirstResult<T>.toRefreshResult(): RefreshResult =
+    if (isFromCache) RefreshResult.Fallback else RefreshResult.Success
 
 private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
     FeedItemEntity(

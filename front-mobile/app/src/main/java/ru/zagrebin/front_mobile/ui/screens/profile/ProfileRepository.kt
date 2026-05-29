@@ -1,7 +1,5 @@
 package ru.zagrebin.front_mobile.ui.screens.profile
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import ru.zagrebin.front_mobile.data.local.dao.ProfileDao
 import ru.zagrebin.front_mobile.data.local.entities.ProfileEntity
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
@@ -17,8 +15,6 @@ class ProfileRepository(
     private val profileDao: ProfileDao,
     private val networkConnectionChecker: NetworkConnectionChecker
 ) {
-    fun observeMyProfile(): Flow<ProfileData?> = profileDao.observeProfile().map { it?.toModel() }
-
     suspend fun cacheAuthenticatedProfile(user: SessionUserDto): ProfileData {
         val publicProfile = runCatching { api.getPublicProfile(user.id) }.getOrNull()
         return user.toProfileData(publicProfile).also { cacheProfile(it) }
@@ -36,15 +32,22 @@ class ProfileRepository(
         }.getOrElse { RefreshResult.Fallback }
     }
 
-    suspend fun getMyProfile(): ProfileData {
-        val result = refreshMyProfile()
+    suspend fun getMyProfile(): ProfileLoadResult {
+        if (networkConnectionChecker.isNetworkAvailable()) {
+            runCatching { fetchRemoteProfile() }
+                .onSuccess { profile ->
+                    cacheProfile(profile)
+                    return ProfileLoadResult(profile, isFromCache = false)
+                }
+        }
+
         val cachedProfile = profileDao.getProfile()?.toModel()
-        if (cachedProfile != null) return cachedProfile
-        if (result == RefreshResult.Fallback) error("Сервер недоступен, а офлайн-кеш профиля пуст")
-        return profileDao.getProfile()?.toModel() ?: error("Профиль не найден")
+            ?: error("Сервер недоступен, а офлайн-кеш профиля пуст")
+        return ProfileLoadResult(cachedProfile, isFromCache = true)
     }
 
     suspend fun updateProfile(displayName: String, bio: String, avatarUrl: String?): ProfileData {
+        if (!networkConnectionChecker.isNetworkAvailable()) error("Нет интернета: изменения профиля нельзя отправить на сервер")
         val updated = api.updateProfile(UpdateProfileRequest(displayName, bio, avatarUrl))
         val publicProfile = api.getPublicProfile(updated.id)
         return updated.toProfileData(publicProfile).also { cacheProfile(it) }
@@ -82,6 +85,8 @@ private fun SessionUserDto.toProfileData(publicProfile: UserProfileDto?): Profil
 }
 
 private fun ProfileEntity.toModel() = ProfileData(id, name, email, bio, avatarUrl, followingCount, followersCount)
+
+data class ProfileLoadResult(val profile: ProfileData, val isFromCache: Boolean)
 
 data class ProfileData(
     val id: Long,

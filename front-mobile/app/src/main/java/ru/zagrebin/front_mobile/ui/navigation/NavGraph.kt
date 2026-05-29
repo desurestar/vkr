@@ -44,6 +44,7 @@ import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeIngredient
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeStep
+import ru.zagrebin.front_mobile.data.repository.RefreshResult
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
@@ -156,8 +157,10 @@ fun NavGraph(
                         val avatarUrl = avatarUri?.let { persistAvatarToAppStorage(context, it) }
                             ?: profileState.avatarUrl
                         runCatching { profileRepository.updateProfile(name, "", avatarUrl) }
-                        profileViewModel.loadProfile()
-                        navController.popBackStack()
+                            .onSuccess {
+                                profileViewModel.loadProfile()
+                                navController.popBackStack()
+                            }
                     }
                 }
             )
@@ -173,12 +176,8 @@ fun NavGraph(
             var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
 
             LaunchedEffect(Unit) {
-                runCatching { api.getTags() }
-                    .onSuccess { tags ->
-                        availableTags = tags.map { tag ->
-                            tag.label?.takeIf { it.isNotBlank() } ?: tag.name
-                        }
-                    }
+                runCatching { appContainer.feedRepository.loadTagLabels() }
+                    .onSuccess { result -> availableTags = result.data }
             }
 
             CreateRecipeScreen(
@@ -186,8 +185,8 @@ fun NavGraph(
                 availableTags = availableTags,
                 onPublish = { title, summary, content, cookTime, tags, ingredients, steps, proteins, fats, carbs, kcal ->
                     scope.launch {
-                        runCatching {
-                            api.createRecipe(
+                        val publishResult = runCatching {
+                            appContainer.feedRepository.createRecipe(
                                 CreateRecipeRequest(
                                     title = title,
                                     summary = summary,
@@ -215,8 +214,10 @@ fun NavGraph(
                                     }
                                 )
                             )
+                        }.getOrDefault(RefreshResult.Fallback)
+                        if (publishResult == RefreshResult.Success) {
+                            navController.popBackStack()
                         }
-                        navController.popBackStack()
                     }
                 }
             )
