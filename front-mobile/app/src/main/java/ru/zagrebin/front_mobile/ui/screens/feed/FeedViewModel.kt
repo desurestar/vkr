@@ -20,14 +20,16 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
     private val query = MutableStateFlow("")
     private val errorMessage = MutableStateFlow<String?>(null)
     private val isUsingFallback = MutableStateFlow(false)
+    private val canShowCache = MutableStateFlow(false)
 
     val state: StateFlow<FeedState> = combine(
         container.observeRecipesFeedUseCase(),
         query,
         errorMessage,
-        isUsingFallback
-    ) { posts, q, error, fallback ->
-        val mapped = posts.map { it.toUi() }.let { list ->
+        isUsingFallback,
+        canShowCache
+    ) { posts, q, error, fallback, showCache ->
+        val mapped = (if (showCache) posts else emptyList()).map { it.toUi() }.let { list ->
             if (q.isBlank()) list else list.filter { it.title.contains(q, true) }
         }
         FeedState(posts = mapped, searchQuery = q, errorMessage = error, isUsingFallback = fallback)
@@ -39,15 +41,18 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun retryRefresh() {
         viewModelScope.launch {
+            canShowCache.value = false
             val result = container.refreshRecipesFeedUseCase()
             when (result) {
                 RefreshResult.Success -> {
                     errorMessage.value = null
                     isUsingFallback.value = false
+                    canShowCache.value = true
                 }
                 RefreshResult.Fallback -> {
                     errorMessage.value = "Сервер недоступен. Показан офлайн-кеш."
                     isUsingFallback.value = true
+                    canShowCache.value = true
                 }
             }
         }

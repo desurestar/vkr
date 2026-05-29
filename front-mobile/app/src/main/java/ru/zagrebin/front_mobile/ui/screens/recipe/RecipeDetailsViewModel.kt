@@ -31,18 +31,21 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
     private val currentId = MutableStateFlow<Int?>(null)
     private val isRefreshing = MutableStateFlow(false)
     private val hasLoadError = MutableStateFlow(false)
+    private val canShowCache = MutableStateFlow(false)
 
     val state: StateFlow<RecipeDetailsUiState> = currentId
         .flatMapLatest { id ->
             if (id == null) flowOf(null) else container.observeRecipeDetailsUseCase(id)
         }
         .combine(isRefreshing) { details, refreshing -> details to refreshing }
-        .combine(hasLoadError) { (details, refreshing), loadError ->
+        .combine(hasLoadError) { (details, refreshing), loadError -> Triple(details, refreshing, loadError) }
+        .combine(canShowCache) { (details, refreshing, loadError), showCache ->
             val hasRequest = currentId.value != null
-            val shouldShowLoading = hasRequest && details == null && refreshing && !loadError
+            val visibleDetails = if (showCache) details else null
+            val shouldShowLoading = hasRequest && visibleDetails == null && refreshing && !loadError
             RecipeDetailsUiState(
                 isLoading = shouldShowLoading,
-                post = details?.toUi()
+                post = visibleDetails?.toUi()
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipeDetailsUiState())
@@ -52,10 +55,12 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
         currentId.value = postId
         isRefreshing.value = true
         hasLoadError.value = false
+        canShowCache.value = false
         viewModelScope.launch {
             val result = runCatching { container.refreshRecipeDetailsUseCase(postId) }
                 .getOrDefault(RefreshResult.Fallback)
             hasLoadError.value = result == RefreshResult.Fallback
+            canShowCache.value = true
             isRefreshing.value = false
         }
     }
