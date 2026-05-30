@@ -100,6 +100,17 @@ public class DbService {
         );
     }
 
+    private String cleanRemoteImageUrl(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        var trimmed = value.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/media/")) {
+            return trimmed;
+        }
+        return null;
+    }
+
     public ApiModels.Comment toComment(CommentEntity c) {
         return new ApiModels.Comment(
                 c.getId(),
@@ -150,7 +161,7 @@ public class DbService {
         post.setTitle(request.title());
         post.setSummary(request.summary());
         post.setContent(request.content());
-        post.setImageUrl(request.imageUrl());
+        post.setImageUrl(cleanRemoteImageUrl(request.imageUrl()));
         post.setCookTimeMinutes(request.cookTimeMinutes());
         post.setProteinsPer100(request.proteinsPer100());
         post.setFatsPer100(request.fatsPer100());
@@ -179,7 +190,7 @@ public class DbService {
                 e.setPost(post);
                 e.setStepNumber(st.number());
                 e.setDescription(st.description());
-                e.setImageUrl(st.imageUrl());
+                e.setImageUrl(cleanRemoteImageUrl(st.imageUrl()));
                 post.getSteps().add(e);
             }
         }

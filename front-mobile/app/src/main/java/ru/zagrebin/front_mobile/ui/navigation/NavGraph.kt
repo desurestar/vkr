@@ -44,11 +44,15 @@ import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeIngredient
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeStep
+import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.repository.CreateRecipeResult
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
 import android.net.Uri
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.util.UUID
 
@@ -187,14 +191,16 @@ fun NavGraph(
                 onPublish = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, proteins, fats, carbs, kcal ->
                     scope.launch {
                         val publishResult = runCatching {
-                            val mainImageUrl = persistRecipeImageToAppStorage(
+                            val mainImageUrl = uploadRecipeImageToServer(
                                 context = context,
+                                api = appContainer.feedApi,
                                 sourceUri = recipePhotoUri,
                                 prefix = "recipe_main"
                             )
                             val stepImageUrls = steps.map { step ->
-                                persistRecipeImageToAppStorage(
+                                uploadRecipeImageToServer(
                                     context = context,
+                                    api = appContainer.feedApi,
                                     sourceUri = step.photoUri,
                                     prefix = "recipe_step_${step.number}"
                                 )
@@ -357,15 +363,29 @@ private fun persistAvatarToAppStorage(context: android.content.Context, sourceUr
 }
 
 
-private fun persistRecipeImageToAppStorage(context: android.content.Context, sourceUri: Uri?, prefix: String): String? {
+private suspend fun uploadRecipeImageToServer(context: android.content.Context, api: FeedApi, sourceUri: Uri?, prefix: String): String? {
     if (sourceUri == null) return null
 
     return runCatching {
-        val dir = File(context.filesDir, "recipe_images").apply { mkdirs() }
-        val target = File(dir, "${prefix}_${System.currentTimeMillis()}_${UUID.randomUUID()}.jpg")
-        context.contentResolver.openInputStream(sourceUri)?.use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
-        } ?: return null
-        Uri.fromFile(target).toString()
+        val contentResolver = context.contentResolver
+        val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
+        val extension = when (mimeType) {
+            "image/png" -> "png"
+            "image/gif" -> "gif"
+            "image/webp" -> "webp"
+            else -> "jpg"
+        }
+        val target = File(context.cacheDir, "${prefix}_${System.currentTimeMillis()}_${UUID.randomUUID()}.$extension")
+        try {
+            contentResolver.openInputStream(sourceUri)?.use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            } ?: return null
+
+            val requestBody = target.asRequestBody(mimeType.toMediaTypeOrNull())
+            val multipart = MultipartBody.Part.createFormData("file", target.name, requestBody)
+            api.uploadMedia(multipart).url
+        } finally {
+            target.delete()
+        }
     }.getOrNull()
 }
