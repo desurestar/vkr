@@ -96,7 +96,8 @@ fun PostCardContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(18.dp)),
+                contentScale = ContentScale.Crop
             )
 
             Spacer(Modifier.height(10.dp))

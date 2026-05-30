@@ -126,7 +126,8 @@ fun RecipeDetailsScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.Crop
                 )
             }
         }
@@ -179,7 +180,8 @@ fun RecipeDetailsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(14.dp)),
+                        contentScale = ContentScale.Crop
                     )
                 } else {
                     NoImageStepPlaceholder()
