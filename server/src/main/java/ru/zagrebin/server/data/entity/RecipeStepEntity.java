@@ -14,6 +14,7 @@ public class RecipeStepEntity {
     private Integer stepNumber;
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
+    @Column(length = 2048)
     private String imageUrl;
 
     public Long getId() { return id; }
