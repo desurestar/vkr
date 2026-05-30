@@ -20,6 +20,7 @@ public class PostEntity {
     private String summary;
     @Column(columnDefinition = "TEXT")
     private String content;
+    @Column(length = 2048)
     private String imageUrl;
     private int likes;
     private Integer cookTimeMinutes;

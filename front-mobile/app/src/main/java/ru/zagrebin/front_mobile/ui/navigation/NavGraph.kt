@@ -50,6 +50,7 @@ import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
 import android.net.Uri
 import java.io.File
+import java.util.UUID
 
 @Composable
 fun NavGraph(
@@ -183,15 +184,28 @@ fun NavGraph(
             CreateRecipeScreen(
                 onBackClick = { navController.popBackStack() },
                 availableTags = availableTags,
-                onPublish = { title, summary, content, cookTime, tags, ingredients, steps, proteins, fats, carbs, kcal ->
+                onPublish = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, proteins, fats, carbs, kcal ->
                     scope.launch {
                         val publishResult = runCatching {
+                            val mainImageUrl = persistRecipeImageToAppStorage(
+                                context = context,
+                                sourceUri = recipePhotoUri,
+                                prefix = "recipe_main"
+                            )
+                            val stepImageUrls = steps.map { step ->
+                                persistRecipeImageToAppStorage(
+                                    context = context,
+                                    sourceUri = step.photoUri,
+                                    prefix = "recipe_step_${step.number}"
+                                )
+                            }
+
                             appContainer.feedRepository.createRecipe(
                                 CreateRecipeRequest(
                                     title = title,
                                     summary = summary,
                                     content = content,
-                                    imageUrl = steps.firstOrNull { it.photoUri != null }?.photoUri?.toString(),
+                                    imageUrl = mainImageUrl ?: stepImageUrls.firstOrNull { !it.isNullOrBlank() },
                                     cookTimeMinutes = cookTime,
                                     proteinsPer100 = proteins,
                                     fatsPer100 = fats,
@@ -205,11 +219,11 @@ fun NavGraph(
                                             unit = ingredient.unit
                                         )
                                     },
-                                    steps = steps.map { step ->
+                                    steps = steps.mapIndexed { index, step ->
                                         CreateRecipeStep(
                                             number = step.number,
                                             description = step.description,
-                                            imageUrl = step.photoUri?.toString()
+                                            imageUrl = stepImageUrls[index]
                                         )
                                     }
                                 )
@@ -333,6 +347,20 @@ private fun persistAvatarToAppStorage(context: android.content.Context, sourceUr
     return runCatching {
         val dir = File(context.filesDir, "avatars").apply { mkdirs() }
         val target = File(dir, "my_avatar.jpg")
+        context.contentResolver.openInputStream(sourceUri)?.use { input ->
+            target.outputStream().use { output -> input.copyTo(output) }
+        } ?: return null
+        Uri.fromFile(target).toString()
+    }.getOrNull()
+}
+
+
+private fun persistRecipeImageToAppStorage(context: android.content.Context, sourceUri: Uri?, prefix: String): String? {
+    if (sourceUri == null) return null
+
+    return runCatching {
+        val dir = File(context.filesDir, "recipe_images").apply { mkdirs() }
+        val target = File(dir, "${prefix}_${System.currentTimeMillis()}_${UUID.randomUUID()}.jpg")
         context.contentResolver.openInputStream(sourceUri)?.use { input ->
             target.outputStream().use { output -> input.copyTo(output) }
         } ?: return null

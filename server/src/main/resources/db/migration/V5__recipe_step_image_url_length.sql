@@ -1,0 +1,2 @@
+ALTER TABLE recipe_step
+    ALTER COLUMN image_url TYPE VARCHAR(2048);

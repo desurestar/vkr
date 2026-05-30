@@ -80,7 +80,7 @@ private const val MAX_TAGS = 10
 fun CreateRecipeScreen(
     onBackClick: () -> Unit = {},
     availableTags: List<String> = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
-    onPublish: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> }
+    onPublish: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, recipePhotoUri: Uri?, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     var postTitle by rememberSaveable { mutableStateOf("") }
@@ -366,6 +366,7 @@ fun CreateRecipeScreen(
                                 selectedTags.toList(),
                                 ingredients.toList(),
                                 steps.toList(),
+                                recipePhotoUri,
                                 proteins.toDouble(),
                                 fats.toDouble(),
                                 carbs.toDouble(),
