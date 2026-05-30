@@ -1,10 +1,13 @@
 package ru.zagrebin.front_mobile.data.remote.api
 
+import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
+import retrofit2.http.Multipart
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
@@ -47,6 +50,8 @@ interface FeedApi {
     @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null): SearchResponse
     @POST("api/v1/recipes") suspend fun createRecipe(@Body request: CreateRecipeRequest): RecipeDetailsDto
     @GET("api/v1/tags") suspend fun getTags(@Query("q") query: String? = null): List<TagDto>
+    @Multipart
+    @POST("api/v1/media") suspend fun uploadMedia(@Part file: MultipartBody.Part): MediaUploadResponse
 }
 
 data class AuthRequest(val email: String, val password: String, val username: String? = null)
@@ -56,6 +61,7 @@ data class UpdatePasswordRequest(val oldPassword: String, val newPassword: Strin
 data class CommentRequest(val text: String)
 data class CommentDto(val id: Long, val authorId: Long, val text: String, val createdAt: String)
 data class SearchResponse(val posts: List<ServerPostDto> = emptyList(), val users: List<SessionUserDto> = emptyList())
+data class MediaUploadResponse(val url: String)
 
 
 data class UserProfileDto(

@@ -8,6 +8,10 @@ server:
       timeout: 7d
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
   datasource:
     url: jdbc:postgresql://localhost:5432/vkr
     username: klows
@@ -18,3 +22,7 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+
+app:
+  media:
+    upload-dir: media
