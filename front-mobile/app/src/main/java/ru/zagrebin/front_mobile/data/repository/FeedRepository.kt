@@ -59,11 +59,14 @@ class FeedRepository(
 
     suspend fun loadRecipeDetails(id: Int): ServerFirstResult<RecipeDetails?> {
         if (networkConnectionChecker.isNetworkAvailable()) {
-            runCatching { feedApi.getRecipeDetails(id).toRecipeDetailsEntity() }
-                .onSuccess { entity ->
-                    recipeDetailsDao.upsert(entity)
-                    return ServerFirstResult(entity.toDomain(), isFromCache = false)
-                }
+            runCatching {
+                feedApi.getRecipeDetails(id)
+                    .toRecipeDetailsEntity()
+                    .withFallbackImages(recipeDetailsDao.getById(id))
+            }.onSuccess { entity ->
+                recipeDetailsDao.upsert(entity)
+                return ServerFirstResult(entity.toDomain(), isFromCache = false)
+            }
         }
 
         return ServerFirstResult(recipeDetailsDao.getById(id)?.toDomain(), isFromCache = true)
@@ -90,25 +93,30 @@ class FeedRepository(
         )
     }
 
-    suspend fun createRecipe(request: CreateRecipeRequest): RefreshResult {
-        if (!networkConnectionChecker.isNetworkAvailable()) return RefreshResult.Fallback
+    suspend fun createRecipe(request: CreateRecipeRequest): CreateRecipeResult {
+        if (!networkConnectionChecker.isNetworkAvailable()) return CreateRecipeResult.Fallback
         return runCatching {
-            feedApi.createRecipe(request)
+            val createdRecipe = feedApi.createRecipe(request).toRecipeDetailsEntity()
+            recipeDetailsDao.upsert(createdRecipe)
+            feedDao.upsertAll(listOf(createdRecipe.toFeedItemEntity()))
             loadRecipes()
-            RefreshResult.Success
-        }.getOrElse { RefreshResult.Fallback }
+            CreateRecipeResult.Success(createdRecipe.id)
+        }.getOrElse { CreateRecipeResult.Fallback }
     }
 
     private suspend fun loadFeedItems(type: String, remoteRequest: suspend () -> List<FeedItemDto>): ServerFirstResult<List<FeedItem>> {
+        val cachedItems = feedDao.getByType(type)
         if (networkConnectionChecker.isNetworkAvailable()) {
-            runCatching { remoteRequest().map { it.toEntity(type) } }
-                .onSuccess { items ->
-                    feedDao.replaceByType(type, items)
-                    return ServerFirstResult(items.toDomain(), isFromCache = false)
-                }
+            runCatching {
+                val cachedImagesById = cachedItems.associate { it.id to it.imageUrl }
+                remoteRequest().map { it.toEntity(type).withFallbackImage(cachedImagesById[it.id]) }
+            }.onSuccess { items ->
+                feedDao.replaceByType(type, items)
+                return ServerFirstResult(items.toDomain(), isFromCache = false)
+            }
         }
 
-        return ServerFirstResult(feedDao.getByType(type).toDomain(), isFromCache = true)
+        return ServerFirstResult(cachedItems.toDomain(), isFromCache = true)
     }
 
     private suspend fun refreshFromServer(syncBlock: suspend () -> Unit): RefreshResult {
@@ -122,6 +130,21 @@ class FeedRepository(
     private fun List<FeedItemEntity>.toDomain(): List<FeedItem> = map {
         FeedItem(it.id, it.authorId, it.authorName, it.authorHandle, it.date, it.title, it.imageUrl, it.likes, it.time, it.calories, it.views)
     }
+
+    private fun RecipeDetailsEntity.toFeedItemEntity(): FeedItemEntity = FeedItemEntity(
+        id = id,
+        type = TYPE_RECIPE,
+        authorId = authorId,
+        authorName = authorName,
+        authorHandle = authorHandle,
+        date = date,
+        title = title,
+        imageUrl = imageUrl,
+        likes = likes,
+        time = time,
+        calories = calories,
+        views = views
+    )
 
     private fun RecipeDetailsEntity.toDomain(): RecipeDetails = RecipeDetails(
         id = id,
@@ -167,8 +190,32 @@ class FeedRepository(
 
 data class ServerFirstResult<T>(val data: T, val isFromCache: Boolean)
 
+sealed class CreateRecipeResult {
+    data class Success(val postId: Int) : CreateRecipeResult()
+    data object Fallback : CreateRecipeResult()
+}
+
 private fun <T> ServerFirstResult<T>.toRefreshResult(): RefreshResult =
     if (isFromCache) RefreshResult.Fallback else RefreshResult.Success
+
+private fun FeedItemEntity.withFallbackImage(fallbackImageUrl: String?): FeedItemEntity =
+    if (imageUrl.isNotBlank() || fallbackImageUrl.isNullOrBlank()) this else copy(imageUrl = fallbackImageUrl)
+
+private fun RecipeDetailsEntity.withFallbackImages(fallback: RecipeDetailsEntity?): RecipeDetailsEntity {
+    if (fallback == null) return this
+
+    val resolvedImageUrl = imageUrl.ifBlank { fallback.imageUrl }
+    val fallbackStepImagesById = fallback.steps.associate { it.id to it.imageUrl }
+    val resolvedSteps = steps.map { step ->
+        if (!step.imageUrl.isNullOrBlank()) {
+            step
+        } else {
+            step.copy(imageUrl = fallbackStepImagesById[step.id])
+        }
+    }
+
+    return copy(imageUrl = resolvedImageUrl, steps = resolvedSteps)
+}
 
 private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
     FeedItemEntity(
@@ -217,7 +264,7 @@ private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = A
     authorHandle = authorHandle,
     date = formatDate(date),
     title = title,
-    imageUrl = imageUrl,
+    imageUrl = imageUrl.normalizeImageUrl(),
     likes = likes,
     views = views,
     content = content,

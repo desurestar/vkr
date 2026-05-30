@@ -45,7 +45,7 @@ interface FeedApi {
     @GET("api/v1/profile/{userId}") suspend fun getPublicProfile(@Path("userId") userId: Long): UserProfileDto
 
     @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null): SearchResponse
-    @POST("api/v1/recipes") suspend fun createRecipe(@Body request: CreateRecipeRequest): ServerPostDto
+    @POST("api/v1/recipes") suspend fun createRecipe(@Body request: CreateRecipeRequest): RecipeDetailsDto
     @GET("api/v1/tags") suspend fun getTags(@Query("q") query: String? = null): List<TagDto>
 }
 

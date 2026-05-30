@@ -44,7 +44,7 @@ import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeIngredient
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeStep
-import ru.zagrebin.front_mobile.data.repository.RefreshResult
+import ru.zagrebin.front_mobile.data.repository.CreateRecipeResult
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
@@ -228,9 +228,11 @@ fun NavGraph(
                                     }
                                 )
                             )
-                        }.getOrDefault(RefreshResult.Fallback)
-                        if (publishResult == RefreshResult.Success) {
-                            navController.popBackStack()
+                        }.getOrDefault(CreateRecipeResult.Fallback)
+                        if (publishResult is CreateRecipeResult.Success) {
+                            navController.navigate(Screen.RecipeDetails.createRoute(publishResult.postId)) {
+                                popUpTo(Screen.CreateRecipe.route) { inclusive = true }
+                            }
                         }
                     }
                 }

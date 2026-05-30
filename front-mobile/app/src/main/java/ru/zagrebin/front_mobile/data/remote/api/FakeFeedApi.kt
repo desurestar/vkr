@@ -26,19 +26,29 @@ class FakeFeedApi : FeedApi {
 
     override suspend fun search(query: String, type: String?, tag: String?): SearchResponse = SearchResponse()
 
-    override suspend fun createRecipe(request: CreateRecipeRequest): ServerPostDto {
+    override suspend fun createRecipe(request: CreateRecipeRequest): RecipeDetailsDto {
         delay(150)
-        return ServerPostDto(
+        return RecipeDetailsDto(
             id = 999,
             authorId = 1,
-            type = "recipe",
-            title = request.title,
-            summary = request.summary,
-            content = request.content,
-            likes = 0,
+            authorName = "Дмитрий Загребин",
+            authorHandle = "@Dima123",
             createdAt = "2026-05-27T00:00:00Z",
+            title = request.title,
+            imageUrl = request.imageUrl,
+            likes = 0,
             cookTimeMinutes = request.cookTimeMinutes,
-            tags = request.tags
+            proteinsPer100 = request.proteinsPer100,
+            fatsPer100 = request.fatsPer100,
+            carbsPer100 = request.carbsPer100,
+            kcalPer100 = request.kcalPer100,
+            tags = request.tags.mapIndexed { index, tag -> RecipeTagDto(index + 1, tag) },
+            ingredients = request.ingredients.map { ingredient ->
+                RecipeIngredientDto(name = ingredient.name, amount = ingredient.amount, unit = ingredient.unit)
+            },
+            steps = request.steps.map { step ->
+                RecipeStepDto(number = step.number, description = step.description, imageUrl = step.imageUrl)
+            }
         )
     }
 
