@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -95,6 +96,7 @@ fun RecipeCommentsBottomSheet(
     comments: List<RecipeCommentUi>,
     onDismiss: () -> Unit,
     onSendClick: (String, RecipeCommentUi?) -> Unit,
+    onDeleteClick: (RecipeCommentUi) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -153,7 +155,8 @@ fun RecipeCommentsBottomSheet(
                     items(comments, key = { it.id }) { comment ->
                         RecipeCommentItem(
                             comment = comment,
-                            onReplyClick = { replyTo = comment }
+                            onReplyClick = { replyTo = comment },
+                            onDeleteClick = { onDeleteClick(comment) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -238,7 +241,7 @@ fun RecipeCommentsBottomSheet(
 }
 
 @Composable
-private fun RecipeCommentItem(comment: RecipeCommentUi, onReplyClick: () -> Unit) {
+private fun RecipeCommentItem(comment: RecipeCommentUi, onReplyClick: () -> Unit, onDeleteClick: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         Box(
             modifier = Modifier
@@ -310,6 +313,17 @@ private fun RecipeCommentItem(comment: RecipeCommentUi, onReplyClick: () -> Unit
                         .padding(2.dp)
                         .clickable { onReplyClick() }
                 )
+                if (comment.canDelete) {
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Удалить комментарий",
+                        tint = Color(0xFFB36A5E),
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable { onDeleteClick() }
+                    )
+                }
             }
         }
     }
@@ -317,11 +331,14 @@ private fun RecipeCommentItem(comment: RecipeCommentUi, onReplyClick: () -> Unit
 
 data class RecipeCommentUi(
     val id: String,
+    val serverId: Long,
+    val authorId: Long,
     val authorName: String,
     val authorHandle: String,
     val date: String,
     val text: String,
     val replyToName: String? = null,
+    val canDelete: Boolean = false,
     val avatarColor: Color = Color(0xFFD2B091)
 )
 
@@ -337,6 +354,8 @@ private fun RecipeCommentsBottomSheetPreview() {
     val sample = listOf(
         RecipeCommentUi(
             id = "1",
+            serverId = 1,
+            authorId = 1,
             authorName = "Лилия Парк",
             authorHandle = "@LiliaSpicyTok",
             date = "24.03.2026",
@@ -345,6 +364,8 @@ private fun RecipeCommentsBottomSheetPreview() {
         ),
         RecipeCommentUi(
             id = "2",
+            serverId = 2,
+            authorId = 2,
             authorName = "Дмитрий Загребин",
             authorHandle = "@Dim123",
             date = "24.03.2026",
@@ -354,5 +375,5 @@ private fun RecipeCommentsBottomSheetPreview() {
         )
     )
 
-    RecipeCommentsBottomSheet(comments = sample, onDismiss = {}, onSendClick = { _, _ -> })
+    RecipeCommentsBottomSheet(comments = sample, onDismiss = {}, onSendClick = { _, _ -> }, onDeleteClick = {})
 }

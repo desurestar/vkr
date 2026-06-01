@@ -12,6 +12,7 @@ data class ArticleDetails(
     val likes: String,
     val views: String,
     val content: String,
-    val isSaved: Boolean
+    val isSaved: Boolean,
+    val comments: List<PostComment> = emptyList()
 )
 

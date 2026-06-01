@@ -2,6 +2,7 @@ package ru.zagrebin.front_mobile.data.local.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import ru.zagrebin.front_mobile.domain.model.PostComment
 import ru.zagrebin.front_mobile.domain.model.RecipeIngredient
 import ru.zagrebin.front_mobile.domain.model.RecipeStep
 import ru.zagrebin.front_mobile.domain.model.RecipeTag
@@ -27,6 +28,7 @@ data class RecipeDetailsEntity(
     val kcalPer100: Int,
     val tags: List<RecipeTag>,
     val ingredients: List<RecipeIngredient>,
-    val steps: List<RecipeStep>
+    val steps: List<RecipeStep>,
+    val comments: List<PostComment>
 )
 

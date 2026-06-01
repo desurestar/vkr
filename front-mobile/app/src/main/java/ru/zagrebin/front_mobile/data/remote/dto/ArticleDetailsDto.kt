@@ -1,8 +1,10 @@
 package ru.zagrebin.front_mobile.data.remote.dto
 
+
 data class ArticleDetailsDto(
     val id: Int = 0,
     val authorId: Any? = null,
+    val type: String? = null,
     val authorName: String? = null,
     val authorHandle: String? = null,
     val authorAvatarUrl: String? = null,
@@ -13,5 +15,6 @@ data class ArticleDetailsDto(
     val likes: Any? = null,
     val views: Any? = null,
     val content: String? = null,
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+    val comments: List<CommentDto> = emptyList()
 )

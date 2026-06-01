@@ -6,5 +6,5 @@ import ru.zagrebin.server.data.entity.CommentEntity;
 import java.util.List;
 
 public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
-    List<CommentEntity> findByPostId(Long postId);
+    List<CommentEntity> findByPostIdOrderByCreatedAtAsc(Long postId);
 }

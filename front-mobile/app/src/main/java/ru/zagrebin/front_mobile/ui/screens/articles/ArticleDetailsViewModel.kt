@@ -20,7 +20,8 @@ import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 data class ArticleDetailsUiState(
     val isLoading: Boolean = false,
     val post: PostCardState? = null,
-    val content: String = ""
+    val content: String = "",
+    val currentUserId: Long? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -29,6 +30,7 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
     private val currentId = MutableStateFlow<Int?>(null)
     private val isRefreshing = MutableStateFlow(false)
     private val hasLoadError = MutableStateFlow(false)
+    private val currentUserId = MutableStateFlow<Long?>(null)
 
     val state: StateFlow<ArticleDetailsUiState> = currentId
         .flatMapLatest { id ->
@@ -36,11 +38,15 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
         }
         .combine(isRefreshing) { details, refreshing -> details to refreshing }
         .combine(hasLoadError) { (details, refreshing), loadError ->
+            Triple(details, refreshing, loadError)
+        }
+        .combine(currentUserId) { (details, refreshing, loadError), userId ->
             val hasRequest = currentId.value != null
             ArticleDetailsUiState(
                 isLoading = hasRequest && details == null && refreshing && !loadError,
                 post = details?.toUi(),
-                content = details?.content.orEmpty()
+                content = details?.content.orEmpty(),
+                currentUserId = userId
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ArticleDetailsUiState())
@@ -54,7 +60,22 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
             val result = runCatching { container.refreshArticleDetailsUseCase(postId) }
                 .getOrDefault(RefreshResult.Fallback)
             hasLoadError.value = result == RefreshResult.Fallback
+            currentUserId.value = container.feedRepository.currentUserId()
             isRefreshing.value = false
+        }
+    }
+
+    fun addComment(text: String, parentId: Long?) {
+        val postId = currentId.value ?: return
+        viewModelScope.launch {
+            container.feedRepository.addComment(postId, text, parentId)
+        }
+    }
+
+    fun deleteComment(commentId: Long) {
+        val postId = currentId.value ?: return
+        viewModelScope.launch {
+            container.feedRepository.deleteComment(postId, commentId)
         }
     }
 
@@ -71,6 +92,7 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
         time = "",
         calories = "",
         views = views,
-        isSaved = isSaved
+        isSaved = isSaved,
+        comments = comments
     )
 }

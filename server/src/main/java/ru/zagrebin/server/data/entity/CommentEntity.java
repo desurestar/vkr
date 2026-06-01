@@ -12,6 +12,9 @@ public class CommentEntity {
     private UserEntity author;
     @ManyToOne(optional = false)
     private PostEntity post;
+    @ManyToOne
+    @JoinColumn(name = "parent_id")
+    private CommentEntity parent;
     @Column(nullable = false)
     private String text;
     @Column(nullable = false)
@@ -22,6 +25,8 @@ public class CommentEntity {
     public void setAuthor(UserEntity author) { this.author = author; }
     public PostEntity getPost() { return post; }
     public void setPost(PostEntity post) { this.post = post; }
+    public CommentEntity getParent() { return parent; }
+    public void setParent(CommentEntity parent) { this.parent = parent; }
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
     public Instant getCreatedAt() { return createdAt; }
