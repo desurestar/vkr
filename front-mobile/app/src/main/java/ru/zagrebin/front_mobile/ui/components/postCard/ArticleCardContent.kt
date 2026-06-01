@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -62,7 +61,10 @@ fun ArticleCardContent(
                     onAuthorClick(state.authorId)
                 }
             ) {
-                AuthorAvatar(authorName = state.authorName)
+                AuthorAvatar(
+                    authorName = state.authorName,
+                    avatarUrl = state.authorAvatarUrl
+                )
 
                 Spacer(Modifier.width(10.dp))
 
@@ -148,8 +150,10 @@ private fun Stat(icon: androidx.compose.ui.graphics.vector.ImageVector, text: St
 
 
 @Composable
-private fun AuthorAvatar(authorName: String) {
-    val avatarUrl = "https://ui-avatars.com/api/?background=D8C2A0&color=FFFFFF&name=${authorName.replace(" ", "+")}"
+private fun AuthorAvatar(
+    authorName: String,
+    avatarUrl: String?
+) {
     Box(
         modifier = Modifier
             .size(36.dp)
@@ -157,12 +161,15 @@ private fun AuthorAvatar(authorName: String) {
             .background(Color(0xFFD8C2A0)),
         contentAlignment = Alignment.Center
     ) {
+        val model = avatarUrl ?: "https://ui-avatars.com/api/?background=D8C2A0&color=FFFFFF&name=${
+            authorName.replace(" ", "+")
+        }"
+
         AsyncImage(
-            model = avatarUrl,
+            model = model,
             contentDescription = "Аватар автора",
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop
         )
-        Icon(Icons.Default.Person, contentDescription = null, tint = Color.White)
     }
 }
