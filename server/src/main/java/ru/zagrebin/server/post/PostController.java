@@ -13,22 +13,68 @@ import java.util.*;
 @RequestMapping("/api/v1")
 public class PostController {
     private final DbService db;
-    public PostController(DbService db) { this.db = db; }
 
-    @GetMapping("/feed/recipes") public List<ApiModels.Post> recipes(@RequestParam Optional<String> q) { return db.postsByType("RECIPE", q.orElse(null)); }
-    @GetMapping("/feed/articles") public List<ApiModels.Post> articles(@RequestParam Optional<String> q) { return db.postsByType("ARTICLE", q.orElse(null)); }
-    @GetMapping("/tags") public List<ApiModels.Tag> tags(@RequestParam Optional<String> q) { return db.tags(q.orElse(null)); }
-    @GetMapping("/recipes/{id}") public ApiModels.Post recipe(@PathVariable Long id) { return db.getPost(id); }
-    @PostMapping("/recipes") public ApiModels.Post createRecipe(@RequestBody ApiModels.CreateRecipeRequest req, HttpSession s) { return db.createRecipe(requireUid(s), req); }
-    @GetMapping("/articles/{id}") public ApiModels.Post article(@PathVariable Long id) { return db.getPost(id); }
+    public PostController(DbService db) {
+        this.db = db;
+    }
+
+    @GetMapping("/feed/recipes")
+    public List<ApiModels.Post> recipes(@RequestParam Optional<String> q) {
+        return db.postsByType("RECIPE", q.orElse(null));
+    }
+
+    @GetMapping("/feed/articles")
+    public List<ApiModels.Post> articles(@RequestParam Optional<String> q) {
+        return db.postsByType("ARTICLE", q.orElse(null));
+    }
+
+    @GetMapping("/tags")
+    public List<ApiModels.Tag> tags(@RequestParam Optional<String> q) {
+        return db.tags(q.orElse(null));
+    }
+
+    @GetMapping("/recipes/{id}")
+    public ApiModels.Post recipe(@PathVariable Long id) {
+        return db.getPost(id);
+    }
+
+    @PostMapping("/recipes")
+    public ApiModels.Post createRecipe(@RequestBody ApiModels.CreateRecipeRequest req, HttpSession s) {
+        return db.createRecipe(requireUid(s), req);
+    }
+
+    @GetMapping("/articles/{id}")
+    public ApiModels.Post article(@PathVariable Long id) {
+        return db.getPost(id);
+    }
 
     @PostMapping("/posts/{id}/comments")
-    public ApiModels.Comment addComment(@PathVariable Long id, @RequestBody Map<String, String> req, HttpSession s) { return db.toComment(db.createComment(id, requireUid(s), req.get("text"))); }
+    public ApiModels.Comment addComment(@PathVariable Long id, @RequestBody Map<String, String> req, HttpSession s) {
+        return db.toComment(db.createComment(id, requireUid(s), req.get("text")));
+    }
 
-    @GetMapping("/posts/{id}/comments") public List<ApiModels.Comment> comments(@PathVariable Long id) { return db.comments(id); }
-    @PostMapping("/posts/{id}/likes") public Map<String, String> like(@PathVariable Long id, HttpSession s) { requireUid(s); return Map.of("status", "liked"); }
-    @DeleteMapping("/posts/{id}/likes") public Map<String, String> unlike(@PathVariable Long id, HttpSession s) { requireUid(s); return Map.of("status", "unliked"); }
-    @PostMapping("/recipes/{id}/shopping-list") public Map<String, String> addRecipeToShopping(@PathVariable Long id, HttpSession s) { db.addShopping(requireUid(s), "From recipe #" + id, "1"); return Map.of("status", "added"); }
+    @GetMapping("/posts/{id}/comments")
+    public List<ApiModels.Comment> comments(@PathVariable Long id) {
+        return db.comments(id);
+    }
+
+    @PostMapping("/posts/{id}/likes")
+    public Map<String, String> like(@PathVariable Long id, HttpSession s) {
+        requireUid(s);
+        return Map.of("status", "liked");
+    }
+
+    @DeleteMapping("/posts/{id}/likes")
+    public Map<String, String> unlike(@PathVariable Long id, HttpSession s) {
+        requireUid(s);
+        return Map.of("status", "unliked");
+    }
+
+    @PostMapping("/recipes/{id}/shopping-list")
+    public Map<String, String> addRecipeToShopping(@PathVariable Long id, HttpSession s) {
+        db.addShopping(requireUid(s), "From recipe #" + id, "1");
+        return Map.of("status", "added");
+    }
 
     private Long requireUid(HttpSession session) {
         var uid = (Long) session.getAttribute("uid");

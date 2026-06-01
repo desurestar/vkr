@@ -29,8 +29,9 @@ public class ProfileController {
                                         String newPassword) {}
 
     @PatchMapping
-    public ApiModels.User updateProfile(@RequestBody UpdateProfileRequest req,
-                                        HttpSession session) {
+    public ApiModels.User updateProfile(
+            @RequestBody UpdateProfileRequest req,
+            HttpSession session) {
 
         var u = db.getUserEntity(requireUid(session));
 
@@ -38,7 +39,9 @@ public class ProfileController {
         u.setBio(req.bio());
         u.setAvatarUrl(req.avatarUrl());
 
-        return db.toUser(db.saveUser(u));
+        db.saveUser(u);
+
+        return db.getUser(u.getId());
     }
 
     @PatchMapping("/password")
