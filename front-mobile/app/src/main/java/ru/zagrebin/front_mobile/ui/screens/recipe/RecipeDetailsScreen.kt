@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ImageNotSupported
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -293,26 +292,10 @@ private fun AuthorHeader(post: PostCardState) {
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val avatarUrl = "https://ui-avatars.com/api/?background=D8C2A0&color=FFFFFF&name=${post.authorName.replace(" ", "+")}"
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFD8C2A0)),
-            contentAlignment = Alignment.Center
-        ) {
-            AsyncImage(
-                model = avatarUrl,
-                contentDescription = "Аватар автора",
-                modifier = Modifier.matchParentSize(),
-                contentScale = ContentScale.Crop
-            )
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                tint = Color.White
-            )
-        }
+        AuthorAvatar(
+            authorName = post.authorName,
+            avatarUrl = post.authorAvatarUrl
+        )
 
         Spacer(modifier = Modifier.width(10.dp))
 
@@ -329,6 +312,30 @@ private fun AuthorHeader(post: PostCardState) {
             text = post.date,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun AuthorAvatar(
+    authorName: String,
+    avatarUrl: String?
+) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(Color(0xFFD8C2A0)),
+        contentAlignment = Alignment.Center
+    ) {
+        val model = avatarUrl?.takeIf { it.isNotBlank() }
+            ?: "https://ui-avatars.com/api/?background=D8C2A0&color=FFFFFF&name=${authorName.replace(" ", "+")}"
+
+        AsyncImage(
+            model = model,
+            contentDescription = "Аватар автора",
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.Crop
         )
     }
 }

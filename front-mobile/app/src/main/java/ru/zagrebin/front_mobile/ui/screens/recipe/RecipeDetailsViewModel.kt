@@ -58,6 +58,7 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
+        authorAvatarUrl = authorAvatarUrl,
         date = date,
         title = title,
         imageUrl = imageUrl,
