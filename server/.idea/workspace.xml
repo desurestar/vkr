@@ -5,32 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e533caad-b72f-452d-b663-95f10b18ecfe" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/domain/model/ProfileData.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/domain/model/ProfileResult.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/screens/profile/ProfileLoadResult.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/.idea/deploymentTargetSelector.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/.idea/deploymentTargetSelector.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/local/AppDatabase.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/local/AppDatabase.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/local/dao/ProfileDao.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/local/dao/ProfileDao.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/local/entities/FeedItemEntity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/local/entities/FeedItemEntity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/local/entities/ProfileEntity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/local/entities/ProfileEntity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/local/entities/RecipeDetailsEntity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/local/entities/RecipeDetailsEntity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/remote/api/FakeFeedApi.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/remote/api/FakeFeedApi.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/remote/dto/FeedItemDto.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/remote/dto/FeedItemDto.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/remote/dto/RecipeDetailsDto.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/remote/dto/RecipeDetailsDto.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/repository/FeedRepository.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/data/repository/FeedRepository.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/domain/model/FeedItem.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/domain/model/FeedItem.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/components/postCard/PostCardContent.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/components/postCard/PostCardContent.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/components/postCard/PostCardState.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/components/postCard/PostCardState.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/navigation/NavGraph.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/navigation/NavGraph.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/screens/feed/FeedViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/screens/feed/FeedViewModel.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/screens/profile/ProfileRepository.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/screens/profile/ProfileRepository.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/screens/profile/ProfileViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../front-mobile/app/src/main/java/ru/zagrebin/front_mobile/ui/screens/profile/ProfileViewModel.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/data_source_mapping.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/data_source_mapping.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/sqldialects.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/sqldialects.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/zagrebin/server/common/ApiModels.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/zagrebin/server/common/ApiModels.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/zagrebin/server/post/PostController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/zagrebin/server/post/PostController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/zagrebin/server/profile/ProfileController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/zagrebin/server/profile/ProfileController.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -121,6 +96,7 @@
       <workItem from="1780078624479" duration="4096000" />
       <workItem from="1780156659548" duration="6587000" />
       <workItem from="1780294055004" duration="175000" />
+      <workItem from="1780333203627" duration="1301000" />
     </task>
     <servers />
   </component>
