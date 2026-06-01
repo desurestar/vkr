@@ -161,7 +161,7 @@ private fun AuthorAvatar(
             .background(Color(0xFFD8C2A0)),
         contentAlignment = Alignment.Center
     ) {
-        val model = avatarUrl ?: "https://ui-avatars.com/api/?background=D8C2A0&color=FFFFFF&name=${
+        val model = avatarUrl?.takeIf { it.isNotBlank() } ?: "https://ui-avatars.com/api/?background=D8C2A0&color=FFFFFF&name=${
             authorName.replace(" ", "+")
         }"
 
