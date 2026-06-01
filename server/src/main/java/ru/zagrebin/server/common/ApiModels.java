@@ -32,6 +32,10 @@ public class ApiModels {
                                       List<Ingredient> ingredients, List<RecipeStep> steps) {
     }
 
+    public record CreateArticleRequest(String title, String summary, String content, String imageUrl,
+                                       List<String> tags) {
+    }
+
     public record Comment(Long id, Long authorId, String text, Instant createdAt) {
     }
 

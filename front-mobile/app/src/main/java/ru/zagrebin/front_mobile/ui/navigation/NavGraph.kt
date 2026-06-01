@@ -42,10 +42,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.remote.api.CreateArticleRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeIngredient
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeStep
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
+import ru.zagrebin.front_mobile.data.repository.CreateArticleResult
 import ru.zagrebin.front_mobile.data.repository.CreateRecipeResult
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
@@ -248,7 +250,62 @@ fun NavGraph(
         }
 
         composable(Screen.CreateArticle.route) {
-            CreateArticleScreen(onBackClick = { navController.popBackStack() })
+            var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
+
+            LaunchedEffect(Unit) {
+                runCatching { appContainer.feedRepository.loadTagLabels() }
+                    .onSuccess { result -> availableTags = result.data }
+            }
+
+            CreateArticleScreen(
+                onBackClick = { navController.popBackStack() },
+                availableTags = availableTags,
+                onPublish = { title, summary, content, tags, coverUri, blocks ->
+                    scope.launch {
+                        val publishResult = runCatching {
+                            val coverImageUrl = uploadRecipeImageToServer(
+                                context = context,
+                                api = appContainer.feedApi,
+                                sourceUri = coverUri,
+                                prefix = "article_cover"
+                            )
+                            val blockImageUrls = blocks.map { block ->
+                                uploadRecipeImageToServer(
+                                    context = context,
+                                    api = appContainer.feedApi,
+                                    sourceUri = block.photoUri,
+                                    prefix = "article_block_${block.number}"
+                                )
+                            }
+                            val contentWithImages = blocks.mapIndexed { index, block ->
+                                buildString {
+                                    append("## ").append(block.title).append("\n")
+                                    append(block.content)
+                                    val imageUrl = blockImageUrls[index]
+                                    if (!imageUrl.isNullOrBlank()) {
+                                        append("\n[image:").append(imageUrl).append(']')
+                                    }
+                                }
+                            }.joinToString("\n\n").ifBlank { content }
+
+                            appContainer.feedRepository.createArticle(
+                                CreateArticleRequest(
+                                    title = title,
+                                    summary = summary,
+                                    content = contentWithImages,
+                                    imageUrl = coverImageUrl ?: blockImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                    tags = tags
+                                )
+                            )
+                        }.getOrDefault(CreateArticleResult.Fallback)
+                        if (publishResult is CreateArticleResult.Success) {
+                            navController.navigate(Screen.ArticleDetails.createRoute(publishResult.postId)) {
+                                popUpTo(Screen.CreateArticle.route) { inclusive = true }
+                            }
+                        }
+                    }
+                }
+            )
         }
 
         composable(

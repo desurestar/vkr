@@ -197,6 +197,24 @@ public class DbService {
         return toPost(posts.save(post));
     }
 
+    public ApiModels.Post createArticle(Long uid, ApiModels.CreateArticleRequest request) {
+        var post = new PostEntity();
+        post.setAuthor(getUserEntity(uid));
+        post.setType("ARTICLE");
+        post.setTitle(request.title());
+        post.setSummary(request.summary());
+        post.setContent(request.content());
+        post.setImageUrl(cleanRemoteImageUrl(request.imageUrl()));
+        post.setCreatedAt(Instant.now());
+        post.setLikes(0);
+        if (request.tags() != null) {
+            post.getTags().addAll(request.tags().stream()
+                    .map(this::findOrCreateTag)
+                    .toList());
+        }
+        return toPost(posts.save(post));
+    }
+
     public CommentEntity createComment(Long postId, Long uid, String text) {
         var c = new CommentEntity();
         c.setAuthor(getUserEntity(uid));
