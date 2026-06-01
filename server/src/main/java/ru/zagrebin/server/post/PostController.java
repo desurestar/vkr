@@ -43,6 +43,11 @@ public class PostController {
         return db.createRecipe(requireUid(s), req);
     }
 
+    @PostMapping("/articles")
+    public ApiModels.Post createArticle(@RequestBody ApiModels.CreateArticleRequest req, HttpSession s) {
+        return db.createArticle(requireUid(s), req);
+    }
+
     @GetMapping("/articles/{id}")
     public ApiModels.Post article(@PathVariable Long id) {
         return db.getPost(id);

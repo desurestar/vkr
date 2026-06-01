@@ -10,6 +10,7 @@ import ru.zagrebin.front_mobile.data.local.entities.ArticleDetailsEntity
 import ru.zagrebin.front_mobile.data.local.entities.FeedItemEntity
 import ru.zagrebin.front_mobile.data.local.entities.RecipeDetailsEntity
 import ru.zagrebin.front_mobile.data.local.entities.TagEntity
+import ru.zagrebin.front_mobile.data.remote.api.CreateArticleRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
@@ -76,6 +77,17 @@ class FeedRepository(
 
     suspend fun refreshArticleDetails(id: Int): RefreshResult = refreshFromServer {
         articleDetailsDao.upsert(feedApi.getArticleDetails(id).toArticleDetailsEntity())
+    }
+
+    suspend fun createArticle(request: CreateArticleRequest): CreateArticleResult {
+        if (!networkConnectionChecker.isNetworkAvailable()) return CreateArticleResult.Fallback
+        return runCatching {
+            val createdArticle = feedApi.createArticle(request).toArticleDetailsEntity()
+            articleDetailsDao.upsert(createdArticle)
+            feedDao.upsertAll(listOf(createdArticle.toFeedItemEntity()))
+            loadArticles()
+            CreateArticleResult.Success(createdArticle.id)
+        }.getOrElse { CreateArticleResult.Fallback }
     }
 
     suspend fun loadTagLabels(): ServerFirstResult<List<String>> {
@@ -147,6 +159,22 @@ class FeedRepository(
         views = views
     )
 
+    private fun ArticleDetailsEntity.toFeedItemEntity(): FeedItemEntity = FeedItemEntity(
+        id = id,
+        type = TYPE_ARTICLE,
+        authorId = authorId,
+        authorName = authorName,
+        authorHandle = authorHandle,
+        authorAvatarUrl = "",
+        date = date,
+        title = title,
+        imageUrl = imageUrl,
+        likes = likes,
+        time = "",
+        calories = "",
+        views = views
+    )
+
     private fun RecipeDetailsEntity.toDomain(): RecipeDetails = RecipeDetails(
         id = id,
         authorId = authorId,
@@ -190,6 +218,11 @@ class FeedRepository(
 }
 
 data class ServerFirstResult<T>(val data: T, val isFromCache: Boolean)
+
+sealed class CreateArticleResult {
+    data class Success(val postId: Int) : CreateArticleResult()
+    data object Fallback : CreateArticleResult()
+}
 
 sealed class CreateRecipeResult {
     data class Success(val postId: Int) : CreateRecipeResult()
@@ -262,15 +295,15 @@ private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = Reci
 
 private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = ArticleDetailsEntity(
     id = id,
-    authorId = authorId,
-    authorName = authorName,
-    authorHandle = authorHandle,
-    date = formatDate(date),
-    title = title,
+    authorId = authorId.asString(),
+    authorName = authorName.orEmpty(),
+    authorHandle = authorHandle.orEmpty(),
+    date = formatDate(preferValue(date, createdAt)),
+    title = title.orEmpty(),
     imageUrl = imageUrl.normalizeImageUrl(),
-    likes = likes,
-    views = views,
-    content = content,
+    likes = formatCount(likes),
+    views = formatViews(views),
+    content = content.orEmpty(),
     isSaved = isSaved
 )
 

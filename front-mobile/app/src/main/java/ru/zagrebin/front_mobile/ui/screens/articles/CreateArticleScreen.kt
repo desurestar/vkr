@@ -74,7 +74,9 @@ private const val MAX_TAGS = 10
 
 @Composable
 fun CreateArticleScreen(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    availableTags: List<String> = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
+    onPublish: (title: String, summary: String, content: String, tags: List<String>, coverUri: Uri?, blocks: List<ArticleBlockDraft>) -> Unit = { _, _, _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     var title by rememberSaveable { mutableStateOf("") }
@@ -112,7 +114,7 @@ fun CreateArticleScreen(
 
     if (showTagSheet) {
         TagPickBottomSheet(
-            tags = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
+            tags = availableTags.ifEmpty { listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган") },
             selected = selectedTags,
             onDismiss = { showTagSheet = false },
             onAddClick = { showTagSheet = false }
@@ -251,6 +253,22 @@ fun CreateArticleScreen(
                         onClick = {
                             showErrors = true
                             if (!isFormValid) return@Button
+                            val normalizedBlocks = blocks.toList()
+                            val summary = normalizedBlocks.firstOrNull()?.content.orEmpty().take(180)
+                            val content = normalizedBlocks.joinToString("\n\n") { block ->
+                                listOf(
+                                    "## ${block.title}",
+                                    block.content
+                                ).joinToString("\n")
+                            }
+                            onPublish(
+                                title.trim(),
+                                summary,
+                                content,
+                                selectedTags.toList(),
+                                coverUri,
+                                normalizedBlocks
+                            )
                         },
                         enabled = isFormValid,
                         shape = RoundedCornerShape(18.dp),

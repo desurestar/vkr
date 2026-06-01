@@ -49,6 +49,7 @@ interface FeedApi {
 
     @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null): SearchResponse
     @POST("api/v1/recipes") suspend fun createRecipe(@Body request: CreateRecipeRequest): RecipeDetailsDto
+    @POST("api/v1/articles") suspend fun createArticle(@Body request: CreateArticleRequest): ArticleDetailsDto
     @GET("api/v1/tags") suspend fun getTags(@Query("q") query: String? = null): List<TagDto>
     @Multipart
     @POST("api/v1/media") suspend fun uploadMedia(@Part file: MultipartBody.Part): MediaUploadResponse
@@ -92,3 +93,12 @@ data class CreateRecipeRequest(
 
 data class CreateRecipeIngredient(val name: String, val amount: Double, val unit: String)
 data class CreateRecipeStep(val number: Int, val description: String, val imageUrl: String? = null)
+
+
+data class CreateArticleRequest(
+    val title: String,
+    val summary: String,
+    val content: String,
+    val imageUrl: String? = null,
+    val tags: List<String>
+)

@@ -1,16 +1,17 @@
 package ru.zagrebin.front_mobile.data.remote.dto
 
 data class ArticleDetailsDto(
-    val id: Int,
-    val authorId: String,
-    val authorName: String,
-    val authorHandle: String,
-    val date: String,
-    val title: String,
-    val imageUrl: String,
-    val likes: String,
-    val views: String,
-    val content: String,
-    val isSaved: Boolean
+    val id: Int = 0,
+    val authorId: Any? = null,
+    val authorName: String? = null,
+    val authorHandle: String? = null,
+    val authorAvatarUrl: String? = null,
+    val date: String? = null,
+    val createdAt: String? = null,
+    val title: String? = null,
+    val imageUrl: String? = null,
+    val likes: Any? = null,
+    val views: Any? = null,
+    val content: String? = null,
+    val isSaved: Boolean = false
 )
-

@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -57,6 +59,8 @@ fun ArticleDetailsScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -77,14 +81,12 @@ fun ArticleDetailsScreen(
                 )
             }
 
-            Text(
-                text = if (content.isBlank()) {
+            ArticleContent(
+                content = if (content.isBlank()) {
                     "Полный текст статьи будет здесь. Добавьте описание, шаги или рекомендации."
                 } else {
                     content
-                },
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color(0xFF3A3A3A)
+                }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -114,6 +116,39 @@ fun ArticleDetailsScreen(
                 )
             }
         )
+    }
+}
+
+@Composable
+private fun ArticleContent(content: String) {
+    val imagePattern = remember { Regex("^\\[image:(.+)]$") }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        content.split("\n").forEach { rawLine ->
+            val line = rawLine.trim()
+            val imageUrl = imagePattern.matchEntire(line)?.groupValues?.getOrNull(1)
+            when {
+                line.isBlank() -> Spacer(modifier = Modifier.height(2.dp))
+                imageUrl != null -> AsyncImage(
+                    model = rememberExplicitCacheImageRequest(imageUrl),
+                    contentDescription = "Иллюстрация статьи",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1.6f)
+                        .clip(RoundedCornerShape(14.dp))
+                )
+                line.startsWith("## ") -> Text(
+                    text = line.removePrefix("## "),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF242424)
+                )
+                else -> Text(
+                    text = line,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color(0xFF3A3A3A)
+                )
+            }
+        }
     }
 }
 
