@@ -36,7 +36,11 @@ public class ApiModels {
                                        List<String> tags) {
     }
 
-    public record Comment(Long id, Long authorId, String text, Instant createdAt) {
+    public record Comment(Long id, Long authorId, String authorName, String authorHandle, String authorAvatarUrl,
+                          Long parentId, String parentAuthorName, String text, Instant createdAt) {
+    }
+
+    public record CommentRequest(String text, Long parentId) {
     }
 
     public record ShoppingItem(Long id, String name, String amount, boolean checked) {

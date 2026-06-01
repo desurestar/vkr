@@ -96,7 +96,7 @@ public class DbService {
                 p.getTags().stream().map(this::toTag).toList(),
                 p.getIngredients().stream().map(x -> new ApiModels.Ingredient(x.getName(), x.getAmount(), x.getUnit())).toList(),
                 p.getSteps().stream().map(x -> new ApiModels.RecipeStep(x.getStepNumber(), x.getDescription(), x.getImageUrl())).toList(),
-                comments.findByPostId(p.getId()).stream().map(this::toComment).toList()
+                comments.findByPostIdOrderByCreatedAtAsc(p.getId()).stream().map(this::toComment).toList()
         );
     }
 
@@ -112,9 +112,19 @@ public class DbService {
     }
 
     public ApiModels.Comment toComment(CommentEntity c) {
+        var author = c.getAuthor();
+        var parent = c.getParent();
+        var parentAuthor = parent != null ? parent.getAuthor() : null;
         return new ApiModels.Comment(
                 c.getId(),
-                c.getAuthor().getId(),
+                author.getId(),
+                author.getDisplayName() != null && !author.getDisplayName().isBlank() ? author.getDisplayName() : author.getUsername(),
+                author.getUsername(),
+                author.getAvatarUrl(),
+                parent != null ? parent.getId() : null,
+                parentAuthor != null
+                        ? (parentAuthor.getDisplayName() != null && !parentAuthor.getDisplayName().isBlank() ? parentAuthor.getDisplayName() : parentAuthor.getUsername())
+                        : null,
                 c.getText(),
                 c.getCreatedAt()
         );
@@ -215,13 +225,36 @@ public class DbService {
         return toPost(posts.save(post));
     }
 
-    public CommentEntity createComment(Long postId, Long uid, String text) {
+    public CommentEntity createComment(Long postId, Long uid, String text, Long parentId) {
+        var cleanedText = text == null ? "" : text.trim();
+        if (cleanedText.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Comment text is required");
+        }
+
+        var post = getPostEntity(postId);
         var c = new CommentEntity();
         c.setAuthor(getUserEntity(uid));
-        c.setPost(getPostEntity(postId));
-        c.setText(text);
+        c.setPost(post);
+        if (parentId != null) {
+            var parent = comments.findById(parentId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parent comment not found"));
+            if (!parent.getPost().getId().equals(postId)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Parent comment belongs to another post");
+            }
+            c.setParent(parent);
+        }
+        c.setText(cleanedText);
         c.setCreatedAt(Instant.now());
         return comments.save(c);
+    }
+
+    public void deleteComment(Long commentId, Long uid) {
+        var comment = comments.findById(commentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
+        if (!comment.getAuthor().getId().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can delete comment");
+        }
+        comments.delete(comment);
     }
 
     public ShoppingItemEntity addShopping(Long uid, String name, String amount) {
@@ -234,7 +267,7 @@ public class DbService {
     }
 
     public List<ApiModels.Comment> comments(Long postId) {
-        return comments.findByPostId(postId).stream().map(this::toComment).toList();
+        return comments.findByPostIdOrderByCreatedAtAsc(postId).stream().map(this::toComment).toList();
     }
 
     public List<ApiModels.ShoppingItem> shopping(Long uid) {

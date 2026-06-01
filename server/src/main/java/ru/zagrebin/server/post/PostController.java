@@ -54,13 +54,19 @@ public class PostController {
     }
 
     @PostMapping("/posts/{id}/comments")
-    public ApiModels.Comment addComment(@PathVariable Long id, @RequestBody Map<String, String> req, HttpSession s) {
-        return db.toComment(db.createComment(id, requireUid(s), req.get("text")));
+    public ApiModels.Comment addComment(@PathVariable Long id, @RequestBody ApiModels.CommentRequest req, HttpSession s) {
+        return db.toComment(db.createComment(id, requireUid(s), req.text(), req.parentId()));
     }
 
     @GetMapping("/posts/{id}/comments")
     public List<ApiModels.Comment> comments(@PathVariable Long id) {
         return db.comments(id);
+    }
+
+    @DeleteMapping("/comments/{id}")
+    public Map<String, String> deleteComment(@PathVariable Long id, HttpSession s) {
+        db.deleteComment(id, requireUid(s));
+        return Map.of("status", "deleted");
     }
 
     @PostMapping("/posts/{id}/likes")

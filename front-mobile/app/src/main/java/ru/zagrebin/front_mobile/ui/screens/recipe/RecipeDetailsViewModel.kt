@@ -18,7 +18,8 @@ import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 
 data class RecipeDetailsUiState(
     val isLoading: Boolean = false,
-    val post: PostCardState? = null
+    val post: PostCardState? = null,
+    val currentUserId: Long? = null
 )
 
 class RecipeDetailsViewModel(application: Application) : AndroidViewModel(application) {
@@ -26,16 +27,19 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
     private val details = MutableStateFlow<RecipeDetails?>(null)
     private val isRefreshing = MutableStateFlow(false)
     private val hasLoadError = MutableStateFlow(false)
+    private val currentUserId = MutableStateFlow<Long?>(null)
     private var currentId: Int? = null
 
     val state: StateFlow<RecipeDetailsUiState> = combine(
         details,
         isRefreshing,
-        hasLoadError
-    ) { loadedDetails, refreshing, loadError ->
+        hasLoadError,
+        currentUserId
+    ) { loadedDetails, refreshing, loadError, userId ->
         RecipeDetailsUiState(
             isLoading = currentId != null && loadedDetails == null && refreshing && !loadError,
-            post = loadedDetails?.toUi()
+            post = loadedDetails?.toUi(),
+            currentUserId = userId
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipeDetailsUiState())
 
@@ -49,7 +53,24 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
             val result = runCatching { container.feedRepository.loadRecipeDetails(postId) }.getOrNull()
             details.value = result?.data
             hasLoadError.value = result == null || (result.isFromCache && result.data == null)
+            currentUserId.value = container.feedRepository.currentUserId()
             isRefreshing.value = false
+        }
+    }
+
+    fun addComment(text: String, parentId: Long?) {
+        val postId = currentId ?: return
+        viewModelScope.launch {
+            container.feedRepository.addComment(postId, text, parentId)
+            details.value = container.feedRepository.loadRecipeDetails(postId).data
+        }
+    }
+
+    fun deleteComment(commentId: Long) {
+        val postId = currentId ?: return
+        viewModelScope.launch {
+            container.feedRepository.deleteComment(postId, commentId)
+            details.value = container.feedRepository.loadRecipeDetails(postId).data
         }
     }
 
@@ -73,6 +94,7 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
         kcalPer100 = kcalPer100,
         tags = tags.map { TagState(it.id, it.name) },
         ingredients = ingredients.map { RecipeIngredientState(it.text) },
-        steps = steps.map { RecipeStepState(it.id, it.title, it.description, it.imageUrl) }
+        steps = steps.map { RecipeStepState(it.id, it.title, it.description, it.imageUrl) },
+        comments = comments
     )
 }

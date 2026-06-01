@@ -2,6 +2,7 @@ package ru.zagrebin.front_mobile.data.local.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import ru.zagrebin.front_mobile.domain.model.PostComment
 
 @Entity(tableName = "article_details")
 data class ArticleDetailsEntity(
@@ -16,6 +17,7 @@ data class ArticleDetailsEntity(
     val likes: String,
     val views: String,
     val content: String,
-    val isSaved: Boolean
+    val isSaved: Boolean,
+    val comments: List<PostComment>
 )
 

@@ -325,7 +325,10 @@ fun NavGraph(
                     ArticleDetailsScreen(
                         article = state.post,
                         content = state.content,
-                        onBackClick = { navController.popBackStack() }
+                        currentUserId = state.currentUserId,
+                        onBackClick = { navController.popBackStack() },
+                        onSendComment = detailsViewModel::addComment,
+                        onDeleteComment = detailsViewModel::deleteComment
                     )
                 }
                 state.isLoading -> {
@@ -367,7 +370,10 @@ fun NavGraph(
                 state.post != null -> {
                     RecipeDetailsScreen(
                         post = state.post,
-                        onBackClick = { navController.popBackStack() }
+                        currentUserId = state.currentUserId,
+                        onBackClick = { navController.popBackStack() },
+                        onSendComment = detailsViewModel::addComment,
+                        onDeleteComment = detailsViewModel::deleteComment
                     )
                 }
                 state.isLoading -> {

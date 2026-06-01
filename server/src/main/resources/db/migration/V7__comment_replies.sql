@@ -1,0 +1,2 @@
+ALTER TABLE comment
+    ADD COLUMN parent_id BIGINT REFERENCES comment(id) ON DELETE CASCADE;

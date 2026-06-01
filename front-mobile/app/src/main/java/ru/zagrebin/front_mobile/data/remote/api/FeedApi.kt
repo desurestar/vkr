@@ -15,6 +15,7 @@ import ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeDetailsDto
 import ru.zagrebin.front_mobile.data.remote.dto.ServerPostDto
 import ru.zagrebin.front_mobile.data.remote.dto.TagDto
+import ru.zagrebin.front_mobile.data.remote.dto.CommentDto
 
 interface FeedApi {
     @GET("api/v1/feed/recipes")
@@ -37,8 +38,9 @@ interface FeedApi {
     @PATCH("api/v1/profile") suspend fun updateProfile(@Body request: UpdateProfileRequest): SessionUserDto
     @PATCH("api/v1/profile/password") suspend fun updatePassword(@Body request: UpdatePasswordRequest)
 
-    @POST("api/v1/posts/{id}/comments") suspend fun addComment(@Path("id") postId: Int, @Body request: CommentRequest)
+    @POST("api/v1/posts/{id}/comments") suspend fun addComment(@Path("id") postId: Int, @Body request: CommentRequest): CommentDto
     @GET("api/v1/posts/{id}/comments") suspend fun getComments(@Path("id") postId: Int): List<CommentDto>
+    @DELETE("api/v1/comments/{id}") suspend fun deleteComment(@Path("id") commentId: Long)
 
     @POST("api/v1/posts/{id}/likes") suspend fun like(@Path("id") postId: Int)
     @DELETE("api/v1/posts/{id}/likes") suspend fun unlike(@Path("id") postId: Int)
@@ -59,8 +61,7 @@ data class AuthRequest(val email: String, val password: String, val username: St
 data class SessionUserDto(val id: Long, val username: String? = null, val displayName: String? = null, val email: String? = null)
 data class UpdateProfileRequest(val displayName: String, val bio: String, val avatarUrl: String?)
 data class UpdatePasswordRequest(val oldPassword: String, val newPassword: String)
-data class CommentRequest(val text: String)
-data class CommentDto(val id: Long, val authorId: Long, val text: String, val createdAt: String)
+data class CommentRequest(val text: String, val parentId: Long? = null)
 data class SearchResponse(val posts: List<ServerPostDto> = emptyList(), val users: List<SessionUserDto> = emptyList())
 data class MediaUploadResponse(val url: String)
 

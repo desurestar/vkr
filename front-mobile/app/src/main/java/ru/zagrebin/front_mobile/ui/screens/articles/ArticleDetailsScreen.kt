@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,6 +37,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import ru.zagrebin.front_mobile.domain.model.PostComment
 import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeCommentUi
@@ -49,10 +49,13 @@ import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 fun ArticleDetailsScreen(
     article: PostCardState,
     content: String,
-    onBackClick: () -> Unit
+    currentUserId: Long?,
+    onBackClick: () -> Unit,
+    onSendComment: (String, Long?) -> Unit,
+    onDeleteComment: (Long) -> Unit
 ) {
     var showComments by rememberSaveable { mutableStateOf(false) }
-    val comments = remember { mutableStateListOf<RecipeCommentUi>() }
+    val comments = remember(article.comments, currentUserId) { article.comments.toCommentUi(currentUserId) }
 
     Column(
         modifier = Modifier
@@ -111,20 +114,24 @@ fun ArticleDetailsScreen(
         RecipeCommentsBottomSheet(
             comments = comments,
             onDismiss = { showComments = false },
-            onSendClick = { text, replyTo ->
-                comments.add(
-                    RecipeCommentUi(
-                        id = (comments.size + 1).toString(),
-                        authorName = "Вы",
-                        authorHandle = "@you",
-                        date = "сейчас",
-                        text = text,
-                        replyToName = replyTo?.authorName
-                    )
-                )
-            }
+            onSendClick = { text, replyTo -> onSendComment(text, replyTo?.serverId) },
+            onDeleteClick = { comment -> onDeleteComment(comment.serverId) }
         )
     }
+}
+
+private fun List<PostComment>.toCommentUi(currentUserId: Long?): List<RecipeCommentUi> = map { comment ->
+    RecipeCommentUi(
+        id = comment.id.toString(),
+        serverId = comment.id,
+        authorId = comment.authorId,
+        authorName = comment.authorName.ifBlank { "Пользователь" },
+        authorHandle = comment.authorHandle,
+        date = comment.createdAt.ifBlank { "сейчас" },
+        text = comment.text,
+        replyToName = comment.parentAuthorName,
+        canDelete = currentUserId != null && currentUserId == comment.authorId
+    )
 }
 
 @Composable

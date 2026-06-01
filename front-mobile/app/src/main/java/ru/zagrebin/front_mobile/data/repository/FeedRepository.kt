@@ -10,10 +10,12 @@ import ru.zagrebin.front_mobile.data.local.entities.ArticleDetailsEntity
 import ru.zagrebin.front_mobile.data.local.entities.FeedItemEntity
 import ru.zagrebin.front_mobile.data.local.entities.RecipeDetailsEntity
 import ru.zagrebin.front_mobile.data.local.entities.TagEntity
+import ru.zagrebin.front_mobile.data.remote.api.CommentRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateArticleRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
+import ru.zagrebin.front_mobile.data.remote.dto.CommentDto
 import ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeDetailsDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeIngredientDto
@@ -21,6 +23,7 @@ import ru.zagrebin.front_mobile.data.remote.dto.RecipeStepDto
 import ru.zagrebin.front_mobile.data.sync.NetworkConnectionChecker
 import ru.zagrebin.front_mobile.domain.model.ArticleDetails
 import ru.zagrebin.front_mobile.domain.model.FeedItem
+import ru.zagrebin.front_mobile.domain.model.PostComment
 import ru.zagrebin.front_mobile.domain.model.RecipeDetails
 import ru.zagrebin.front_mobile.domain.model.RecipeIngredient
 import ru.zagrebin.front_mobile.domain.model.RecipeStep
@@ -74,6 +77,35 @@ class FeedRepository(
     }
 
     suspend fun refreshRecipeDetails(id: Int): RefreshResult = loadRecipeDetails(id).toRefreshResult()
+
+    suspend fun addComment(postId: Int, text: String, parentId: Long?): Boolean {
+        if (!networkConnectionChecker.isNetworkAvailable()) return false
+        return runCatching {
+            feedApi.addComment(postId, CommentRequest(text, parentId))
+            refreshPostDetails(postId)
+            true
+        }.getOrDefault(false)
+    }
+
+    suspend fun deleteComment(postId: Int, commentId: Long): Boolean {
+        if (!networkConnectionChecker.isNetworkAvailable()) return false
+        return runCatching {
+            feedApi.deleteComment(commentId)
+            refreshPostDetails(postId)
+            true
+        }.getOrDefault(false)
+    }
+
+    suspend fun currentUserId(): Long? = runCatching { feedApi.me().id }.getOrNull()
+
+    private suspend fun refreshPostDetails(postId: Int) {
+        val post = feedApi.getRecipeDetails(postId)
+        if (post.type?.equals("ARTICLE", ignoreCase = true) == true) {
+            articleDetailsDao.upsert(feedApi.getArticleDetails(postId).toArticleDetailsEntity())
+        } else {
+            recipeDetailsDao.upsert(post.toRecipeDetailsEntity())
+        }
+    }
 
     suspend fun refreshArticleDetails(id: Int): RefreshResult = refreshFromServer {
         articleDetailsDao.upsert(feedApi.getArticleDetails(id).toArticleDetailsEntity())
@@ -195,7 +227,8 @@ class FeedRepository(
         kcalPer100 = kcalPer100,
         tags = tags,
         ingredients = ingredients,
-        steps = steps
+        steps = steps,
+        comments = comments
     )
 
     private fun ArticleDetailsEntity.toDomain(): ArticleDetails = ArticleDetails(
@@ -210,7 +243,8 @@ class FeedRepository(
         likes = likes,
         views = views,
         content = content,
-        isSaved = isSaved
+        isSaved = isSaved,
+        comments = comments
     )
 
     private companion object {
@@ -292,7 +326,8 @@ private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = Reci
     ingredients = ingredients.map { RecipeIngredient(it.toText()) },
     steps = steps.mapIndexed { index, step ->
         RecipeStep(step.resolveId(index), step.resolveTitle(index), step.description.orEmpty(), step.imageUrl.normalizeImageUrl())
-    }
+    },
+    comments = comments.map { it.toDomain() }
 )
 
 private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = ArticleDetailsEntity(
@@ -307,7 +342,20 @@ private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = A
     likes = formatCount(likes),
     views = formatViews(views),
     content = content.orEmpty(),
-    isSaved = isSaved
+    isSaved = isSaved,
+    comments = comments.map { it.toDomain() }
+)
+
+private fun CommentDto.toDomain(): PostComment = PostComment(
+    id = id,
+    authorId = authorId,
+    authorName = authorName.orEmpty(),
+    authorHandle = authorHandle?.takeIf { it.isNotBlank() }?.let { "@$it" }.orEmpty(),
+    authorAvatarUrl = authorAvatarUrl.normalizeImageUrl(),
+    parentId = parentId,
+    parentAuthorName = parentAuthorName,
+    text = text.orEmpty(),
+    createdAt = formatDate(createdAt)
 )
 
 private fun formatDate(value: Any?): String {

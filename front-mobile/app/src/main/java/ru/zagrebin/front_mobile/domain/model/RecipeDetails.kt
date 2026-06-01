@@ -20,7 +20,8 @@ data class RecipeDetails(
     val kcalPer100: Int,
     val tags: List<RecipeTag>,
     val ingredients: List<RecipeIngredient>,
-    val steps: List<RecipeStep>
+    val steps: List<RecipeStep>,
+    val comments: List<PostComment> = emptyList()
 )
 
 data class RecipeTag(
@@ -39,3 +40,15 @@ data class RecipeStep(
     val imageUrl: String?
 )
 
+
+data class PostComment(
+    val id: Long,
+    val authorId: Long,
+    val authorName: String,
+    val authorHandle: String,
+    val authorAvatarUrl: String?,
+    val parentId: Long?,
+    val parentAuthorName: String?,
+    val text: String,
+    val createdAt: String
+)
