@@ -1,5 +1,6 @@
 package ru.zagrebin.front_mobile.ui.navigation
 
+import android.content.Context
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -159,8 +160,9 @@ fun NavGraph(
                 onBackClick = { navController.popBackStack() },
                 onSaveClick = { name, avatarUri ->
                     scope.launch {
-                        val avatarUrl = avatarUri?.let { persistAvatarToAppStorage(context, it) }
-                            ?: profileState.avatarUrl
+                        val avatarUrl = avatarUri?.let {
+                            uploadAvatarToServer(context, appContainer.feedApi, it)
+                        } ?: profileState.avatarUrl
                         runCatching { profileRepository.updateProfile(name, "", avatarUrl) }
                             .onSuccess {
                                 profileViewModel.loadProfile()
@@ -387,5 +389,28 @@ private suspend fun uploadRecipeImageToServer(context: android.content.Context, 
         } finally {
             target.delete()
         }
+    }.getOrNull()
+}
+
+private suspend fun uploadAvatarToServer(
+    context: Context,
+    api: FeedApi,
+    sourceUri: Uri
+): String? {
+    return runCatching {
+        val mimeType = context.contentResolver.getType(sourceUri) ?: "image/jpeg"
+
+        val file = File(context.cacheDir, "avatar_${System.currentTimeMillis()}.jpg")
+
+        context.contentResolver.openInputStream(sourceUri)?.use { input ->
+            file.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        } ?: return null
+
+        val requestBody = file.asRequestBody(mimeType.toMediaTypeOrNull())
+        val multipart = MultipartBody.Part.createFormData("file", file.name, requestBody)
+
+        api.uploadMedia(multipart).url
     }.getOrNull()
 }

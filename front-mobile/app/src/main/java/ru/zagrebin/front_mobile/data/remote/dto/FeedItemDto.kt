@@ -5,6 +5,7 @@ data class FeedItemDto(
     val authorId: Any? = null,
     val authorName: String? = null,
     val authorHandle: String? = null,
+    val authorAvatarUrl: String? = null,
     val date: String? = null,
     val createdAt: String? = null,
     val title: String? = null,

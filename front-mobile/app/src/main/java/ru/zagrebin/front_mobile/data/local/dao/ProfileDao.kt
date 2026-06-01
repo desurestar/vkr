@@ -10,6 +10,7 @@ import ru.zagrebin.front_mobile.data.local.entities.ProfileEntity
 
 @Dao
 interface ProfileDao {
+
     @Query("SELECT * FROM profile LIMIT 1")
     suspend fun getProfile(): ProfileEntity?
 

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.domain.model.ProfileData
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileEvent
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {

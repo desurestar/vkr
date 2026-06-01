@@ -7,6 +7,7 @@ data class PostCardState(
     val authorId: String = "",
     val authorName: String = "",
     val authorHandle: String = "",
+    val authorAvatarUrl: String? = null,
     val date: String = "",
     val title: String = "",
     val imageUrl: String = "",

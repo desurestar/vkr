@@ -2,98 +2,124 @@ package ru.zagrebin.front_mobile.ui.screens.profile
 
 import ru.zagrebin.front_mobile.data.local.dao.ProfileDao
 import ru.zagrebin.front_mobile.data.local.entities.ProfileEntity
-import ru.zagrebin.front_mobile.data.remote.api.FeedApi
-import ru.zagrebin.front_mobile.data.remote.api.SessionUserDto
-import ru.zagrebin.front_mobile.data.remote.api.UpdatePasswordRequest
-import ru.zagrebin.front_mobile.data.remote.api.UpdateProfileRequest
-import ru.zagrebin.front_mobile.data.remote.api.UserProfileDto
-import ru.zagrebin.front_mobile.data.repository.RefreshResult
+import ru.zagrebin.front_mobile.data.remote.api.*
 import ru.zagrebin.front_mobile.data.sync.NetworkConnectionChecker
+import ru.zagrebin.front_mobile.domain.model.ProfileData
 
 class ProfileRepository(
     private val api: FeedApi,
     private val profileDao: ProfileDao,
     private val networkConnectionChecker: NetworkConnectionChecker
 ) {
+
     suspend fun cacheAuthenticatedProfile(user: SessionUserDto): ProfileData {
-        val publicProfile = runCatching { api.getPublicProfile(user.id) }.getOrNull()
-        return user.toProfileData(publicProfile).also { cacheProfile(it) }
+        val public = runCatching {
+            api.getPublicProfile(user.id)
+        }.getOrNull()
+
+        val profile = user.toProfileData(public)
+
+        cacheProfile(profile)
+
+        return profile
+    }
+
+    suspend fun getMyProfile(): ProfileLoadResult {
+
+        if (networkConnectionChecker.isNetworkAvailable()) {
+            val profile = fetchRemoteProfile()
+            cacheProfile(profile)
+            return ProfileLoadResult(profile, isFromCache = false)
+        }
+
+        val cached = profileDao.getProfile()?.toModel()
+            ?: error("Сервер недоступен и кэш пуст")
+
+        return ProfileLoadResult(cached, isFromCache = true)
+    }
+
+
+
+    suspend fun updateProfile(
+        displayName: String,
+        bio: String,
+        avatarUrl: String?
+    ): ProfileData {
+
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            error("Нет интернета: обновление невозможно")
+        }
+
+        val updated = api.updateProfile(
+            UpdateProfileRequest(displayName, bio, avatarUrl)
+        )
+
+        val public = api.getPublicProfile(updated.id)
+
+        val profile = updated.toProfileData(public)
+
+        cacheProfile(profile)
+
+        return profile
     }
 
     suspend fun clearProfile() {
         profileDao.clear()
     }
 
-    suspend fun refreshMyProfile(): RefreshResult {
-        if (!networkConnectionChecker.isNetworkAvailable()) return RefreshResult.Fallback
-        return runCatching {
-            fetchRemoteProfile().also { cacheProfile(it) }
-            RefreshResult.Success
-        }.getOrElse { RefreshResult.Fallback }
-    }
-
-    suspend fun getMyProfile(): ProfileLoadResult {
-        if (networkConnectionChecker.isNetworkAvailable()) {
-            runCatching { fetchRemoteProfile() }
-                .onSuccess { profile ->
-                    cacheProfile(profile)
-                    return ProfileLoadResult(profile, isFromCache = false)
-                }
-        }
-
-        val cachedProfile = profileDao.getProfile()?.toModel()
-            ?: error("Сервер недоступен, а офлайн-кеш профиля пуст")
-        return ProfileLoadResult(cachedProfile, isFromCache = true)
-    }
-
-    suspend fun updateProfile(displayName: String, bio: String, avatarUrl: String?): ProfileData {
-        if (!networkConnectionChecker.isNetworkAvailable()) error("Нет интернета: изменения профиля нельзя отправить на сервер")
-        val updated = api.updateProfile(UpdateProfileRequest(displayName, bio, avatarUrl))
-        val publicProfile = api.getPublicProfile(updated.id)
-        return updated.toProfileData(publicProfile).also { cacheProfile(it) }
-    }
-
-    suspend fun updatePassword(oldPassword: String, newPassword: String) {
-        api.updatePassword(UpdatePasswordRequest(oldPassword, newPassword))
-    }
-
     private suspend fun fetchRemoteProfile(): ProfileData {
         val me = api.me()
-        val publicProfile = runCatching { api.getPublicProfile(me.id) }.getOrNull()
-        return me.toProfileData(publicProfile)
+
+        val public = runCatching {
+            api.getPublicProfile(me.id)
+        }.getOrNull()
+
+        return me.toProfileData(public)
     }
 
     private suspend fun cacheProfile(profile: ProfileData) {
+        val old = profileDao.getProfile()
+
         profileDao.replace(
-            ProfileEntity(profile.id, profile.name, profile.email, profile.bio, profile.avatarUrl, profile.followingCount, profile.followersCount)
+            ProfileEntity(
+                id = profile.id,
+                name = profile.name,
+                email = profile.email,
+                bio = profile.bio,
+                avatarUrl = profile.avatarUrl ?: old?.avatarUrl,
+                followingCount = profile.followingCount,
+                followersCount = profile.followersCount
+            )
+        )
+    }
+
+    // =========================
+    // MAPPERS
+    // =========================
+    private fun ProfileEntity.toModel(): ProfileData {
+        return ProfileData(
+            id = id,
+            name = name,
+            email = email,
+            bio = bio,
+            avatarUrl = avatarUrl,
+            followingCount = followingCount,
+            followersCount = followersCount
+        )
+    }
+
+    private fun SessionUserDto.toProfileData(public: UserProfileDto?): ProfileData {
+        return ProfileData(
+            id = id,
+            name = public?.displayName ?: username ?: email ?: "",
+            email = public?.email ?: email ?: "",
+            bio = public?.bio.orEmpty(),
+
+            // 🔥 ONLY SERVER VALUE
+            avatarUrl = public?.avatarUrl,
+
+            followingCount = public?.following?.size ?: 0,
+            followersCount = public?.followers?.size ?: 0
         )
     }
 }
-
-private fun SessionUserDto.toProfileData(publicProfile: UserProfileDto?): ProfileData {
-    val publicName = publicProfile?.displayName ?: publicProfile?.username
-    val publicEmail = publicProfile?.email
-    return ProfileData(
-        id = id,
-        name = publicName ?: displayName ?: username ?: email ?: "",
-        email = publicEmail ?: email ?: "",
-        bio = publicProfile?.bio.orEmpty(),
-        avatarUrl = publicProfile?.avatarUrl,
-        followingCount = publicProfile?.following?.size ?: 0,
-        followersCount = publicProfile?.followers?.size ?: 0
-    )
-}
-
-private fun ProfileEntity.toModel() = ProfileData(id, name, email, bio, avatarUrl, followingCount, followersCount)
-
-data class ProfileLoadResult(val profile: ProfileData, val isFromCache: Boolean)
-
-data class ProfileData(
-    val id: Long,
-    val name: String,
-    val email: String,
-    val bio: String,
-    val avatarUrl: String?,
-    val followingCount: Int,
-    val followersCount: Int
-)

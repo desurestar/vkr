@@ -64,6 +64,7 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
+        authorAvatarUrl = authorAvatarUrl,
         date = date,
         title = title,
         imageUrl = imageUrl,

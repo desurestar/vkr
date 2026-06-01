@@ -9,6 +9,7 @@ data class FeedItemEntity(
     val authorId: String,
     val authorName: String,
     val authorHandle: String,
+    val authorAvatarUrl: String?,
     val date: String,
     val title: String,
     val imageUrl: String,

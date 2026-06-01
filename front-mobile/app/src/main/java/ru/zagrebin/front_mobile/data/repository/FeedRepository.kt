@@ -128,7 +128,7 @@ class FeedRepository(
     }
 
     private fun List<FeedItemEntity>.toDomain(): List<FeedItem> = map {
-        FeedItem(it.id, it.authorId, it.authorName, it.authorHandle, it.date, it.title, it.imageUrl, it.likes, it.time, it.calories, it.views)
+        FeedItem(it.id, it.authorId, it.authorName, it.authorHandle, it.authorAvatarUrl, it.date, it.title, it.imageUrl, it.likes, it.time, it.calories, it.views)
     }
 
     private fun RecipeDetailsEntity.toFeedItemEntity(): FeedItemEntity = FeedItemEntity(
@@ -137,6 +137,7 @@ class FeedRepository(
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
+        authorAvatarUrl = authorAvatarUrl,
         date = date,
         title = title,
         imageUrl = imageUrl,
@@ -224,6 +225,7 @@ private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
         authorId = authorId.asString(),
         authorName = authorName.orEmpty(),
         authorHandle = authorHandle.orEmpty(),
+        authorAvatarUrl = authorAvatarUrl.normalizeImageUrl(),
         date = formatDate(preferValue(date, createdAt)),
         title = title.orEmpty(),
         imageUrl = imageUrl.normalizeImageUrl(),
@@ -238,6 +240,7 @@ private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = Reci
     authorId = authorId.asString(),
     authorName = authorName.orEmpty(),
     authorHandle = authorHandle.orEmpty(),
+    authorAvatarUrl = authorAvatarUrl.normalizeImageUrl(),
     date = formatDate(preferValue(date, createdAt)),
     title = title.orEmpty(),
     imageUrl = imageUrl.normalizeImageUrl(steps),
