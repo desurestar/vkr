@@ -21,6 +21,7 @@ public class ApiModels {
                                       BigDecimal proteinsPer100, BigDecimal fatsPer100, BigDecimal carbsPer100,
                                       BigDecimal kcalPer100, List<String> tags, List<Ingredient> ingredients,
                                       List<RecipeStep> steps) {}
+    public record CreateArticleRequest(String title, String summary, String content, String imageUrl, List<String> tags) {}
     public record Comment(Long id, Long authorId, String text, Instant createdAt) {}
     public record ShoppingItem(Long id, String name, String amount, boolean checked) {}
 }

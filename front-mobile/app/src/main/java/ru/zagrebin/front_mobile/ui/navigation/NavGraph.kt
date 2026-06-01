@@ -42,12 +42,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.remote.api.CreateArticleRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeIngredient
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeStep
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
+import ru.zagrebin.front_mobile.data.repository.CreateArticleResult
 import ru.zagrebin.front_mobile.data.repository.CreateRecipeResult
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
+import ru.zagrebin.front_mobile.ui.screens.articles.ArticleBlockDraft
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
 import android.net.Uri
@@ -248,7 +251,54 @@ fun NavGraph(
         }
 
         composable(Screen.CreateArticle.route) {
-            CreateArticleScreen(onBackClick = { navController.popBackStack() })
+            var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
+
+            LaunchedEffect(Unit) {
+                runCatching { appContainer.feedRepository.loadTagLabels() }
+                    .onSuccess { result -> availableTags = result.data }
+            }
+
+            CreateArticleScreen(
+                onBackClick = { navController.popBackStack() },
+                availableTags = availableTags,
+                onPublish = { title, tags, blocks, coverUri ->
+                    scope.launch {
+                        val publishResult = runCatching {
+                            val coverUrl = uploadRecipeImageToServer(
+                                context = context,
+                                api = appContainer.feedApi,
+                                sourceUri = coverUri,
+                                prefix = "article_cover"
+                            )
+                            val blockImageUrls = blocks.map { block ->
+                                uploadRecipeImageToServer(
+                                    context = context,
+                                    api = appContainer.feedApi,
+                                    sourceUri = block.photoUri,
+                                    prefix = "article_block_${block.number}"
+                                )
+                            }
+                            val content = buildArticleContent(blocks, blockImageUrls)
+                            val summary = buildArticleSummary(blocks, content)
+                            appContainer.feedRepository.createArticle(
+                                CreateArticleRequest(
+                                    title = title,
+                                    summary = summary,
+                                    content = content,
+                                    imageUrl = coverUrl ?: blockImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                    tags = tags
+                                )
+                            )
+                        }.getOrDefault(CreateArticleResult.Fallback)
+
+                        if (publishResult is CreateArticleResult.Success) {
+                            navController.navigate(Screen.ArticleDetails.createRoute(publishResult.postId)) {
+                                popUpTo(Screen.CreateArticle.route) { inclusive = true }
+                            }
+                        }
+                    }
+                }
+            )
         }
 
         composable(
@@ -390,6 +440,32 @@ private suspend fun uploadRecipeImageToServer(context: android.content.Context, 
             target.delete()
         }
     }.getOrNull()
+}
+
+private fun buildArticleContent(blocks: List<ArticleBlockDraft>, imageUrls: List<String?>): String {
+    return blocks.mapIndexed { index, block ->
+        val title = block.title.trim()
+        val body = block.content.trim()
+        val imageUrl = imageUrls.getOrNull(index).orEmpty()
+        val parts = buildList {
+            if (title.isNotBlank()) add(title)
+            if (body.isNotBlank()) add(body)
+            if (imageUrl.isNotBlank()) add("Фото: $imageUrl")
+        }
+        parts.joinToString("\n")
+    }.filter { it.isNotBlank() }
+        .joinToString("\n\n")
+}
+
+private fun buildArticleSummary(blocks: List<ArticleBlockDraft>, content: String): String? {
+    val firstBlock = blocks.firstOrNull()
+    val raw = listOf(firstBlock?.title, firstBlock?.content)
+        .filterNotNull()
+        .joinToString(" ")
+        .trim()
+    val base = raw.ifBlank { content.trim() }
+    if (base.isBlank()) return null
+    return if (base.length > 140) base.take(137).trimEnd() + "..." else base
 }
 
 private suspend fun uploadAvatarToServer(

@@ -21,6 +21,7 @@ public class PostController {
     @GetMapping("/recipes/{id}") public ApiModels.Post recipe(@PathVariable Long id) { return db.getPost(id); }
     @PostMapping("/recipes") public ApiModels.Post createRecipe(@RequestBody ApiModels.CreateRecipeRequest req, HttpSession s) { return db.createRecipe(requireUid(s), req); }
     @GetMapping("/articles/{id}") public ApiModels.Post article(@PathVariable Long id) { return db.getPost(id); }
+    @PostMapping("/articles") public ApiModels.Post createArticle(@RequestBody ApiModels.CreateArticleRequest req, HttpSession s) { return db.createArticle(requireUid(s), req); }
 
     @PostMapping("/posts/{id}/comments")
     public ApiModels.Comment addComment(@PathVariable Long id, @RequestBody Map<String, String> req, HttpSession s) { return db.toComment(db.createComment(id, requireUid(s), req.get("text"))); }

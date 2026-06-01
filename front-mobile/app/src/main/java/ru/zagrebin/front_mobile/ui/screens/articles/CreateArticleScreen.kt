@@ -74,7 +74,9 @@ private const val MAX_TAGS = 10
 
 @Composable
 fun CreateArticleScreen(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    availableTags: List<String> = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
+    onPublish: (title: String, tags: List<String>, blocks: List<ArticleBlockDraft>, coverUri: Uri?) -> Unit = { _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     var title by rememberSaveable { mutableStateOf("") }
@@ -112,7 +114,7 @@ fun CreateArticleScreen(
 
     if (showTagSheet) {
         TagPickBottomSheet(
-            tags = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
+            tags = availableTags,
             selected = selectedTags,
             onDismiss = { showTagSheet = false },
             onAddClick = { showTagSheet = false }
@@ -251,6 +253,12 @@ fun CreateArticleScreen(
                         onClick = {
                             showErrors = true
                             if (!isFormValid) return@Button
+                            onPublish(
+                                title.trim(),
+                                selectedTags.toList(),
+                                blocks.toList(),
+                                coverUri
+                            )
                         },
                         enabled = isFormValid,
                         shape = RoundedCornerShape(18.dp),
