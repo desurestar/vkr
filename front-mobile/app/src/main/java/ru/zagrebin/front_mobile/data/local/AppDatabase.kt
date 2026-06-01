@@ -22,7 +22,7 @@ import ru.zagrebin.front_mobile.data.local.entities.TagEntity
         ProfileEntity::class,
         TagEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

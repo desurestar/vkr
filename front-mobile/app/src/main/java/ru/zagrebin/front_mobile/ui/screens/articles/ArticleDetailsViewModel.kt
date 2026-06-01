@@ -63,6 +63,7 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
+        authorAvatarUrl = authorAvatarUrl,
         date = date,
         title = title,
         imageUrl = imageUrl,
