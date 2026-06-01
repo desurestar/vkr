@@ -83,7 +83,7 @@ fun ArticleDetailsScreen(
                     contentDescription = article.title,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(1.6f)
+                        .aspectRatio(16f / 9f)
                         .clip(RoundedCornerShape(16.dp)),
                     contentScale = ContentScale.Crop
                 )
@@ -195,8 +195,9 @@ private fun ArticleContent(content: String) {
                     contentDescription = "Иллюстрация статьи",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(1.6f)
-                        .clip(RoundedCornerShape(14.dp))
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(14.dp)),
+                    contentScale = ContentScale.Crop
                 )
                 line.startsWith("## ") -> Text(
                     text = line.removePrefix("## "),
