@@ -374,9 +374,9 @@ private fun preferValue(primary: Any?, fallback: Any?): Any? = when (primary) {
 
 private fun Any?.asString(): String = when (this) {
     null -> ""
-    is String -> this
-    is Number -> this.toString()
-    else -> this.toString()
+    is String -> this.trim().removeSuffix(".0")
+    is Number -> this.toLong().toString()
+    else -> this.toString().trim().removeSuffix(".0")
 }
 
 private fun formatCount(value: Any?): String = when (value) {

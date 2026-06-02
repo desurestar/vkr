@@ -254,7 +254,7 @@ private fun PublicProfileHeader(
             )
 
             Text(
-                text = state.email,
+                text = state.handle,
                 color = Color.White.copy(alpha = 0.82f),
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -266,7 +266,7 @@ private fun PublicProfileHeader(
 
             Button(
                 onClick = onToggleFollow,
-                enabled = !state.isFollowUpdating,
+                enabled = !state.isFollowUpdating && !state.isOwnProfile,
                 modifier = Modifier
                     .width(240.dp)
                     .height(35.dp),
@@ -281,7 +281,11 @@ private fun PublicProfileHeader(
                 contentPadding = PaddingValues(0.dp)
             ) {
                 Text(
-                    text = if (state.isFollowUpdating) "Обновляем..." else buttonText,
+                    text = when {
+                        state.isOwnProfile -> "Это ваш профиль"
+                        state.isFollowUpdating -> "Обновляем..."
+                        else -> buttonText
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
@@ -388,7 +392,7 @@ private fun PublicProfileScreenPreview() {
         state = PublicProfileUiState(
             userId = "42",
             name = "Дмитрий Загребин",
-            email = "dmitry.zagrebin@gmail.com",
+            handle = "@Dima123",
             followingCount = "828",
             followersCount = "72.9k",
             isFollowing = false,
