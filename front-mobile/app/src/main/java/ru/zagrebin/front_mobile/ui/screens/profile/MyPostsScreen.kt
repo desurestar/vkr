@@ -52,8 +52,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import ru.zagrebin.front_mobile.ui.components.postCard.ArticleCardContent
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardContent
-import ru.zagrebin.front_mobile.ui.screens.feed.FeedViewModel
+import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.SearchBarHorizontalPadding
 import ru.zagrebin.front_mobile.ui.theme.SearchBarVerticalPadding
@@ -68,15 +69,16 @@ import ru.zagrebin.front_mobile.ui.theme.ListBottomPadding
 
 private enum class MyPostsTab {
     Recipes,
-    Articles
+    Articles,
+    Saved
 }
 
 @Composable
 fun MyPostsScreen(
     onBackClick: () -> Unit
 ) {
-    val feedViewModel: FeedViewModel = viewModel()
-    val state by feedViewModel.state.collectAsState()
+    val myPostsViewModel: MyPostsViewModel = viewModel()
+    val state by myPostsViewModel.state.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -85,8 +87,14 @@ fun MyPostsScreen(
     var previousIndex by remember { mutableStateOf(0) }
     var previousOffset by remember { mutableStateOf(0) }
 
-    val filteredPosts = remember(state.posts, searchQuery) {
-        state.posts.filter { post ->
+    val tabPosts = when (selectedTab) {
+        MyPostsTab.Recipes -> state.recipes
+        MyPostsTab.Articles -> state.articles
+        MyPostsTab.Saved -> state.savedPosts
+    }
+
+    val filteredPosts = remember(tabPosts, searchQuery) {
+        tabPosts.filter { post ->
             post.title.contains(searchQuery, ignoreCase = true)
         }
     }
@@ -123,29 +131,17 @@ fun MyPostsScreen(
                 Spacer(modifier = Modifier.height(topOverlayHeight))
             }
 
-            if (selectedTab == MyPostsTab.Recipes) {
-                items(filteredPosts, key = { it.id }) { post ->
-                    PostCardContent(
-                        state = post,
-                        onTagClick = { tagId -> feedViewModel.onTagClick(post.id, tagId) },
-                        onOpenRecipe = {},
-                        onAuthorClick = {}
-                    )
+            if (filteredPosts.isEmpty()) {
+                item {
+                    EmptyPostsState()
                 }
             } else {
-                if (filteredPosts.isEmpty()) {
-                    item {
-                        EmptyPostsState()
-                    }
-                } else {
-                    items(filteredPosts, key = { it.id }) { post ->
-                        PostCardContent(
-                            state = post,
-                            onTagClick = { tagId -> feedViewModel.onTagClick(post.id, tagId) },
-                            onOpenRecipe = {},
-                            onAuthorClick = {}
-                        )
-                    }
+                items(filteredPosts, key = { "${it.type}-${it.id}" }) { post ->
+                    MyPostCard(
+                        post = post,
+                        onTagClick = { tagId -> myPostsViewModel.onTagClick(post.id, tagId) },
+                        onLikeClick = { myPostsViewModel.onLikeClick(post.id) }
+                    )
                 }
             }
 
@@ -208,6 +204,31 @@ fun MyPostsScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MyPostCard(
+    post: PostCardState,
+    onTagClick: (Int) -> Unit,
+    onLikeClick: () -> Unit
+) {
+    if (post.type == "ARTICLE") {
+        ArticleCardContent(
+            state = post,
+            onTagClick = onTagClick,
+            onOpenArticle = {},
+            onLikeClick = onLikeClick,
+            onAuthorClick = {}
+        )
+    } else {
+        PostCardContent(
+            state = post,
+            onTagClick = onTagClick,
+            onOpenRecipe = {},
+            onLikeClick = onLikeClick,
+            onAuthorClick = {}
+        )
     }
 }
 
@@ -286,6 +307,12 @@ private fun TabSelector(
             title = "Статьи",
             selected = selectedTab == MyPostsTab.Articles,
             onClick = { onTabChange(MyPostsTab.Articles) },
+            modifier = Modifier.weight(1f)
+        )
+        TabButton(
+            title = "Сохраненные",
+            selected = selectedTab == MyPostsTab.Saved,
+            onClick = { onTabChange(MyPostsTab.Saved) },
             modifier = Modifier.weight(1f)
         )
     }
