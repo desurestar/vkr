@@ -66,8 +66,7 @@ public class ProfileController {
     public ApiModels.PublicProfile publicProfile(@PathVariable Long userId, HttpSession session) {
         var user = db.getUser(userId);
         var viewerId = (Long) session.getAttribute("uid");
-        var isFollowing = viewerId != null && db.getUserEntity(viewerId).getFollowing().stream()
-                .anyMatch(followed -> followed.getId().equals(userId));
+        var isFollowing = viewerId != null && db.isFollowing(viewerId, userId);
 
         return new ApiModels.PublicProfile(user, isFollowing, db.postsByAuthor(userId));
     }
@@ -76,15 +75,7 @@ public class ProfileController {
     public ApiModels.PublicProfile follow(@PathVariable Long userId,
                                            HttpSession session) {
 
-        var me = db.getUserEntity(requireUid(session));
-        var target = db.getUserEntity(userId);
-        if (me.getId().equals(target.getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot follow yourself");
-        }
-
-        me.getFollowing().add(target);
-        target.getFollowers().add(me);
-        db.saveUser(me);
+        db.followUser(requireUid(session), userId);
 
         return publicProfile(userId, session);
     }
@@ -93,12 +84,7 @@ public class ProfileController {
     public ApiModels.PublicProfile unfollow(@PathVariable Long userId,
                                              HttpSession session) {
 
-        var me = db.getUserEntity(requireUid(session));
-
-        var target = db.getUserEntity(userId);
-        me.getFollowing().removeIf(u -> u.getId().equals(userId));
-        target.getFollowers().removeIf(u -> u.getId().equals(me.getId()));
-        db.saveUser(me);
+        db.unfollowUser(requireUid(session), userId);
 
         return publicProfile(userId, session);
     }

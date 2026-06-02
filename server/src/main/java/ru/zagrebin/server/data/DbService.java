@@ -283,6 +283,29 @@ public class DbService {
         return users.save(u);
     }
 
+    public boolean isFollowing(Long viewerId, Long userId) {
+        return users.isFollowing(viewerId, userId);
+    }
+
+    public void followUser(Long followerId, Long targetId) {
+        var follower = getUserEntity(followerId);
+        var target = getUserEntity(targetId);
+        if (follower.getId().equals(target.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot follow yourself");
+        }
+
+        follower.getFollowing().add(target);
+        users.save(follower);
+    }
+
+    public void unfollowUser(Long followerId, Long targetId) {
+        var follower = getUserEntity(followerId);
+        getUserEntity(targetId);
+
+        follower.getFollowing().removeIf(followed -> followed.getId().equals(targetId));
+        users.save(follower);
+    }
+
     public boolean emailExists(String email) {
         return users.existsByEmailIgnoreCase(email);
     }
