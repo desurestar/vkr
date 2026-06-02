@@ -50,14 +50,14 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ProfileShoppingListBottomSheet(
     lists: SnapshotStateList<ShoppingListUi>,
-    selectedListId: Int,
-    onSelectedListChange: (Int) -> Unit,
+    selectedListId: Long,
+    onSelectedListChange: (Long) -> Unit,
     onDismiss: () -> Unit,
     onAddList: (String) -> Unit,
-    onDeleteList: (Int) -> Unit,
-    onAddItem: (Int, String) -> Unit,
-    onUpdateItem: (Int, Int, String) -> Unit,
-    onDeleteItem: (Int, Int) -> Unit,
+    onDeleteList: (Long) -> Unit,
+    onAddItem: (Long, String) -> Unit,
+    onUpdateItem: (Long, Long, String) -> Unit,
+    onDeleteItem: (Long, Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -302,25 +302,25 @@ private fun ShoppingItemRow(
 @Composable
 private fun ProfileShoppingListBottomSheetPreview() {
     val listA = ShoppingListUi(
-        id = 1,
+        id = 1L,
         name = "Токпокки",
         items = androidx.compose.runtime.mutableStateListOf(
-            ShoppingItemUi(1, "Рисовые клецки - 500 г"),
-            ShoppingItemUi(2, "Паста кочуджан - 2 ст. л.")
+            ShoppingItemUi(1L, "Рисовые клецки - 500 г"),
+            ShoppingItemUi(2L, "Паста кочуджан - 2 ст. л.")
         )
     )
     val listB = ShoppingListUi(
-        id = 2,
+        id = 2L,
         name = "Мой список",
         items = androidx.compose.runtime.mutableStateListOf(
-            ShoppingItemUi(1, "Сыр - 200 г")
+            ShoppingItemUi(1L, "Сыр - 200 г")
         )
     )
     val lists = androidx.compose.runtime.mutableStateListOf(listA, listB)
 
     ProfileShoppingListBottomSheet(
         lists = lists,
-        selectedListId = 1,
+        selectedListId = 1L,
         onSelectedListChange = {},
         onDismiss = {},
         onAddList = {},

@@ -9,6 +9,8 @@ public class ShoppingItemEntity {
     private Long id;
     @ManyToOne(optional = false)
     private UserEntity user;
+    @ManyToOne(optional = false)
+    private ShoppingListEntity list;
     @Column(nullable = false)
     private String name;
     @Column(nullable = false)
@@ -19,6 +21,8 @@ public class ShoppingItemEntity {
     public Long getId() { return id; }
     public UserEntity getUser() { return user; }
     public void setUser(UserEntity user) { this.user = user; }
+    public ShoppingListEntity getList() { return list; }
+    public void setList(ShoppingListEntity list) { this.list = list; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getAmount() { return amount; }

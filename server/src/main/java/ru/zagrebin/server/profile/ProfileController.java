@@ -90,21 +90,49 @@ public class ProfileController {
     }
 
     @GetMapping("/shopping-list")
-    public List<ApiModels.ShoppingItem> shopping(HttpSession session) {
-        return db.shopping(requireUid(session));
+    public List<ApiModels.ShoppingList> shopping(HttpSession session) {
+        return db.shoppingLists(requireUid(session));
     }
 
     @PostMapping("/shopping-list")
-    public ApiModels.ShoppingItem addShopping(@RequestBody Map<String, String> req,
-                                              HttpSession session) {
+    public ApiModels.ShoppingList createShoppingList(@RequestBody Map<String, String> req,
+                                                     HttpSession session) {
+        return db.toShoppingList(db.createShoppingList(requireUid(session), req.get("name")));
+    }
 
-        return db.toShopping(
-                db.addShopping(
-                        requireUid(session),
-                        req.get("name"),
-                        req.getOrDefault("amount", "1")
-                )
-        );
+    @PatchMapping("/shopping-list/{listId}")
+    public ApiModels.ShoppingList updateShoppingList(@PathVariable Long listId,
+                                                     @RequestBody Map<String, String> req,
+                                                     HttpSession session) {
+        return db.toShoppingList(db.updateShoppingList(requireUid(session), listId, req.get("name")));
+    }
+
+    @DeleteMapping("/shopping-list/{listId}")
+    public Map<String, String> deleteShoppingList(@PathVariable Long listId,
+                                                  HttpSession session) {
+        db.deleteShoppingList(requireUid(session), listId);
+        return Map.of("status", "deleted");
+    }
+
+    @PostMapping("/shopping-list/{listId}/items")
+    public ApiModels.ShoppingItem addShoppingItem(@PathVariable Long listId,
+                                                  @RequestBody ApiModels.ShoppingItemRequest req,
+                                                  HttpSession session) {
+        return db.toShopping(db.addShopping(requireUid(session), listId, req.name(), req.amount()));
+    }
+
+    @PatchMapping("/shopping-list/items/{itemId}")
+    public ApiModels.ShoppingItem updateShoppingItem(@PathVariable Long itemId,
+                                                     @RequestBody ApiModels.ShoppingItemRequest req,
+                                                     HttpSession session) {
+        return db.toShopping(db.updateShoppingItem(requireUid(session), itemId, req.name(), req.amount(), req.checked()));
+    }
+
+    @DeleteMapping("/shopping-list/items/{itemId}")
+    public Map<String, String> deleteShoppingItem(@PathVariable Long itemId,
+                                                  HttpSession session) {
+        db.deleteShoppingItem(requireUid(session), itemId);
+        return Map.of("status", "deleted");
     }
 
     private Long requireUid(HttpSession session) {

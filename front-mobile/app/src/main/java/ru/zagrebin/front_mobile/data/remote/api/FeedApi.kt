@@ -54,6 +54,16 @@ interface FeedApi {
     @POST("api/v1/articles") suspend fun createArticle(@Body request: CreateArticleRequest): ArticleDetailsDto
     @GET("api/v1/drafts") suspend fun getDrafts(): List<FeedItemDto>
     @DELETE("api/v1/drafts/{id}") suspend fun deleteDraft(@Path("id") id: Int)
+
+    @GET("api/v1/profile/shopping-list") suspend fun getShoppingLists(): List<ShoppingListDto>
+    @POST("api/v1/profile/shopping-list") suspend fun createShoppingList(@Body request: Map<String, String>): ShoppingListDto
+    @PATCH("api/v1/profile/shopping-list/{listId}") suspend fun updateShoppingList(@Path("listId") listId: Long, @Body request: Map<String, String>): ShoppingListDto
+    @DELETE("api/v1/profile/shopping-list/{listId}") suspend fun deleteShoppingList(@Path("listId") listId: Long)
+    @POST("api/v1/profile/shopping-list/{listId}/items") suspend fun addShoppingItem(@Path("listId") listId: Long, @Body request: ShoppingItemRequest): ShoppingItemDto
+    @PATCH("api/v1/profile/shopping-list/items/{itemId}") suspend fun updateShoppingItem(@Path("itemId") itemId: Long, @Body request: ShoppingItemRequest): ShoppingItemDto
+    @DELETE("api/v1/profile/shopping-list/items/{itemId}") suspend fun deleteShoppingItem(@Path("itemId") itemId: Long)
+    @POST("api/v1/recipes/{id}/shopping-list") suspend fun addRecipeToShoppingList(@Path("id") id: Int)
+
     @GET("api/v1/tags") suspend fun getTags(@Query("q") query: String? = null): List<TagDto>
     @Multipart
     @POST("api/v1/media") suspend fun uploadMedia(@Part file: MultipartBody.Part): MediaUploadResponse
@@ -113,3 +123,8 @@ data class CreateArticleRequest(
     val status: String = "PUBLISHED",
     val tags: List<String>
 )
+
+
+data class ShoppingListDto(val id: Long, val name: String, val items: List<ShoppingItemDto> = emptyList())
+data class ShoppingItemDto(val id: Long, val name: String, val amount: String = "", val checked: Boolean = false)
+data class ShoppingItemRequest(val name: String? = null, val amount: String? = null, val checked: Boolean? = null)

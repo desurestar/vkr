@@ -7,7 +7,7 @@ import java.util.Set;
 
 public class ApiModels {
     public record User(Long id, String username, String email, String displayName, String bio, String avatarUrl,
-                       Set<Long> following, Set<Long> followers, List<ShoppingItem> shoppingList) {
+                       Set<Long> following, Set<Long> followers, List<ShoppingList> shoppingList) {
     }
 
     public record PublicProfile(User user, boolean following, List<Post> posts) {
@@ -44,6 +44,12 @@ public class ApiModels {
     }
 
     public record CommentRequest(String text, Long parentId) {
+    }
+
+    public record ShoppingList(Long id, String name, List<ShoppingItem> items) {
+    }
+
+    public record ShoppingItemRequest(String name, String amount, Boolean checked) {
     }
 
     public record ShoppingItem(Long id, String name, String amount, boolean checked) {

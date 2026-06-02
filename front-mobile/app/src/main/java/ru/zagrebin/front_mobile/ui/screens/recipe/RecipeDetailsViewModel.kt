@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.remote.api.ShoppingItemRequest
 import ru.zagrebin.front_mobile.domain.model.RecipeDetails
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.components.postCard.RecipeIngredientState
@@ -72,6 +73,25 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
             container.feedRepository.deleteComment(postId, commentId)
             details.value = container.feedRepository.loadRecipeDetails(postId).data
         }
+    }
+
+    fun addIngredientsToShoppingList(ingredients: List<String>) {
+        val post = details.value ?: return
+        if (ingredients.isEmpty()) return
+        viewModelScope.launch {
+            runCatching {
+                val list = container.feedApi.createShoppingList(mapOf("name" to post.title))
+                ingredients.forEach { ingredient ->
+                    val (name, amount) = ingredient.splitShoppingText()
+                    container.feedApi.addShoppingItem(list.id, ShoppingItemRequest(name = name, amount = amount))
+                }
+            }
+        }
+    }
+
+    private fun String.splitShoppingText(): Pair<String, String> {
+        val parts = trim().split(" - ", limit = 2)
+        return parts.firstOrNull().orEmpty().trim() to parts.getOrNull(1).orEmpty().trim().ifEmpty { "1" }
     }
 
     private fun RecipeDetails.toUi(): PostCardState = PostCardState(
