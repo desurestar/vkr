@@ -14,7 +14,9 @@ data class FeedItemEntity(
     val title: String,
     val imageUrl: String,
     val likes: String,
+    val isLiked: Boolean,
     val time: String,
     val calories: String,
-    val views: String
+    val views: String,
+    val tags: List<ru.zagrebin.front_mobile.domain.model.RecipeTag> = emptyList()
 )

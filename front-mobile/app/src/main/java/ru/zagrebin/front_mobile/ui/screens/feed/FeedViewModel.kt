@@ -13,6 +13,7 @@ import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.data.RecipeRepository
+import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 
 class FeedViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
@@ -57,6 +58,23 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onTagClick(postId: Int, tagId: Int) = Unit
 
+    fun onLikeClick(postId: Int) {
+        val current = posts.value.firstOrNull { it.id == postId } ?: return
+        val nextLiked = !current.isLiked
+        posts.value = posts.value.map { item ->
+            if (item.id == postId) item.withOptimisticLike(nextLiked) else item
+        }
+        viewModelScope.launch {
+            val success = container.feedRepository.toggleLike(postId, nextLiked)
+            if (!success) {
+                posts.value = posts.value.map { item ->
+                    if (item.id == postId) item.withOptimisticLike(!nextLiked) else item
+                }
+                errorMessage.value = "Не удалось синхронизировать лайк с сервером."
+            }
+        }
+    }
+
     fun getPostById(postId: Int): PostCardState? = RecipeRepository.getPostById(postId)
 
     private fun FeedItem.toUi(): PostCardState = PostCardState(
@@ -69,8 +87,21 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
         title = title,
         imageUrl = imageUrl,
         likes = likes,
+        isLiked = isLiked,
         time = time,
         calories = calories,
-        views = views
+        views = views,
+        tags = tags.map { TagState(it.id, it.name) }
     )
+}
+
+
+private fun FeedItem.withOptimisticLike(nextLiked: Boolean): FeedItem {
+    val currentLikes = likes.toIntOrNull() ?: 0
+    val delta = when {
+        nextLiked && !isLiked -> 1
+        !nextLiked && isLiked -> -1
+        else -> 0
+    }
+    return copy(isLiked = nextLiked, likes = (currentLikes + delta).coerceAtLeast(0).toString())
 }

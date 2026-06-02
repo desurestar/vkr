@@ -84,6 +84,7 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
         title = title,
         imageUrl = imageUrl,
         likes = likes,
+        isLiked = isLiked,
         time = time,
         calories = calories,
         views = views,

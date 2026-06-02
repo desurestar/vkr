@@ -16,6 +16,7 @@ import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.data.repository.RefreshResult
 import ru.zagrebin.front_mobile.domain.model.ArticleDetails
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
+import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 
 data class ArticleDetailsUiState(
     val isLoading: Boolean = false,
@@ -89,10 +90,12 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
         title = title,
         imageUrl = imageUrl,
         likes = likes,
+        isLiked = isLiked,
         time = "",
         calories = "",
         views = views,
         isSaved = isSaved,
+        tags = tags.map { TagState(it.id, it.name) },
         comments = comments
     )
 }

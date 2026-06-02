@@ -49,6 +49,7 @@ private fun FeedItemDto.toPostCardState(): PostCardState = PostCardState(
     title = title.orEmpty(),
     imageUrl = imageUrl.orEmpty(),
     likes = formatCount(likes),
+    isLiked = likedByMe,
     time = formatMinutes(time ?: cookTimeMinutes),
     calories = formatCalories(calories ?: kcalPer100),
     views = formatViews(views),

@@ -120,6 +120,7 @@ fun FeedScreen(
                         viewModel.onTagClick(post.id, tagId)
                     },
                     onOpenRecipe = onOpenRecipe,
+                    onLikeClick = { viewModel.onLikeClick(post.id) },
                     onAuthorClick = onOpenPublicProfile
                 )
             }

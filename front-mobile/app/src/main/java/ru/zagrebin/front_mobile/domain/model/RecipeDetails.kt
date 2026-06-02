@@ -10,6 +10,7 @@ data class RecipeDetails(
     val title: String,
     val imageUrl: String,
     val likes: String,
+    val isLiked: Boolean,
     val time: String,
     val calories: String,
     val views: String,

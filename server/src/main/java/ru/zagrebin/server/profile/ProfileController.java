@@ -68,7 +68,7 @@ public class ProfileController {
         var viewerId = (Long) session.getAttribute("uid");
         var isFollowing = viewerId != null && db.isFollowing(viewerId, userId);
 
-        return new ApiModels.PublicProfile(user, isFollowing, db.postsByAuthor(userId));
+        return new ApiModels.PublicProfile(user, isFollowing, db.postsByAuthor(userId, viewerId));
     }
 
     @PostMapping("/{userId}/follow")

@@ -14,7 +14,8 @@ import ru.zagrebin.front_mobile.ui.screens.publicProfile.data.PublicProfileRepos
 import ru.zagrebin.front_mobile.ui.screens.publicProfile.data.RemotePublicProfileRepository
 
 class PublicProfileViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: PublicProfileRepository = RemotePublicProfileRepository(AppContainer(application).feedApi)
+    private val appContainer = AppContainer(application)
+    private val repository: PublicProfileRepository = RemotePublicProfileRepository(appContainer.feedApi)
     private val _state = MutableStateFlow(PublicProfileUiState(isLoading = true))
     val state: StateFlow<PublicProfileUiState> = _state.asStateFlow()
 
@@ -51,6 +52,30 @@ class PublicProfileViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    fun toggleLike(postId: Int) {
+        val currentPost = _state.value.posts.firstOrNull { it.id == postId } ?: return
+        val nextLiked = !currentPost.isLiked
+        val optimisticPost = currentPost.copy(
+            isLiked = nextLiked,
+            likes = updateLikes(currentPost.likes, currentPost.isLiked, nextLiked)
+        )
+        _state.update { state ->
+            state.copy(posts = state.posts.map { if (it.id == postId) optimisticPost else it })
+        }
+
+        viewModelScope.launch {
+            val success = appContainer.feedRepository.toggleLike(postId, nextLiked)
+            if (!success) {
+                _state.update { state ->
+                    state.copy(
+                        posts = state.posts.map { if (it.id == postId) currentPost else it },
+                        error = "Не удалось синхронизировать лайк с сервером."
+                    )
+                }
+            }
+        }
+    }
+
     fun toggleFollow() {
         val current = _state.value
         if (current.isFollowUpdating || current.userId.isBlank() || current.isOwnProfile) return
@@ -80,6 +105,16 @@ class PublicProfileViewModel(application: Application) : AndroidViewModel(applic
                     }
                 }
         }
+    }
+
+    private fun updateLikes(likes: String, wasLiked: Boolean, nextLiked: Boolean): String {
+        val currentLikes = likes.toIntOrNull() ?: 0
+        val delta = when {
+            nextLiked && !wasLiked -> 1
+            !nextLiked && wasLiked -> -1
+            else -> 0
+        }
+        return (currentLikes + delta).coerceAtLeast(0).toString()
     }
 
     private fun formatFollowers(value: Int): String =

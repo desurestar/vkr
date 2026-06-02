@@ -19,13 +19,13 @@ public class PostController {
     }
 
     @GetMapping("/feed/recipes")
-    public List<ApiModels.Post> recipes(@RequestParam Optional<String> q) {
-        return db.postsByType("RECIPE", q.orElse(null));
+    public List<ApiModels.Post> recipes(@RequestParam Optional<String> q, HttpSession s) {
+        return db.postsByType("RECIPE", q.orElse(null), currentUid(s));
     }
 
     @GetMapping("/feed/articles")
-    public List<ApiModels.Post> articles(@RequestParam Optional<String> q) {
-        return db.postsByType("ARTICLE", q.orElse(null));
+    public List<ApiModels.Post> articles(@RequestParam Optional<String> q, HttpSession s) {
+        return db.postsByType("ARTICLE", q.orElse(null), currentUid(s));
     }
 
     @GetMapping("/tags")
@@ -34,8 +34,8 @@ public class PostController {
     }
 
     @GetMapping("/recipes/{id}")
-    public ApiModels.Post recipe(@PathVariable Long id) {
-        return db.getPost(id);
+    public ApiModels.Post recipe(@PathVariable Long id, HttpSession s) {
+        return db.getPost(id, currentUid(s));
     }
 
     @PostMapping("/recipes")
@@ -49,8 +49,8 @@ public class PostController {
     }
 
     @GetMapping("/articles/{id}")
-    public ApiModels.Post article(@PathVariable Long id) {
-        return db.getPost(id);
+    public ApiModels.Post article(@PathVariable Long id, HttpSession s) {
+        return db.getPost(id, currentUid(s));
     }
 
     @PostMapping("/posts/{id}/comments")
@@ -70,21 +70,25 @@ public class PostController {
     }
 
     @PostMapping("/posts/{id}/likes")
-    public Map<String, String> like(@PathVariable Long id, HttpSession s) {
-        requireUid(s);
-        return Map.of("status", "liked");
+    public ApiModels.Post like(@PathVariable Long id, HttpSession s) {
+        var uid = requireUid(s);
+        return db.likePost(id, uid);
     }
 
     @DeleteMapping("/posts/{id}/likes")
-    public Map<String, String> unlike(@PathVariable Long id, HttpSession s) {
-        requireUid(s);
-        return Map.of("status", "unliked");
+    public ApiModels.Post unlike(@PathVariable Long id, HttpSession s) {
+        var uid = requireUid(s);
+        return db.unlikePost(id, uid);
     }
 
     @PostMapping("/recipes/{id}/shopping-list")
     public Map<String, String> addRecipeToShopping(@PathVariable Long id, HttpSession s) {
         db.addShopping(requireUid(s), "From recipe #" + id, "1");
         return Map.of("status", "added");
+    }
+
+    private Long currentUid(HttpSession session) {
+        return (Long) session.getAttribute("uid");
     }
 
     private Long requireUid(HttpSession session) {

@@ -20,6 +20,8 @@ import ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeDetailsDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeIngredientDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeStepDto
+import ru.zagrebin.front_mobile.data.remote.dto.RecipeTagDto
+import ru.zagrebin.front_mobile.data.remote.dto.TagDto
 import ru.zagrebin.front_mobile.data.sync.NetworkConnectionChecker
 import ru.zagrebin.front_mobile.domain.model.ArticleDetails
 import ru.zagrebin.front_mobile.domain.model.FeedItem
@@ -92,6 +94,15 @@ class FeedRepository(
         return runCatching {
             feedApi.deleteComment(commentId)
             refreshPostDetails(postId)
+            true
+        }.getOrDefault(false)
+    }
+
+    suspend fun toggleLike(postId: Int, shouldLike: Boolean): Boolean {
+        if (!networkConnectionChecker.isNetworkAvailable()) return false
+        return runCatching {
+            val updated = if (shouldLike) feedApi.like(postId) else feedApi.unlike(postId)
+            upsertLikedPost(updated)
             true
         }.getOrDefault(false)
     }
@@ -171,8 +182,35 @@ class FeedRepository(
         }.getOrElse { RefreshResult.Fallback }
     }
 
+    private suspend fun upsertLikedPost(updated: FeedItemDto) {
+        val type = updated.type?.lowercase()
+            ?: if (recipeDetailsDao.getById(updated.id) != null) TYPE_RECIPE else TYPE_ARTICLE
+        feedDao.upsertAll(listOf(updated.toEntity(type)))
+        if (type == TYPE_RECIPE) {
+            recipeDetailsDao.getById(updated.id)?.let { cached ->
+                recipeDetailsDao.upsert(
+                    cached.copy(
+                        likes = formatCount(updated.likes),
+                        isLiked = updated.likedByMe,
+                        tags = updated.tags.toFeedRecipeTags().ifEmpty { cached.tags }
+                    )
+                )
+            }
+        } else {
+            articleDetailsDao.getById(updated.id)?.let { cached ->
+                articleDetailsDao.upsert(
+                    cached.copy(
+                        likes = formatCount(updated.likes),
+                        isLiked = updated.likedByMe,
+                        tags = updated.tags.toFeedRecipeTags().ifEmpty { cached.tags }
+                    )
+                )
+            }
+        }
+    }
+
     private fun List<FeedItemEntity>.toDomain(): List<FeedItem> = map {
-        FeedItem(it.id, it.authorId, it.authorName, it.authorHandle, it.authorAvatarUrl, it.date, it.title, it.imageUrl, it.likes, it.time, it.calories, it.views)
+        FeedItem(it.id, it.authorId, it.authorName, it.authorHandle, it.authorAvatarUrl, it.date, it.title, it.imageUrl, it.likes, it.isLiked, it.time, it.calories, it.views, it.tags)
     }
 
     private fun RecipeDetailsEntity.toFeedItemEntity(): FeedItemEntity = FeedItemEntity(
@@ -186,9 +224,11 @@ class FeedRepository(
         title = title,
         imageUrl = imageUrl,
         likes = likes,
+        isLiked = isLiked,
         time = time,
         calories = calories,
-        views = views
+        views = views,
+        tags = tags
     )
 
     private fun ArticleDetailsEntity.toFeedItemEntity(): FeedItemEntity = FeedItemEntity(
@@ -202,9 +242,11 @@ class FeedRepository(
         title = title,
         imageUrl = imageUrl,
         likes = likes,
+        isLiked = isLiked,
         time = "",
         calories = "",
-        views = views
+        views = views,
+        tags = tags
     )
 
     private fun RecipeDetailsEntity.toDomain(): RecipeDetails = RecipeDetails(
@@ -217,6 +259,7 @@ class FeedRepository(
         title = title,
         imageUrl = imageUrl,
         likes = likes,
+        isLiked = isLiked,
         time = time,
         calories = calories,
         views = views,
@@ -241,9 +284,11 @@ class FeedRepository(
         title = title,
         imageUrl = imageUrl,
         likes = likes,
+        isLiked = isLiked,
         views = views,
         content = content,
         isSaved = isSaved,
+        tags = tags,
         comments = comments
     )
 
@@ -299,9 +344,11 @@ private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
         title = title.orEmpty(),
         imageUrl = imageUrl.normalizeImageUrl(),
         likes = formatCount(likes),
+        isLiked = likedByMe,
         time = formatMinutes(preferValue(time, cookTimeMinutes)),
         calories = formatCalories(preferValue(calories, kcalPer100)),
-        views = formatViews(views)
+        views = formatViews(views),
+        tags = tags.toFeedRecipeTags()
     )
 
 private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = RecipeDetailsEntity(
@@ -314,6 +361,7 @@ private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = Reci
     title = title.orEmpty(),
     imageUrl = imageUrl.normalizeImageUrl(steps),
     likes = formatCount(likes),
+    isLiked = likedByMe,
     time = formatMinutes(preferValue(time, cookTimeMinutes)),
     calories = formatCalories(preferValue(calories, kcalPer100)),
     views = formatViews(views),
@@ -340,9 +388,11 @@ private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = A
     title = title.orEmpty(),
     imageUrl = imageUrl.normalizeImageUrl(),
     likes = formatCount(likes),
+    isLiked = likedByMe,
     views = formatViews(views),
     content = content.orEmpty(),
     isSaved = isSaved,
+    tags = tags.toRecipeTags(),
     comments = comments.map { it.toDomain() }
 )
 
@@ -405,6 +455,14 @@ private fun formatCalories(value: Any?): String = when (value) {
     is String -> value
     is Number -> "${value.toLong()} ккал"
     else -> value.toString()
+}
+
+private fun List<TagDto>.toFeedRecipeTags(): List<RecipeTag> = map {
+    RecipeTag(it.id.toInt(), it.label?.takeIf(String::isNotBlank) ?: it.name)
+}
+
+private fun List<RecipeTagDto>.toRecipeTags(): List<RecipeTag> = map {
+    RecipeTag(it.id, it.name)
 }
 
 private fun RecipeIngredientDto.toText(): String {

@@ -10,9 +10,11 @@ data class ArticleDetails(
     val title: String,
     val imageUrl: String,
     val likes: String,
+    val isLiked: Boolean,
     val views: String,
     val content: String,
     val isSaved: Boolean,
+    val tags: List<RecipeTag>,
     val comments: List<PostComment> = emptyList()
 )
 

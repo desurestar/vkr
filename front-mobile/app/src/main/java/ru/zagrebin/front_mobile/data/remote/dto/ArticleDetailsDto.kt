@@ -13,8 +13,10 @@ data class ArticleDetailsDto(
     val title: String? = null,
     val imageUrl: String? = null,
     val likes: Any? = null,
+    val likedByMe: Boolean = false,
     val views: Any? = null,
     val content: String? = null,
     val isSaved: Boolean = false,
+    val tags: List<RecipeTagDto> = emptyList(),
     val comments: List<CommentDto> = emptyList()
 )
