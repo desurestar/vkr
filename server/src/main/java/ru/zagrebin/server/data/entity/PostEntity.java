@@ -34,6 +34,8 @@ public class PostEntity {
     private BigDecimal kcalPer100;
     @Column(nullable = false)
     private Instant createdAt;
+    @Column(nullable = false)
+    private String status = "PUBLISHED";
 
     @ManyToMany
     @JoinTable(name = "post_tag", joinColumns = @JoinColumn(name = "post_id"), inverseJoinColumns = @JoinColumn(name = "tag_id"))
@@ -76,6 +78,8 @@ public class PostEntity {
     public void setKcalPer100(BigDecimal kcalPer100) { this.kcalPer100 = kcalPer100; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public List<TagEntity> getTags() { return tags; }
     public List<RecipeIngredientEntity> getIngredients() { return ingredients; }
     public List<RecipeStepEntity> getSteps() { return steps; }

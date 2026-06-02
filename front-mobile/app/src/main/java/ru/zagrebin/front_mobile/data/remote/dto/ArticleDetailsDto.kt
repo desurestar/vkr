@@ -10,6 +10,7 @@ data class ArticleDetailsDto(
     val authorAvatarUrl: String? = null,
     val date: String? = null,
     val createdAt: String? = null,
+    val status: String? = null,
     val title: String? = null,
     val imageUrl: String? = null,
     val likes: Any? = null,

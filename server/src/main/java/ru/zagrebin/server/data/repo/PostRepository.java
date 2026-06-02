@@ -6,8 +6,8 @@ import ru.zagrebin.server.data.entity.PostEntity;
 import java.util.List;
 
 public interface PostRepository extends JpaRepository<PostEntity, Long> {
-    List<PostEntity> findByTypeIgnoreCaseAndTitleContainingIgnoreCase(String type, String q);
-    List<PostEntity> findByTypeIgnoreCase(String type);
-    List<PostEntity> findByTitleContainingIgnoreCase(String q);
-    List<PostEntity> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
+    List<PostEntity> findByTypeIgnoreCaseAndStatusIgnoreCaseAndTitleContainingIgnoreCase(String type, String status, String q);
+    List<PostEntity> findByTypeIgnoreCaseAndStatusIgnoreCase(String type, String status);
+    List<PostEntity> findByStatusIgnoreCaseAndTitleContainingIgnoreCase(String status, String q);
+    List<PostEntity> findByAuthorIdAndStatusIgnoreCaseOrderByCreatedAtDesc(Long authorId, String status);
 }

@@ -21,6 +21,7 @@ import ru.zagrebin.front_mobile.ui.screens.articles.CreateArticleScreen
 import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedScreen
 import ru.zagrebin.front_mobile.ui.screens.login.LoginScreen
+import ru.zagrebin.front_mobile.ui.screens.profile.DraftsScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.EditAccountScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.MyPostsScreen
 import ru.zagrebin.front_mobile.ui.screens.profile.PasswordSecurityScreen
@@ -128,6 +129,7 @@ fun NavGraph(
                 viewModel = profileViewModel,
                 onOpenShoppingList = { navController.navigate(Screen.ShoppingList.route) },
                 onOpenMyPosts = { navController.navigate(Screen.MyPosts.route) },
+                onOpenDrafts = { navController.navigate(Screen.Drafts.route) },
                 onOpenEditAccount = { navController.navigate(Screen.EditAccount.route) },
                 onOpenPasswordSecurity = { navController.navigate(Screen.PasswordSecurity.route) },
                 onOpenCreateRecipe = { navController.navigate(Screen.CreateRecipe.route) },
@@ -151,6 +153,14 @@ fun NavGraph(
 
         composable(Screen.MyPosts.route) {
             MyPostsScreen(onBackClick = { navController.popBackStack() })
+        }
+
+        composable(Screen.Drafts.route) {
+            DraftsScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenRecipe = { postId -> navController.navigate(Screen.RecipeDetails.createRoute(postId)) },
+                onOpenArticle = { postId -> navController.navigate(Screen.ArticleDetails.createRoute(postId)) }
+            )
         }
 
         composable(Screen.EditAccount.route) {
@@ -221,6 +231,7 @@ fun NavGraph(
                                     fatsPer100 = fats,
                                     carbsPer100 = carbs,
                                     kcalPer100 = kcal,
+                                    status = "PUBLISHED",
                                     tags = tags,
                                     ingredients = ingredients.map { ingredient ->
                                         CreateRecipeIngredient(
@@ -241,6 +252,61 @@ fun NavGraph(
                         }.getOrDefault(CreateRecipeResult.Fallback)
                         if (publishResult is CreateRecipeResult.Success) {
                             navController.navigate(Screen.RecipeDetails.createRoute(publishResult.postId)) {
+                                popUpTo(Screen.CreateRecipe.route) { inclusive = true }
+                            }
+                        }
+                    }
+                },
+                onDraft = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, proteins, fats, carbs, kcal ->
+                    scope.launch {
+                        val draftResult = runCatching {
+                            val mainImageUrl = uploadRecipeImageToServer(
+                                context = context,
+                                api = appContainer.feedApi,
+                                sourceUri = recipePhotoUri,
+                                prefix = "recipe_draft_main"
+                            )
+                            val stepImageUrls = steps.map { step ->
+                                uploadRecipeImageToServer(
+                                    context = context,
+                                    api = appContainer.feedApi,
+                                    sourceUri = step.photoUri,
+                                    prefix = "recipe_draft_step_${step.number}"
+                                )
+                            }
+
+                            appContainer.feedRepository.createRecipe(
+                                CreateRecipeRequest(
+                                    title = title,
+                                    summary = summary,
+                                    content = content,
+                                    imageUrl = mainImageUrl ?: stepImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                    cookTimeMinutes = cookTime,
+                                    proteinsPer100 = proteins,
+                                    fatsPer100 = fats,
+                                    carbsPer100 = carbs,
+                                    kcalPer100 = kcal,
+                                    status = "DRAFT",
+                                    tags = tags,
+                                    ingredients = ingredients.map { ingredient ->
+                                        CreateRecipeIngredient(
+                                            name = ingredient.name,
+                                            amount = ingredient.amount.toDouble(),
+                                            unit = ingredient.unit
+                                        )
+                                    },
+                                    steps = steps.mapIndexed { index, step ->
+                                        CreateRecipeStep(
+                                            number = step.number,
+                                            description = step.description,
+                                            imageUrl = stepImageUrls[index]
+                                        )
+                                    }
+                                )
+                            )
+                        }.getOrDefault(CreateRecipeResult.Fallback)
+                        if (draftResult is CreateRecipeResult.Success) {
+                            navController.navigate(Screen.Drafts.route) {
                                 popUpTo(Screen.CreateRecipe.route) { inclusive = true }
                             }
                         }
@@ -294,12 +360,59 @@ fun NavGraph(
                                     summary = summary,
                                     content = contentWithImages,
                                     imageUrl = coverImageUrl ?: blockImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                    status = "PUBLISHED",
                                     tags = tags
                                 )
                             )
                         }.getOrDefault(CreateArticleResult.Fallback)
                         if (publishResult is CreateArticleResult.Success) {
                             navController.navigate(Screen.ArticleDetails.createRoute(publishResult.postId)) {
+                                popUpTo(Screen.CreateArticle.route) { inclusive = true }
+                            }
+                        }
+                    }
+                },
+                onDraft = { title, summary, content, tags, coverUri, blocks ->
+                    scope.launch {
+                        val draftResult = runCatching {
+                            val coverImageUrl = uploadRecipeImageToServer(
+                                context = context,
+                                api = appContainer.feedApi,
+                                sourceUri = coverUri,
+                                prefix = "article_draft_cover"
+                            )
+                            val blockImageUrls = blocks.map { block ->
+                                uploadRecipeImageToServer(
+                                    context = context,
+                                    api = appContainer.feedApi,
+                                    sourceUri = block.photoUri,
+                                    prefix = "article_draft_block_${block.number}"
+                                )
+                            }
+                            val contentWithImages = blocks.mapIndexed { index, block ->
+                                buildString {
+                                    append("## ").append(block.title).append("\n")
+                                    append(block.content)
+                                    val imageUrl = blockImageUrls[index]
+                                    if (!imageUrl.isNullOrBlank()) {
+                                        append("\n[image:").append(imageUrl).append(']')
+                                    }
+                                }
+                            }.joinToString("\n\n").ifBlank { content }
+
+                            appContainer.feedRepository.createArticle(
+                                CreateArticleRequest(
+                                    title = title,
+                                    summary = summary,
+                                    content = contentWithImages,
+                                    imageUrl = coverImageUrl ?: blockImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                    status = "DRAFT",
+                                    tags = tags
+                                )
+                            )
+                        }.getOrDefault(CreateArticleResult.Fallback)
+                        if (draftResult is CreateArticleResult.Success) {
+                            navController.navigate(Screen.Drafts.route) {
                                 popUpTo(Screen.CreateArticle.route) { inclusive = true }
                             }
                         }

@@ -80,7 +80,8 @@ private const val MAX_TAGS = 10
 fun CreateRecipeScreen(
     onBackClick: () -> Unit = {},
     availableTags: List<String> = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
-    onPublish: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, recipePhotoUri: Uri?, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _ -> }
+    onPublish: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, recipePhotoUri: Uri?, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _ -> },
+    onDraft: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, recipePhotoUri: Uri?, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     var postTitle by rememberSaveable { mutableStateOf("") }
@@ -347,7 +348,23 @@ fun CreateRecipeScreen(
                 ) {
 
                     OutlinedButton(
-                        onClick = { },
+                        onClick = {
+                            val draftTitle = postTitle.trim().ifBlank { dishTitle.trim().ifBlank { "Черновик рецепта" } }
+                            onDraft(
+                                draftTitle,
+                                dishTitle.trim(),
+                                steps.joinToString("\n") { it.description },
+                                cookTimeMinutes.toIntOrNull() ?: 0,
+                                selectedTags.toList(),
+                                ingredients.toList(),
+                                steps.toList(),
+                                recipePhotoUri,
+                                proteins.toDoubleOrNull() ?: 0.0,
+                                fats.toDoubleOrNull() ?: 0.0,
+                                carbs.toDoubleOrNull() ?: 0.0,
+                                calories.toDoubleOrNull() ?: 0.0
+                            )
+                        },
                         shape = RoundedCornerShape(18.dp),
                         modifier = Modifier.weight(1f)
                     ) {

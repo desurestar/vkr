@@ -57,6 +57,26 @@ class FeedRepository(
 
     suspend fun refreshArticles(): RefreshResult = loadArticles().toRefreshResult()
 
+    suspend fun loadDrafts(): ServerFirstResult<List<FeedItem>> {
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            return ServerFirstResult(emptyList(), isFromCache = true)
+        }
+        return runCatching {
+            feedApi.getDrafts().map { dto -> dto.toEntity(dto.type?.lowercase().orEmpty()).toDomainItem() }
+        }.fold(
+            onSuccess = { ServerFirstResult(it, isFromCache = false) },
+            onFailure = { ServerFirstResult(emptyList(), isFromCache = true) }
+        )
+    }
+
+    suspend fun deleteDraft(postId: Int): Boolean {
+        if (!networkConnectionChecker.isNetworkAvailable()) return false
+        return runCatching {
+            feedApi.deleteDraft(postId)
+            true
+        }.getOrDefault(false)
+    }
+
     fun observeRecipeDetails(id: Int): Flow<RecipeDetails?> =
         recipeDetailsDao.observeById(id).map { it?.toDomain() }
 
@@ -209,9 +229,9 @@ class FeedRepository(
         }
     }
 
-    private fun List<FeedItemEntity>.toDomain(): List<FeedItem> = map {
-        FeedItem(it.id, it.authorId, it.authorName, it.authorHandle, it.authorAvatarUrl, it.date, it.title, it.imageUrl, it.likes, it.isLiked, it.time, it.calories, it.views, it.tags)
-    }
+    private fun List<FeedItemEntity>.toDomain(): List<FeedItem> = map { it.toDomainItem() }
+
+    private fun FeedItemEntity.toDomainItem(): FeedItem = FeedItem(id, authorId, authorName, authorHandle, authorAvatarUrl, date, title, imageUrl, likes, isLiked, time, calories, views, tags)
 
     private fun RecipeDetailsEntity.toFeedItemEntity(): FeedItemEntity = FeedItemEntity(
         id = id,

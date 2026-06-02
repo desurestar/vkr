@@ -33,6 +33,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     onOpenShoppingList: () -> Unit,
     onOpenMyPosts: () -> Unit,
+    onOpenDrafts: () -> Unit,
     onOpenEditAccount: () -> Unit,
     onOpenPasswordSecurity: () -> Unit,
     onOpenCreateRecipe: () -> Unit,
@@ -113,7 +114,10 @@ fun ProfileScreen(
                     ProfileMenuItem(
                         icon = FeatherIcons.Folder,
                         title = "Черновики",
-                        onClick = { viewModel.onEvent(ProfileEvent.OnDraftsClick) }
+                        onClick = {
+                            viewModel.onEvent(ProfileEvent.OnDraftsClick)
+                            onOpenDrafts()
+                        }
                     )
                 }
             }
@@ -168,6 +172,7 @@ fun ProfileScreenPreview() {
     ProfileScreen(
         onOpenShoppingList = {},
         onOpenMyPosts = {},
+        onOpenDrafts = {},
         onOpenEditAccount = {},
         onOpenPasswordSecurity = {},
         onOpenCreateRecipe = {},

@@ -102,6 +102,7 @@ public class DbService {
                 p.getLikes(),
                 currentUserId != null && isPostLikedByUser(p.getId(), currentUserId),
                 p.getCreatedAt(),
+                p.getStatus(),
                 p.getCookTimeMinutes(),
                 p.getProteinsPer100(),
                 p.getFatsPer100(),
@@ -112,6 +113,10 @@ public class DbService {
                 p.getSteps().stream().map(x -> new ApiModels.RecipeStep(x.getStepNumber(), x.getDescription(), x.getImageUrl())).toList(),
                 comments.findByPostIdOrderByCreatedAtAsc(p.getId()).stream().map(this::toComment).toList()
         );
+    }
+
+    private String normalizePostStatus(String status) {
+        return "DRAFT".equalsIgnoreCase(status) ? "DRAFT" : "PUBLISHED";
     }
 
     private String cleanRemoteImageUrl(String value) {
@@ -188,8 +193,8 @@ public class DbService {
 
     public List<ApiModels.Post> postsByType(String type, String q, Long currentUserId) {
         var list = (q == null)
-                ? posts.findByTypeIgnoreCase(type)
-                : posts.findByTypeIgnoreCaseAndTitleContainingIgnoreCase(type, q);
+                ? posts.findByTypeIgnoreCaseAndStatusIgnoreCase(type, "PUBLISHED")
+                : posts.findByTypeIgnoreCaseAndStatusIgnoreCaseAndTitleContainingIgnoreCase(type, "PUBLISHED", q);
 
         return list.stream().map(post -> toPost(post, currentUserId)).toList();
     }
@@ -201,12 +206,30 @@ public class DbService {
 
     @Transactional(readOnly = true)
     public List<ApiModels.Post> postsByAuthor(Long authorId, Long currentUserId) {
-        return posts.findByAuthorIdOrderByCreatedAtDesc(authorId).stream().map(post -> toPost(post, currentUserId)).toList();
+        return posts.findByAuthorIdAndStatusIgnoreCaseOrderByCreatedAtDesc(authorId, "PUBLISHED").stream().map(post -> toPost(post, currentUserId)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApiModels.Post> draftsByAuthor(Long authorId) {
+        return posts.findByAuthorIdAndStatusIgnoreCaseOrderByCreatedAtDesc(authorId, "DRAFT").stream()
+                .map(post -> toPost(post, authorId))
+                .toList();
+    }
+
+    public void deleteDraft(Long postId, Long userId) {
+        var post = getPostEntity(postId);
+        if (!post.getAuthor().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can delete draft");
+        }
+        if (!"DRAFT".equalsIgnoreCase(post.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Post is not a draft");
+        }
+        posts.delete(post);
     }
 
     public Map<String, List<?>> search(String query, String type, String tag) {
 
-        var p = posts.findByTitleContainingIgnoreCase(query).stream()
+        var p = posts.findByStatusIgnoreCaseAndTitleContainingIgnoreCase("PUBLISHED", query).stream()
                 .filter(x -> type == null || x.getType().equalsIgnoreCase(type))
                 .filter(x -> tag == null || x.getTags().stream().anyMatch(t -> t.getName().equalsIgnoreCase(tag)))
                 .map(this::toPost)
@@ -234,6 +257,7 @@ public class DbService {
         post.setFatsPer100(request.fatsPer100());
         post.setCarbsPer100(request.carbsPer100());
         post.setKcalPer100(request.kcalPer100());
+        post.setStatus(normalizePostStatus(request.status()));
         post.setCreatedAt(Instant.now());
         post.setLikes(0);
         if (request.tags() != null) {
@@ -272,6 +296,7 @@ public class DbService {
         post.setSummary(request.summary());
         post.setContent(request.content());
         post.setImageUrl(cleanRemoteImageUrl(request.imageUrl()));
+        post.setStatus(normalizePostStatus(request.status()));
         post.setCreatedAt(Instant.now());
         post.setLikes(0);
         if (request.tags() != null) {

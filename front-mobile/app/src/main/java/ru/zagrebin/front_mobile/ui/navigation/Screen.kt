@@ -22,6 +22,8 @@ sealed class Screen(val route: String){
 
     data object MyPosts : Screen("myPosts")
 
+    data object Drafts : Screen("drafts")
+
     data object EditAccount : Screen("editAccount")
 
     data object PasswordSecurity : Screen("passwordSecurity")
