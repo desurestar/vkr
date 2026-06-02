@@ -47,7 +47,7 @@ interface FeedApi {
 
     @POST("api/v1/profile/{userId}/follow") suspend fun follow(@Path("userId") userId: Long)
     @DELETE("api/v1/profile/{userId}/follow") suspend fun unfollow(@Path("userId") userId: Long)
-    @GET("api/v1/profile/{userId}") suspend fun getPublicProfile(@Path("userId") userId: Long): UserProfileDto
+    @GET("api/v1/profile/{userId}") suspend fun getPublicProfile(@Path("userId") userId: Long): PublicProfileDto
 
     @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null): SearchResponse
     @POST("api/v1/recipes") suspend fun createRecipe(@Body request: CreateRecipeRequest): RecipeDetailsDto
@@ -65,6 +65,12 @@ data class CommentRequest(val text: String, val parentId: Long? = null)
 data class SearchResponse(val posts: List<ServerPostDto> = emptyList(), val users: List<SessionUserDto> = emptyList())
 data class MediaUploadResponse(val url: String)
 
+
+data class PublicProfileDto(
+    val user: UserProfileDto,
+    val following: Boolean = false,
+    val posts: List<FeedItemDto> = emptyList()
+)
 
 data class UserProfileDto(
     val id: Long,

@@ -61,8 +61,13 @@ public class ProfileController {
     }
 
     @GetMapping("/{userId}")
-    public ApiModels.User publicProfile(@PathVariable Long userId) {
-        return db.getUser(userId);
+    public ApiModels.PublicProfile publicProfile(@PathVariable Long userId, HttpSession session) {
+        var user = db.getUser(userId);
+        var viewerId = (Long) session.getAttribute("uid");
+        var isFollowing = viewerId != null && db.getUserEntity(viewerId).getFollowing().stream()
+                .anyMatch(followed -> followed.getId().equals(userId));
+
+        return new ApiModels.PublicProfile(user, isFollowing, db.postsByAuthor(userId));
     }
 
     @PostMapping("/{userId}/follow")
@@ -71,6 +76,9 @@ public class ProfileController {
 
         var me = db.getUserEntity(requireUid(session));
         var target = db.getUserEntity(userId);
+        if (me.getId().equals(target.getId())) {
+            throw new IllegalArgumentException("cannot follow yourself");
+        }
 
         me.getFollowing().add(target);
         db.saveUser(me);

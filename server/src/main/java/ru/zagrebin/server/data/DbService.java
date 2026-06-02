@@ -147,6 +147,11 @@ public class DbService {
         return list.stream().map(this::toPost).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<ApiModels.Post> postsByAuthor(Long authorId) {
+        return posts.findByAuthorIdOrderByCreatedAtDesc(authorId).stream().map(this::toPost).toList();
+    }
+
     public Map<String, List<?>> search(String query, String type, String tag) {
 
         var p = posts.findByTitleContainingIgnoreCase(query).stream()

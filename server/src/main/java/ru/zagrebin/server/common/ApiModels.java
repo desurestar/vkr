@@ -10,6 +10,9 @@ public class ApiModels {
                        Set<Long> following, Set<Long> followers, List<ShoppingItem> shoppingList) {
     }
 
+    public record PublicProfile(User user, boolean following, List<Post> posts) {
+    }
+
     public record Post(Long id, Long authorId, String authorName, String authorHandle, String authorAvatarUrl,
                        String type, String title, String summary, String content, String imageUrl, int likes,
                        Instant createdAt, Integer cookTimeMinutes, BigDecimal proteinsPer100, BigDecimal fatsPer100,

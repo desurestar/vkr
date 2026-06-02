@@ -108,18 +108,19 @@ class ProfileRepository(
         )
     }
 
-    private fun SessionUserDto.toProfileData(public: UserProfileDto?): ProfileData {
+    private fun SessionUserDto.toProfileData(public: PublicProfileDto?): ProfileData {
+        val user = public?.user
         return ProfileData(
             id = id,
-            name = public?.displayName ?: username ?: email ?: "",
-            email = public?.email ?: email ?: "",
-            bio = public?.bio.orEmpty(),
+            name = user?.displayName ?: username ?: email ?: "",
+            email = user?.email ?: email ?: "",
+            bio = user?.bio.orEmpty(),
 
             // 🔥 ONLY SERVER VALUE
-            avatarUrl = public?.avatarUrl,
+            avatarUrl = user?.avatarUrl,
 
-            followingCount = public?.following?.size ?: 0,
-            followersCount = public?.followers?.size ?: 0
+            followingCount = user?.following?.size ?: 0,
+            followersCount = user?.followers?.size ?: 0
         )
     }
 }
