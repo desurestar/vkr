@@ -47,6 +47,7 @@ fun PostCardContent(
     state: PostCardState,
     onTagClick: (Int) -> Unit,
     onOpenRecipe: (Int) -> Unit,
+    actionText: String = "Открыть рецепт",
     onAuthorClick: (String) -> Unit = {}
 ) {
     Card(
@@ -140,7 +141,7 @@ fun PostCardContent(
                 ),
                 elevation = ButtonDefaults.buttonElevation(0.dp)
             ) {
-                Text("Открыть рецепт", fontWeight = FontWeight.SemiBold)
+                Text(actionText, fontWeight = FontWeight.SemiBold)
             }
         }
     }

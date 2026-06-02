@@ -2,6 +2,7 @@ package ru.zagrebin.front_mobile.data.remote.dto
 
 data class FeedItemDto(
     val id: Int = 0,
+    val type: String? = null,
     val authorId: Any? = null,
     val authorName: String? = null,
     val authorHandle: String? = null,
@@ -15,5 +16,6 @@ data class FeedItemDto(
     val calories: Any? = null,
     val views: Any? = null,
     val cookTimeMinutes: Int? = null,
-    val kcalPer100: Double? = null
+    val kcalPer100: Double? = null,
+    val tags: List<TagDto> = emptyList()
 )

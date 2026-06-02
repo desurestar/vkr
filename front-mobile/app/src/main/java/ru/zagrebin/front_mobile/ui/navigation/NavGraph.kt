@@ -410,6 +410,9 @@ fun NavGraph(
                 onBackClick = { navController.popBackStack() },
                 onOpenRecipe = { postId ->
                     navController.navigate(Screen.RecipeDetails.createRoute(postId))
+                },
+                onOpenArticle = { postId ->
+                    navController.navigate(Screen.ArticleDetails.createRoute(postId))
                 }
             )
         }

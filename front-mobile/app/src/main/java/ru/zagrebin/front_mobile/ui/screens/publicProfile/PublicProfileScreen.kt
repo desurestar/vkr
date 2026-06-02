@@ -1,6 +1,7 @@
 package ru.zagrebin.front_mobile.ui.screens.publicProfile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -32,15 +35,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardContent
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 
@@ -49,6 +57,7 @@ fun PublicProfileScreen(
     userId: String,
     onBackClick: () -> Unit,
     onOpenRecipe: (Int) -> Unit,
+    onOpenArticle: (Int) -> Unit,
     viewModel: PublicProfileViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -62,8 +71,14 @@ fun PublicProfileScreen(
         onBackClick = onBackClick,
         onToggleFollow = viewModel::toggleFollow,
         onTagClick = { _, _ -> },
-        onOpenRecipe = onOpenRecipe
+        onOpenRecipe = onOpenRecipe,
+        onOpenArticle = onOpenArticle
     )
+}
+
+private enum class PublicProfileTab {
+    Recipes,
+    Articles
 }
 
 @Composable
@@ -72,7 +87,8 @@ private fun PublicProfileContent(
     onBackClick: () -> Unit,
     onToggleFollow: () -> Unit,
     onTagClick: (Int, Int) -> Unit,
-    onOpenRecipe: (Int) -> Unit
+    onOpenRecipe: (Int) -> Unit,
+    onOpenArticle: (Int) -> Unit
 ) {
     if (state.isLoading) {
         Box(
@@ -82,6 +98,14 @@ private fun PublicProfileContent(
             CircularProgressIndicator()
         }
         return
+    }
+
+    var selectedTab by rememberSaveable { mutableStateOf(PublicProfileTab.Recipes) }
+    val visiblePosts = state.posts.filter { post ->
+        when (selectedTab) {
+            PublicProfileTab.Recipes -> post.type.equals("RECIPE", ignoreCase = true)
+            PublicProfileTab.Articles -> post.type.equals("ARTICLE", ignoreCase = true)
+        }
     }
 
     LazyColumn(
@@ -109,12 +133,28 @@ private fun PublicProfileContent(
             }
         }
 
-        items(state.posts, key = { post -> post.id }) { post ->
-            PostCardContent(
-                state = post,
-                onTagClick = { tagId -> onTagClick(post.id, tagId) },
-                onOpenRecipe = onOpenRecipe
+        item {
+            PublicProfileTabSelector(
+                selectedTab = selectedTab,
+                onTabChange = { selectedTab = it }
             )
+        }
+
+        if (visiblePosts.isEmpty()) {
+            item {
+                EmptyPublicProfilePosts(tab = selectedTab)
+            }
+        } else {
+            items(visiblePosts, key = { post -> post.id }) { post ->
+                val isArticle = post.type.equals("ARTICLE", ignoreCase = true)
+                PostCardContent(
+                    state = post,
+                    onTagClick = { tagId -> onTagClick(post.id, tagId) },
+                    onOpenRecipe = { postId -> if (isArticle) onOpenArticle(postId) else onOpenRecipe(postId) },
+                    actionText = if (isArticle) "Открыть статью" else "Открыть рецепт",
+                    onAuthorClick = {}
+                )
+            }
         }
     }
 }
@@ -180,12 +220,21 @@ private fun PublicProfileHeader(
                         .border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(46.dp)
-                    )
+                    if (state.avatarUrl.isNullOrBlank()) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(46.dp)
+                        )
+                    } else {
+                        AsyncImage(
+                            model = state.avatarUrl,
+                            contentDescription = "Аватар пользователя",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
 
                 ProfileHeaderStat(
@@ -228,7 +277,7 @@ private fun PublicProfileHeader(
                     disabledContentColor = Color.White.copy(alpha = 0.8f)
                 ),
                 shape = RoundedCornerShape(10.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.65f)),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.65f)),
                 contentPadding = PaddingValues(0.dp)
             ) {
                 Text(
@@ -238,6 +287,72 @@ private fun PublicProfileHeader(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PublicProfileTabSelector(
+    selectedTab: PublicProfileTab,
+    onTabChange: (PublicProfileTab) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        PublicProfileTabButton(
+            text = "Рецепты",
+            selected = selectedTab == PublicProfileTab.Recipes,
+            onClick = { onTabChange(PublicProfileTab.Recipes) },
+            modifier = Modifier.weight(1f)
+        )
+        PublicProfileTabButton(
+            text = "Статьи",
+            selected = selectedTab == PublicProfileTab.Articles,
+            onClick = { onTabChange(PublicProfileTab.Articles) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun PublicProfileTabButton(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(44.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (selected) Color(0xFF2C1A12) else Color.White,
+            contentColor = if (selected) Color.White else Color(0xFF2C1A12)
+        ),
+        border = if (selected) null else BorderStroke(1.dp, Color(0xFFE0D8CF)),
+        elevation = ButtonDefaults.buttonElevation(0.dp)
+    ) {
+        Text(text = text, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun EmptyPublicProfilePosts(tab: PublicProfileTab) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Text(
+            text = if (tab == PublicProfileTab.Recipes) "У пользователя пока нет рецептов" else "У пользователя пока нет статей",
+            modifier = Modifier.padding(20.dp),
+            color = Color.Gray,
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 }
 
@@ -295,7 +410,8 @@ private fun PublicProfileScreenPreview() {
         onBackClick = {},
         onToggleFollow = {},
         onTagClick = { _, _ -> },
-        onOpenRecipe = {}
+        onOpenRecipe = {},
+        onOpenArticle = {}
     )
 }
 

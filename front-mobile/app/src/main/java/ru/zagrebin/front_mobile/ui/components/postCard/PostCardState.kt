@@ -5,6 +5,7 @@ import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 
 data class PostCardState(
     val id: Int = 0,
+    val type: String = "RECIPE",
     val authorId: String = "",
     val authorName: String = "",
     val authorHandle: String = "",
