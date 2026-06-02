@@ -30,13 +30,14 @@ class PublicProfileViewModel(application: Application) : AndroidViewModel(applic
                             isLoading = false,
                             userId = profile.userId,
                             name = profile.name,
-                            email = profile.email,
+                            handle = profile.handle,
                             avatarUrl = profile.avatarUrl,
                             followingCount = formatFollowers(profile.followingCount),
                             followersCount = formatFollowers(profile.followersCount),
                             followingCountValue = profile.followingCount,
                             followersCountValue = profile.followersCount,
                             isFollowing = profile.isFollowing,
+                            isOwnProfile = profile.isOwnProfile,
                             posts = profile.posts,
                             error = null
                         )
@@ -52,7 +53,7 @@ class PublicProfileViewModel(application: Application) : AndroidViewModel(applic
 
     fun toggleFollow() {
         val current = _state.value
-        if (current.isFollowUpdating || current.userId.isBlank()) return
+        if (current.isFollowUpdating || current.userId.isBlank() || current.isOwnProfile) return
 
         val targetFollowState = !current.isFollowing
         viewModelScope.launch {

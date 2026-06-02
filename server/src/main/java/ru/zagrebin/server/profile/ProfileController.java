@@ -1,8 +1,10 @@
 package ru.zagrebin.server.profile;
 
 import jakarta.servlet.http.HttpSession;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import ru.zagrebin.server.common.ApiModels;
 import ru.zagrebin.server.data.DbService;
 
@@ -71,31 +73,34 @@ public class ProfileController {
     }
 
     @PostMapping("/{userId}/follow")
-    public Map<String, String> follow(@PathVariable Long userId,
-                                      HttpSession session) {
+    public ApiModels.PublicProfile follow(@PathVariable Long userId,
+                                           HttpSession session) {
 
         var me = db.getUserEntity(requireUid(session));
         var target = db.getUserEntity(userId);
         if (me.getId().equals(target.getId())) {
-            throw new IllegalArgumentException("cannot follow yourself");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot follow yourself");
         }
 
         me.getFollowing().add(target);
+        target.getFollowers().add(me);
         db.saveUser(me);
 
-        return Map.of("status", "followed");
+        return publicProfile(userId, session);
     }
 
     @DeleteMapping("/{userId}/follow")
-    public Map<String, String> unfollow(@PathVariable Long userId,
-                                        HttpSession session) {
+    public ApiModels.PublicProfile unfollow(@PathVariable Long userId,
+                                             HttpSession session) {
 
         var me = db.getUserEntity(requireUid(session));
 
+        var target = db.getUserEntity(userId);
         me.getFollowing().removeIf(u -> u.getId().equals(userId));
+        target.getFollowers().removeIf(u -> u.getId().equals(me.getId()));
         db.saveUser(me);
 
-        return Map.of("status", "unfollowed");
+        return publicProfile(userId, session);
     }
 
     @GetMapping("/shopping-list")
@@ -119,7 +124,7 @@ public class ProfileController {
     private Long requireUid(HttpSession session) {
         var uid = (Long) session.getAttribute("uid");
         if (uid == null) {
-            throw new IllegalStateException("Unauthorized");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
         return uid;
     }

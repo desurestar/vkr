@@ -12,23 +12,27 @@ import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 
 class RemotePublicProfileRepository(private val api: FeedApi) : PublicProfileRepository {
     override suspend fun getPublicProfile(userId: String): PublicProfileData {
-        val profile = api.getPublicProfile(userId.toLong())
+        val normalizedUserId = userId.toLongUserId()
+        val currentUserId = runCatching { api.me().id }.getOrNull()
+        val profile = api.getPublicProfile(normalizedUserId)
         val user = profile.user
+        val username = user.username.orEmpty()
 
         return PublicProfileData(
             userId = user.id.toString(),
-            name = user.displayName?.takeIf { it.isNotBlank() } ?: user.username ?: "Пользователь",
-            email = user.email ?: "",
+            name = user.displayName?.takeIf { it.isNotBlank() } ?: username.ifBlank { "Пользователь" },
+            handle = username.toHandle(),
             avatarUrl = user.avatarUrl,
             followingCount = user.following.size,
             followersCount = user.followers.size,
             isFollowing = profile.following,
+            isOwnProfile = currentUserId == user.id,
             posts = profile.posts.map { it.toPostCardState() }
         )
     }
 
     override suspend fun setFollowState(userId: String, isFollowing: Boolean): Boolean {
-        val id = userId.toLong()
+        val id = userId.toLongUserId()
         if (isFollowing) api.follow(id) else api.unfollow(id)
         return isFollowing
     }
@@ -37,9 +41,9 @@ class RemotePublicProfileRepository(private val api: FeedApi) : PublicProfileRep
 private fun FeedItemDto.toPostCardState(): PostCardState = PostCardState(
     id = id,
     type = type.orEmpty().ifBlank { "RECIPE" },
-    authorId = authorId.asString(),
+    authorId = authorId.asUserIdString(),
     authorName = authorName.orEmpty(),
-    authorHandle = authorHandle?.takeIf { it.startsWith("@") } ?: authorHandle?.let { "@$it" }.orEmpty(),
+    authorHandle = authorHandle.toHandle(),
     authorAvatarUrl = authorAvatarUrl,
     date = formatDate(date ?: createdAt),
     title = title.orEmpty(),
@@ -86,9 +90,23 @@ private fun Any?.asDoubleOrNull(): Double? = when (this) {
     else -> null
 }
 
-private fun Any?.asString(): String = when (this) {
+private fun Any?.asUserIdString(): String = when (this) {
     null -> ""
-    is String -> this
-    is Number -> this.toString()
-    else -> this.toString()
+    is Number -> this.toLong().toString()
+    is String -> this.toLongUserIdOrNull()?.toString().orEmpty()
+    else -> this.toString().toLongUserIdOrNull()?.toString().orEmpty()
 }
+
+private fun String.toLongUserId(): Long = toLongUserIdOrNull() ?: throw NumberFormatException("For input string: \"$this\"")
+
+private fun String.toLongUserIdOrNull(): Long? {
+    val value = trim()
+    if (value.isBlank()) return null
+    return value.toLongOrNull() ?: value.toDoubleOrNull()?.toLong()
+}
+
+private fun String?.toHandle(): String = this
+    ?.trim()
+    ?.takeIf { it.isNotBlank() }
+    ?.let { if (it.startsWith("@")) it else "@$it" }
+    .orEmpty()
