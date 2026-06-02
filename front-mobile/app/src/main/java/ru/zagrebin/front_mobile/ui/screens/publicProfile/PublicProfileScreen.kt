@@ -70,6 +70,7 @@ fun PublicProfileScreen(
         state = state,
         onBackClick = onBackClick,
         onToggleFollow = viewModel::toggleFollow,
+        onLikeClick = viewModel::toggleLike,
         onTagClick = { _, _ -> },
         onOpenRecipe = onOpenRecipe,
         onOpenArticle = onOpenArticle
@@ -86,6 +87,7 @@ private fun PublicProfileContent(
     state: PublicProfileUiState,
     onBackClick: () -> Unit,
     onToggleFollow: () -> Unit,
+    onLikeClick: (Int) -> Unit,
     onTagClick: (Int, Int) -> Unit,
     onOpenRecipe: (Int) -> Unit,
     onOpenArticle: (Int) -> Unit
@@ -152,6 +154,7 @@ private fun PublicProfileContent(
                     onTagClick = { tagId -> onTagClick(post.id, tagId) },
                     onOpenRecipe = { postId -> if (isArticle) onOpenArticle(postId) else onOpenRecipe(postId) },
                     actionText = if (isArticle) "Открыть статью" else "Открыть рецепт",
+                    onLikeClick = { onLikeClick(post.id) },
                     onAuthorClick = {}
                 )
             }
@@ -413,6 +416,7 @@ private fun PublicProfileScreenPreview() {
         ),
         onBackClick = {},
         onToggleFollow = {},
+        onLikeClick = {},
         onTagClick = { _, _ -> },
         onOpenRecipe = {},
         onOpenArticle = {}

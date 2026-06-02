@@ -15,7 +15,7 @@ public class ApiModels {
 
     public record Post(Long id, Long authorId, String authorName, String authorHandle, String authorAvatarUrl,
                        String type, String title, String summary, String content, String imageUrl, int likes,
-                       Instant createdAt, Integer cookTimeMinutes, BigDecimal proteinsPer100, BigDecimal fatsPer100,
+                       boolean likedByMe, Instant createdAt, Integer cookTimeMinutes, BigDecimal proteinsPer100, BigDecimal fatsPer100,
                        BigDecimal carbsPer100, BigDecimal kcalPer100, List<Tag> tags, List<Ingredient> ingredients,
                        List<RecipeStep> steps, List<Comment> comments) {
     }

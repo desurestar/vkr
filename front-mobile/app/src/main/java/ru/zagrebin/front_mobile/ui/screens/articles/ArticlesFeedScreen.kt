@@ -137,6 +137,7 @@ fun ArticlesFeedScreen(
                         viewModel.onTagClick(post.id, tagId)
                     },
                     onOpenArticle = onOpenArticle,
+                    onLikeClick = { viewModel.onLikeClick(post.id) },
                     onAuthorClick = onOpenPublicProfile
                 )
             }

@@ -1,5 +1,6 @@
 package ru.zagrebin.server.data;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ public class DbService {
     private final CommentRepository comments;
     private final ShoppingItemRepository shopping;
     private final TagRepository tags;
+    private final JdbcTemplate jdbc;
     private final BCryptPasswordEncoder encoder;
 
     public DbService(UserRepository users,
@@ -30,6 +32,7 @@ public class DbService {
                      CommentRepository comments,
                      ShoppingItemRepository shopping,
                      TagRepository tags,
+                     JdbcTemplate jdbc,
                      BCryptPasswordEncoder encoder) {
 
         this.users = users;
@@ -37,6 +40,7 @@ public class DbService {
         this.comments = comments;
         this.shopping = shopping;
         this.tags = tags;
+        this.jdbc = jdbc;
         this.encoder = encoder;
     }
 
@@ -53,6 +57,11 @@ public class DbService {
     @Transactional(readOnly = true)
     public ApiModels.Post getPost(Long id) {
         return toPost(getPostEntity(id));
+    }
+
+    @Transactional(readOnly = true)
+    public ApiModels.Post getPost(Long id, Long currentUserId) {
+        return toPost(getPostEntity(id), currentUserId);
     }
 
     @Transactional(readOnly = true)
@@ -75,6 +84,10 @@ public class DbService {
     }
 
     public ApiModels.Post toPost(PostEntity p) {
+        return toPost(p, null);
+    }
+
+    public ApiModels.Post toPost(PostEntity p, Long currentUserId) {
         return new ApiModels.Post(
                 p.getId(),
                 p.getAuthor().getId(),
@@ -87,6 +100,7 @@ public class DbService {
                 p.getContent(),
                 p.getImageUrl(),
                 p.getLikes(),
+                currentUserId != null && isPostLikedByUser(p.getId(), currentUserId),
                 p.getCreatedAt(),
                 p.getCookTimeMinutes(),
                 p.getProteinsPer100(),
@@ -130,6 +144,35 @@ public class DbService {
         );
     }
 
+    public ApiModels.Post likePost(Long postId, Long userId) {
+        var post = getPostEntity(postId);
+        if (!isPostLikedByUser(postId, userId)) {
+            jdbc.update("INSERT INTO post_like (post_id, user_id) VALUES (?, ?)", postId, userId);
+            post.setLikes(post.getLikes() + 1);
+            posts.save(post);
+        }
+        return toPost(post, userId);
+    }
+
+    public ApiModels.Post unlikePost(Long postId, Long userId) {
+        var post = getPostEntity(postId);
+        var deleted = jdbc.update("DELETE FROM post_like WHERE post_id = ? AND user_id = ?", postId, userId);
+        if (deleted > 0 && post.getLikes() > 0) {
+            post.setLikes(post.getLikes() - 1);
+            posts.save(post);
+        }
+        return toPost(post, userId);
+    }
+
+    private boolean isPostLikedByUser(Long postId, Long userId) {
+        return jdbc.queryForObject(
+                "SELECT COUNT(*) FROM post_like WHERE post_id = ? AND user_id = ?",
+                Integer.class,
+                postId,
+                userId
+        ) > 0;
+    }
+
     public ApiModels.ShoppingItem toShopping(ShoppingItemEntity i) {
         return new ApiModels.ShoppingItem(
                 i.getId(),
@@ -140,16 +183,25 @@ public class DbService {
     }
 
     public List<ApiModels.Post> postsByType(String type, String q) {
+        return postsByType(type, q, null);
+    }
+
+    public List<ApiModels.Post> postsByType(String type, String q, Long currentUserId) {
         var list = (q == null)
                 ? posts.findByTypeIgnoreCase(type)
                 : posts.findByTypeIgnoreCaseAndTitleContainingIgnoreCase(type, q);
 
-        return list.stream().map(this::toPost).toList();
+        return list.stream().map(post -> toPost(post, currentUserId)).toList();
     }
 
     @Transactional(readOnly = true)
     public List<ApiModels.Post> postsByAuthor(Long authorId) {
-        return posts.findByAuthorIdOrderByCreatedAtDesc(authorId).stream().map(this::toPost).toList();
+        return postsByAuthor(authorId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApiModels.Post> postsByAuthor(Long authorId, Long currentUserId) {
+        return posts.findByAuthorIdOrderByCreatedAtDesc(authorId).stream().map(post -> toPost(post, currentUserId)).toList();
     }
 
     public Map<String, List<?>> search(String query, String type, String tag) {

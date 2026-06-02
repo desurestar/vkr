@@ -42,8 +42,8 @@ interface FeedApi {
     @GET("api/v1/posts/{id}/comments") suspend fun getComments(@Path("id") postId: Int): List<CommentDto>
     @DELETE("api/v1/comments/{id}") suspend fun deleteComment(@Path("id") commentId: Long)
 
-    @POST("api/v1/posts/{id}/likes") suspend fun like(@Path("id") postId: Int)
-    @DELETE("api/v1/posts/{id}/likes") suspend fun unlike(@Path("id") postId: Int)
+    @POST("api/v1/posts/{id}/likes") suspend fun like(@Path("id") postId: Int): FeedItemDto
+    @DELETE("api/v1/posts/{id}/likes") suspend fun unlike(@Path("id") postId: Int): FeedItemDto
 
     @POST("api/v1/profile/{userId}/follow") suspend fun follow(@Path("userId") userId: Long)
     @DELETE("api/v1/profile/{userId}/follow") suspend fun unfollow(@Path("userId") userId: Long)

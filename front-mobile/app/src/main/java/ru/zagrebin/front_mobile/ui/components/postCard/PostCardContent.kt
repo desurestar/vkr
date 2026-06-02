@@ -14,9 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
@@ -32,9 +35,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +52,7 @@ fun PostCardContent(
     state: PostCardState,
     onTagClick: (Int) -> Unit,
     onOpenRecipe: (Int) -> Unit,
+    onLikeClick: () -> Unit = {},
     actionText: String = "Открыть рецепт",
     onAuthorClick: (String) -> Unit = {}
 ) {
@@ -110,7 +116,11 @@ fun PostCardContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Stat(Icons.Default.FavoriteBorder, state.likes)
+                LikeStat(
+                    likes = state.likes,
+                    isLiked = state.isLiked,
+                    onClick = onLikeClick
+                )
                 Stat(Icons.Default.Timer, state.time)
                 Stat(Icons.Default.Whatshot, state.calories)
                 Stat(icon = Icons.Default.RemoveRedEye, text = state.views)
@@ -144,6 +154,36 @@ fun PostCardContent(
                 Text(actionText, fontWeight = FontWeight.SemiBold)
             }
         }
+    }
+}
+
+@Composable
+private fun LikeStat(
+    likes: String,
+    isLiked: Boolean,
+    onClick: () -> Unit
+) {
+    val tint by animateColorAsState(
+        targetValue = if (isLiked) Color(0xFFE53935) else Color.Gray,
+        label = "likeColor"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (isLiked) 1.18f else 1f,
+        label = "likeScale"
+    )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Icon(
+            imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+            contentDescription = if (isLiked) "Убрать лайк" else "Поставить лайк",
+            tint = tint,
+            modifier = Modifier.scale(scale)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(likes, color = tint, fontWeight = if (isLiked) FontWeight.SemiBold else FontWeight.Normal)
     }
 }
 
