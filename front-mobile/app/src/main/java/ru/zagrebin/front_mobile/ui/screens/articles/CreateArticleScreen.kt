@@ -76,7 +76,8 @@ private const val MAX_TAGS = 10
 fun CreateArticleScreen(
     onBackClick: () -> Unit = {},
     availableTags: List<String> = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
-    onPublish: (title: String, summary: String, content: String, tags: List<String>, coverUri: Uri?, blocks: List<ArticleBlockDraft>) -> Unit = { _, _, _, _, _, _ -> }
+    onPublish: (title: String, summary: String, content: String, tags: List<String>, coverUri: Uri?, blocks: List<ArticleBlockDraft>) -> Unit = { _, _, _, _, _, _ -> },
+    onDraft: (title: String, summary: String, content: String, tags: List<String>, coverUri: Uri?, blocks: List<ArticleBlockDraft>) -> Unit = { _, _, _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     var title by rememberSaveable { mutableStateOf("") }
@@ -243,7 +244,24 @@ fun CreateArticleScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     OutlinedButton(
-                        onClick = { },
+                        onClick = {
+                            val normalizedBlocks = blocks.toList()
+                            val summary = normalizedBlocks.firstOrNull()?.content.orEmpty().take(180)
+                            val content = normalizedBlocks.joinToString("\n\n") { block ->
+                                listOf(
+                                    "## ${block.title}",
+                                    block.content
+                                ).joinToString("\n")
+                            }
+                            onDraft(
+                                title.trim().ifBlank { "Черновик статьи" },
+                                summary,
+                                content,
+                                selectedTags.toList(),
+                                coverUri,
+                                normalizedBlocks
+                            )
+                        },
                         shape = RoundedCornerShape(18.dp),
                         modifier = Modifier.weight(1f)
                     ) {

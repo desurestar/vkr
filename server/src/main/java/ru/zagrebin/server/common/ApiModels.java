@@ -15,7 +15,7 @@ public class ApiModels {
 
     public record Post(Long id, Long authorId, String authorName, String authorHandle, String authorAvatarUrl,
                        String type, String title, String summary, String content, String imageUrl, int likes,
-                       boolean likedByMe, Instant createdAt, Integer cookTimeMinutes, BigDecimal proteinsPer100, BigDecimal fatsPer100,
+                       boolean likedByMe, Instant createdAt, String status, Integer cookTimeMinutes, BigDecimal proteinsPer100, BigDecimal fatsPer100,
                        BigDecimal carbsPer100, BigDecimal kcalPer100, List<Tag> tags, List<Ingredient> ingredients,
                        List<RecipeStep> steps, List<Comment> comments) {
     }
@@ -31,12 +31,12 @@ public class ApiModels {
 
     public record CreateRecipeRequest(String title, String summary, String content, String imageUrl,
                                       Integer cookTimeMinutes, BigDecimal proteinsPer100, BigDecimal fatsPer100,
-                                      BigDecimal carbsPer100, BigDecimal kcalPer100, List<String> tags,
+                                      BigDecimal carbsPer100, BigDecimal kcalPer100, String status, List<String> tags,
                                       List<Ingredient> ingredients, List<RecipeStep> steps) {
     }
 
     public record CreateArticleRequest(String title, String summary, String content, String imageUrl,
-                                       List<String> tags) {
+                                       String status, List<String> tags) {
     }
 
     public record Comment(Long id, Long authorId, String authorName, String authorHandle, String authorAvatarUrl,

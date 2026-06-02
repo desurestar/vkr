@@ -35,7 +35,7 @@ public class PostController {
 
     @GetMapping("/recipes/{id}")
     public ApiModels.Post recipe(@PathVariable Long id, HttpSession s) {
-        return db.getPost(id, currentUid(s));
+        return requireVisiblePost(db.getPost(id, currentUid(s)), currentUid(s));
     }
 
     @PostMapping("/recipes")
@@ -50,7 +50,18 @@ public class PostController {
 
     @GetMapping("/articles/{id}")
     public ApiModels.Post article(@PathVariable Long id, HttpSession s) {
-        return db.getPost(id, currentUid(s));
+        return requireVisiblePost(db.getPost(id, currentUid(s)), currentUid(s));
+    }
+
+    @GetMapping("/drafts")
+    public List<ApiModels.Post> drafts(HttpSession s) {
+        return db.draftsByAuthor(requireUid(s));
+    }
+
+    @DeleteMapping("/drafts/{id}")
+    public Map<String, String> deleteDraft(@PathVariable Long id, HttpSession s) {
+        db.deleteDraft(id, requireUid(s));
+        return Map.of("status", "deleted");
     }
 
     @PostMapping("/posts/{id}/comments")
@@ -85,6 +96,13 @@ public class PostController {
     public Map<String, String> addRecipeToShopping(@PathVariable Long id, HttpSession s) {
         db.addShopping(requireUid(s), "From recipe #" + id, "1");
         return Map.of("status", "added");
+    }
+
+    private ApiModels.Post requireVisiblePost(ApiModels.Post post, Long currentUserId) {
+        if ("DRAFT".equalsIgnoreCase(post.status()) && !post.authorId().equals(currentUserId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");
+        }
+        return post;
     }
 
     private Long currentUid(HttpSession session) {
