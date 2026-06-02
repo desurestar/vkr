@@ -62,7 +62,8 @@ fun RecipeDetailsScreen(
     currentUserId: Long?,
     onBackClick: () -> Unit,
     onSendComment: (String, Long?) -> Unit,
-    onDeleteComment: (Long) -> Unit
+    onDeleteComment: (Long) -> Unit,
+    onAddToShoppingList: (List<String>) -> Unit
 ) {
     var showComments by rememberSaveable { mutableStateOf(false) }
     var showIngredientsPicker by rememberSaveable { mutableStateOf(false) }
@@ -219,8 +220,12 @@ fun RecipeDetailsScreen(
             selected = selectedIngredients,
             onDismiss = { showIngredientsPicker = false },
             onAddClick = {
+                onAddToShoppingList(
+                    ingredientOptions
+                        .filter { selectedIngredients[it.id] == true }
+                        .map { it.title }
+                )
                 showIngredientsPicker = false
-                // TODO: интеграция со списком покупок
             }
         )
     }

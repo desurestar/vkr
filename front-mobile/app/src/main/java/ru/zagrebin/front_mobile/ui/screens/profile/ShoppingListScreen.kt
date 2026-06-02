@@ -35,12 +35,11 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,30 +47,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ShoppingListScreen(onBackClick: () -> Unit) {
+fun ShoppingListScreen(
+    onBackClick: () -> Unit,
+    viewModel: ShoppingListViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
+    val state by viewModel.state.collectAsState()
     var newListName by remember { mutableStateOf("") }
-    val shoppingLists = remember {
-        mutableStateListOf(
-            ShoppingListUi(
-                id = 1,
-                name = "Токпокки",
-                items = mutableStateListOf(
-                    ShoppingItemUi(1, "Рисовые клецки - 500 г"),
-                    ShoppingItemUi(2, "Паста кочуджан - 2 ст. л."),
-                    ShoppingItemUi(3, "Зеленый лук - 1 пучок")
-                )
-            ),
-            ShoppingListUi(
-                id = 2,
-                name = "Мой список",
-                items = mutableStateListOf(
-                    ShoppingItemUi(1, "Сыр - 200 г")
-                )
-            )
-        )
-    }
-    val expanded = remember { mutableStateMapOf<Int, Boolean>() }
-    val itemInputs = remember { mutableStateMapOf<Int, String>() }
+    val expanded = remember { mutableStateMapOf<Long, Boolean>() }
+    val itemInputs = remember { mutableStateMapOf<Long, String>() }
 
     Box(
         modifier = Modifier
@@ -94,51 +77,43 @@ fun ShoppingListScreen(onBackClick: () -> Unit) {
                         onCreateClick = {
                             val name = newListName.trim()
                             if (name.isNotEmpty()) {
-                                val nextId = (shoppingLists.maxOfOrNull { it.id } ?: 0) + 1
-                                shoppingLists.add(
-                                    ShoppingListUi(
-                                        id = nextId,
-                                        name = name,
-                                        items = mutableStateListOf()
-                                    )
-                                )
-                                expanded[nextId] = true
+                                viewModel.createList(name)
                                 newListName = ""
                             }
                         }
                     )
                 }
 
-                items(shoppingLists, key = { it.id }) { list ->
-                    val isExpanded = expanded[list.id] == true
+                if (state.isLoading) {
+                    item { Text("Загрузка списков...", modifier = Modifier.padding(16.dp)) }
+                }
+
+                state.error?.let { message ->
+                    item { Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
+                }
+
+                items(state.lists, key = { it.id }) { list ->
+                    val isExpanded = expanded[list.id] ?: true
                     ShoppingListCard(
                         list = list,
                         isExpanded = isExpanded,
                         itemInput = itemInputs[list.id].orEmpty(),
                         onToggleExpand = { expanded[list.id] = !isExpanded },
+                        onListNameChange = { viewModel.updateList(list.id, it) },
                         onDeleteList = {
-                            shoppingLists.removeAll { it.id == list.id }
+                            viewModel.deleteList(list.id)
                             expanded.remove(list.id)
                             itemInputs.remove(list.id)
                         },
                         onItemInputChange = { itemInputs[list.id] = it },
                         onAddItem = { text ->
-                            val trimmed = text.trim()
-                            if (trimmed.isNotEmpty()) {
-                                val nextId = (list.items.maxOfOrNull { it.id } ?: 0) + 1
-                                list.items.add(ShoppingItemUi(nextId, trimmed))
+                            if (text.trim().isNotEmpty()) {
+                                viewModel.addItem(list.id, text)
                                 itemInputs[list.id] = ""
                             }
                         },
-                        onUpdateItem = { itemId, text ->
-                            val index = list.items.indexOfFirst { it.id == itemId }
-                            if (index >= 0) {
-                                list.items[index] = list.items[index].copy(name = text)
-                            }
-                        },
-                        onDeleteItem = { itemId ->
-                            list.items.removeAll { it.id == itemId }
-                        }
+                        onUpdateItem = { itemId, text -> viewModel.updateItem(itemId, text) },
+                        onDeleteItem = { itemId -> viewModel.deleteItem(itemId) }
                     )
                 }
 
@@ -224,11 +199,12 @@ private fun ShoppingListCard(
     isExpanded: Boolean,
     itemInput: String,
     onToggleExpand: () -> Unit,
+    onListNameChange: (String) -> Unit,
     onDeleteList: () -> Unit,
     onItemInputChange: (String) -> Unit,
     onAddItem: (String) -> Unit,
-    onUpdateItem: (Int, String) -> Unit,
-    onDeleteItem: (Int) -> Unit
+    onUpdateItem: (Long, String) -> Unit,
+    onDeleteItem: (Long) -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -245,9 +221,17 @@ private fun ShoppingListCard(
                         .clickable { onToggleExpand() },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = list.name,
-                        style = MaterialTheme.typography.titleMedium,
+                    TextField(
+                        value = list.name,
+                        onValueChange = onListNameChange,
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.titleMedium,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
                         modifier = Modifier.weight(1f)
                     )
                     Text(
@@ -361,13 +345,13 @@ private fun ShoppingItemRow(
 }
 
 data class ShoppingListUi(
-    val id: Int,
+    val id: Long,
     val name: String,
-    val items: SnapshotStateList<ShoppingItemUi>
+    val items: List<ShoppingItemUi>
 )
 
 data class ShoppingItemUi(
-    val id: Int,
+    val id: Long,
     val name: String
 )
 

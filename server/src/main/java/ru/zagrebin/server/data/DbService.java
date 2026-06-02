@@ -23,6 +23,7 @@ public class DbService {
     private final PostRepository posts;
     private final CommentRepository comments;
     private final ShoppingItemRepository shopping;
+    private final ShoppingListRepository shoppingLists;
     private final TagRepository tags;
     private final JdbcTemplate jdbc;
     private final BCryptPasswordEncoder encoder;
@@ -31,6 +32,7 @@ public class DbService {
                      PostRepository posts,
                      CommentRepository comments,
                      ShoppingItemRepository shopping,
+                     ShoppingListRepository shoppingLists,
                      TagRepository tags,
                      JdbcTemplate jdbc,
                      BCryptPasswordEncoder encoder) {
@@ -39,6 +41,7 @@ public class DbService {
         this.posts = posts;
         this.comments = comments;
         this.shopping = shopping;
+        this.shoppingLists = shoppingLists;
         this.tags = tags;
         this.jdbc = jdbc;
         this.encoder = encoder;
@@ -79,7 +82,7 @@ public class DbService {
                 u.getAvatarUrl(),
                 u.getFollowing().stream().map(UserEntity::getId).collect(Collectors.toSet()),
                 u.getFollowers().stream().map(UserEntity::getId).collect(Collectors.toSet()),
-                shopping.findByUserId(u.getId()).stream().map(this::toShopping).toList()
+                shoppingLists(u.getId())
         );
     }
 
@@ -184,6 +187,14 @@ public class DbService {
                 i.getName(),
                 i.getAmount(),
                 i.isChecked()
+        );
+    }
+
+    public ApiModels.ShoppingList toShoppingList(ShoppingListEntity list) {
+        return new ApiModels.ShoppingList(
+                list.getId(),
+                list.getName(),
+                list.getItems().stream().map(this::toShopping).toList()
         );
     }
 
@@ -339,21 +350,109 @@ public class DbService {
         comments.delete(comment);
     }
 
-    public ShoppingItemEntity addShopping(Long uid, String name, String amount) {
+    public ShoppingListEntity createShoppingList(Long uid, String name) {
+        var list = new ShoppingListEntity();
+        list.setUser(getUserEntity(uid));
+        list.setName(cleanRequired(name, "List name is required"));
+        return shoppingLists.save(list);
+    }
+
+    public ShoppingListEntity updateShoppingList(Long uid, Long listId, String name) {
+        var list = requireShoppingList(uid, listId);
+        list.setName(cleanRequired(name, "List name is required"));
+        return shoppingLists.save(list);
+    }
+
+    public void deleteShoppingList(Long uid, Long listId) {
+        shoppingLists.delete(requireShoppingList(uid, listId));
+    }
+
+    public ShoppingItemEntity addShopping(Long uid, Long listId, String name, String amount) {
+        var list = listId == null ? getOrCreateDefaultShoppingList(uid) : requireShoppingList(uid, listId);
         var i = new ShoppingItemEntity();
         i.setUser(getUserEntity(uid));
-        i.setName(name);
-        i.setAmount(amount);
+        i.setList(list);
+        i.setName(cleanRequired(name, "Item name is required"));
+        i.setAmount((amount == null || amount.isBlank()) ? "1" : amount.trim());
         i.setChecked(false);
         return shopping.save(i);
+    }
+
+    public ShoppingItemEntity addShopping(Long uid, String name, String amount) {
+        return addShopping(uid, null, name, amount);
+    }
+
+    public ShoppingItemEntity updateShoppingItem(Long uid, Long itemId, String name, String amount, Boolean checked) {
+        var item = requireShoppingItem(uid, itemId);
+        if (name != null) {
+            item.setName(cleanRequired(name, "Item name is required"));
+        }
+        if (amount != null) {
+            item.setAmount(amount.isBlank() ? "1" : amount.trim());
+        }
+        if (checked != null) {
+            item.setChecked(checked);
+        }
+        return shopping.save(item);
+    }
+
+    public void deleteShoppingItem(Long uid, Long itemId) {
+        shopping.delete(requireShoppingItem(uid, itemId));
+    }
+
+    public void addRecipeIngredientsToShopping(Long uid, Long recipeId) {
+        var recipe = getPostEntity(recipeId);
+        if (!"RECIPE".equalsIgnoreCase(recipe.getType())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Post is not a recipe");
+        }
+        var list = createShoppingList(uid, recipe.getTitle());
+        for (var ingredient : recipe.getIngredients()) {
+            addShopping(uid, list.getId(), ingredient.getName(), formatAmount(ingredient.getAmount(), ingredient.getUnit()));
+        }
+    }
+
+    private ShoppingListEntity requireShoppingList(Long uid, Long listId) {
+        var list = shoppingLists.findById(listId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shopping list not found"));
+        if (!list.getUser().getId().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Shopping list belongs to another user");
+        }
+        return list;
+    }
+
+    private ShoppingItemEntity requireShoppingItem(Long uid, Long itemId) {
+        var item = shopping.findById(itemId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shopping item not found"));
+        if (!item.getUser().getId().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Shopping item belongs to another user");
+        }
+        return item;
+    }
+
+    private ShoppingListEntity getOrCreateDefaultShoppingList(Long uid) {
+        return shoppingLists.findByUserIdOrderByIdAsc(uid).stream()
+                .findFirst()
+                .orElseGet(() -> createShoppingList(uid, "Мой список"));
+    }
+
+    private String cleanRequired(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+        }
+        return value.trim();
+    }
+
+    private String formatAmount(java.math.BigDecimal amount, String unit) {
+        var amountText = amount == null ? "1" : amount.stripTrailingZeros().toPlainString();
+        return unit == null || unit.isBlank() ? amountText : amountText + " " + unit;
     }
 
     public List<ApiModels.Comment> comments(Long postId) {
         return comments.findByPostIdOrderByCreatedAtAsc(postId).stream().map(this::toComment).toList();
     }
 
-    public List<ApiModels.ShoppingItem> shopping(Long uid) {
-        return shopping.findByUserId(uid).stream().map(this::toShopping).toList();
+    public List<ApiModels.ShoppingList> shoppingLists(Long uid) {
+        return shoppingLists.findByUserIdOrderByIdAsc(uid).stream().map(this::toShoppingList).toList();
     }
 
     public UserEntity saveUser(UserEntity u) {

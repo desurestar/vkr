@@ -94,7 +94,7 @@ public class PostController {
 
     @PostMapping("/recipes/{id}/shopping-list")
     public Map<String, String> addRecipeToShopping(@PathVariable Long id, HttpSession s) {
-        db.addShopping(requireUid(s), "From recipe #" + id, "1");
+        db.addRecipeIngredientsToShopping(requireUid(s), id);
         return Map.of("status", "added");
     }
 
