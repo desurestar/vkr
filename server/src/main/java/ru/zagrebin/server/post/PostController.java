@@ -23,9 +23,39 @@ public class PostController {
             @RequestParam Optional<String> q,
             @RequestParam Optional<Integer> page,
             @RequestParam Optional<Integer> size,
+            @RequestParam Optional<Integer> minTime,
+            @RequestParam Optional<Integer> maxTime,
+            @RequestParam Optional<Double> minCalories,
+            @RequestParam Optional<Double> maxCalories,
+            @RequestParam Optional<Double> minProteins,
+            @RequestParam Optional<Double> maxProteins,
+            @RequestParam Optional<Double> minFats,
+            @RequestParam Optional<Double> maxFats,
+            @RequestParam Optional<Double> minCarbs,
+            @RequestParam Optional<Double> maxCarbs,
+            @RequestParam Optional<List<String>> tags,
             HttpSession s
     ) {
-        return db.postsByType("RECIPE", q.orElse(null), currentUid(s), page.orElse(null), size.orElse(null));
+        return db.postsByType(
+                "RECIPE",
+                q.orElse(null),
+                currentUid(s),
+                page.orElse(null),
+                size.orElse(null),
+                new DbService.PostFilters(
+                        minTime.orElse(null),
+                        maxTime.orElse(null),
+                        minCalories.orElse(null),
+                        maxCalories.orElse(null),
+                        minProteins.orElse(null),
+                        maxProteins.orElse(null),
+                        minFats.orElse(null),
+                        maxFats.orElse(null),
+                        minCarbs.orElse(null),
+                        maxCarbs.orElse(null),
+                        tags.orElse(List.of())
+                )
+        );
     }
 
     @GetMapping("/feed/articles")
@@ -33,9 +63,17 @@ public class PostController {
             @RequestParam Optional<String> q,
             @RequestParam Optional<Integer> page,
             @RequestParam Optional<Integer> size,
+            @RequestParam Optional<List<String>> tags,
             HttpSession s
     ) {
-        return db.postsByType("ARTICLE", q.orElse(null), currentUid(s), page.orElse(null), size.orElse(null));
+        return db.postsByType(
+                "ARTICLE",
+                q.orElse(null),
+                currentUid(s),
+                page.orElse(null),
+                size.orElse(null),
+                DbService.PostFilters.tagsOnly(tags.orElse(List.of()))
+        );
     }
 
     @GetMapping("/tags")

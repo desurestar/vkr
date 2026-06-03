@@ -22,14 +22,26 @@ interface FeedApi {
     suspend fun getRecipesFeed(
         @Query("q") query: String? = null,
         @Query("page") page: Int? = null,
-        @Query("size") size: Int? = null
+        @Query("size") size: Int? = null,
+        @Query("minTime") minTime: Int? = null,
+        @Query("maxTime") maxTime: Int? = null,
+        @Query("minCalories") minCalories: Double? = null,
+        @Query("maxCalories") maxCalories: Double? = null,
+        @Query("minProteins") minProteins: Double? = null,
+        @Query("maxProteins") maxProteins: Double? = null,
+        @Query("minFats") minFats: Double? = null,
+        @Query("maxFats") maxFats: Double? = null,
+        @Query("minCarbs") minCarbs: Double? = null,
+        @Query("maxCarbs") maxCarbs: Double? = null,
+        @Query("tags") tags: List<String>? = null
     ): List<FeedItemDto>
 
     @GET("api/v1/feed/articles")
     suspend fun getArticlesFeed(
         @Query("q") query: String? = null,
         @Query("page") page: Int? = null,
-        @Query("size") size: Int? = null
+        @Query("size") size: Int? = null,
+        @Query("tags") tags: List<String>? = null
     ): List<FeedItemDto>
 
     @GET("api/v1/recipes/{id}")

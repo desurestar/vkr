@@ -31,6 +31,7 @@ import ru.zagrebin.front_mobile.domain.model.RecipeDetails
 import ru.zagrebin.front_mobile.domain.model.RecipeIngredient
 import ru.zagrebin.front_mobile.domain.model.RecipeStep
 import ru.zagrebin.front_mobile.domain.model.RecipeTag
+import ru.zagrebin.front_mobile.ui.screens.feed.FeedFilters
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
@@ -52,9 +53,29 @@ class FeedRepository(
 
     suspend fun refreshRecipes(): RefreshResult = loadRecipes().toRefreshResult()
 
-    suspend fun loadRecipesPage(query: String, page: Int, pageSize: Int): ServerFirstResult<List<FeedItem>> =
+    suspend fun loadRecipesPage(
+        query: String,
+        page: Int,
+        pageSize: Int,
+        filters: FeedFilters = FeedFilters()
+    ): ServerFirstResult<List<FeedItem>> =
         loadFeedItemsPage(TYPE_RECIPE, page) {
-            feedApi.getRecipesFeed(query.takeIf { it.isNotBlank() }, page, pageSize)
+            feedApi.getRecipesFeed(
+                query = query.takeIf { it.isNotBlank() },
+                page = page,
+                size = pageSize,
+                minTime = filters.minTime.toIntOrNull(),
+                maxTime = filters.maxTime.toIntOrNull(),
+                minCalories = filters.minCalories.toDoubleOrNull(),
+                maxCalories = filters.maxCalories.toDoubleOrNull(),
+                minProteins = filters.minProteins.toDoubleOrNull(),
+                maxProteins = filters.maxProteins.toDoubleOrNull(),
+                minFats = filters.minFats.toDoubleOrNull(),
+                maxFats = filters.maxFats.toDoubleOrNull(),
+                minCarbs = filters.minCarbs.toDoubleOrNull(),
+                maxCarbs = filters.maxCarbs.toDoubleOrNull(),
+                tags = filters.selectedTags.map { it.title }.takeIf { it.isNotEmpty() }
+            )
         }
 
     suspend fun searchRecipes(query: String, page: Int, pageSize: Int): ServerFirstResult<List<FeedItem>> {
@@ -75,9 +96,19 @@ class FeedRepository(
 
     suspend fun refreshArticles(): RefreshResult = loadArticles().toRefreshResult()
 
-    suspend fun loadArticlesPage(query: String, page: Int, pageSize: Int): ServerFirstResult<List<FeedItem>> =
+    suspend fun loadArticlesPage(
+        query: String,
+        page: Int,
+        pageSize: Int,
+        filters: FeedFilters = FeedFilters()
+    ): ServerFirstResult<List<FeedItem>> =
         loadFeedItemsPage(TYPE_ARTICLE, page) {
-            feedApi.getArticlesFeed(query.takeIf { it.isNotBlank() }, page, pageSize)
+            feedApi.getArticlesFeed(
+                query = query.takeIf { it.isNotBlank() },
+                page = page,
+                size = pageSize,
+                tags = filters.selectedTags.map { it.title }.takeIf { it.isNotEmpty() }
+            )
         }
 
     suspend fun loadDrafts(): ServerFirstResult<List<FeedItem>> {
@@ -186,6 +217,35 @@ class FeedRepository(
             loadArticles()
             CreateArticleResult.Success(createdArticle.id)
         }.getOrElse { CreateArticleResult.Fallback }
+    }
+
+    suspend fun loadTags(query: String? = null): ServerFirstResult<List<RecipeTag>> {
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            return ServerFirstResult(
+                tagDao.getAll()
+                    .filter { query.isNullOrBlank() || it.name.contains(query, ignoreCase = true) || it.label?.contains(query, ignoreCase = true) == true }
+                    .map { RecipeTag(it.id.toInt(), it.label?.takeIf(String::isNotBlank) ?: it.name) },
+                isFromCache = true
+            )
+        }
+
+        return runCatching { feedApi.getTags(query?.takeIf { it.isNotBlank() }) }
+            .fold(
+                onSuccess = { tags ->
+                    if (query.isNullOrBlank()) {
+                        tagDao.replaceAll(tags.map { TagEntity(it.id, it.name, it.label) })
+                    }
+                    ServerFirstResult(tags.toFeedRecipeTags(), isFromCache = false)
+                },
+                onFailure = {
+                    ServerFirstResult(
+                        tagDao.getAll()
+                            .filter { query.isNullOrBlank() || it.name.contains(query, ignoreCase = true) || it.label?.contains(query, ignoreCase = true) == true }
+                            .map { RecipeTag(it.id.toInt(), it.label?.takeIf(String::isNotBlank) ?: it.name) },
+                        isFromCache = true
+                    )
+                }
+            )
     }
 
     suspend fun loadTagLabels(): ServerFirstResult<List<String>> {
