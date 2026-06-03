@@ -12,14 +12,39 @@ import ru.zagrebin.server.common.ApiModels;
 import ru.zagrebin.server.data.entity.*;
 import ru.zagrebin.server.data.repo.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class DbService {
+
+    public record PostFilters(
+            Integer minTime,
+            Integer maxTime,
+            Double minCalories,
+            Double maxCalories,
+            Double minProteins,
+            Double maxProteins,
+            Double minFats,
+            Double maxFats,
+            Double minCarbs,
+            Double maxCarbs,
+            List<String> tags
+    ) {
+        public static PostFilters empty() {
+            return tagsOnly(List.of());
+        }
+
+        public static PostFilters tagsOnly(List<String> tags) {
+            return new PostFilters(null, null, null, null, null, null, null, null, null, null, tags);
+        }
+    }
 
     private final UserRepository users;
     private final PostRepository posts;
@@ -209,19 +234,85 @@ public class DbService {
     }
 
     public List<ApiModels.Post> postsByType(String type, String q, Long currentUserId, Integer page, Integer size) {
-        var normalizedQuery = q == null || q.isBlank() ? null : q.trim();
-        var pageable = page != null && size != null
-                ? PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50), Sort.by(Sort.Direction.DESC, "createdAt"))
-                : null;
-        var list = normalizedQuery == null
-                ? (pageable == null
-                        ? posts.findByTypeIgnoreCaseAndStatusIgnoreCase(type, "PUBLISHED")
-                        : posts.findByTypeIgnoreCaseAndStatusIgnoreCase(type, "PUBLISHED", pageable))
-                : (pageable == null
-                        ? posts.findByTypeIgnoreCaseAndStatusIgnoreCaseAndTitleContainingIgnoreCase(type, "PUBLISHED", normalizedQuery)
-                        : posts.findByTypeIgnoreCaseAndStatusIgnoreCaseAndTitleContainingIgnoreCase(type, "PUBLISHED", normalizedQuery, pageable));
+        return postsByType(type, q, currentUserId, page, size, PostFilters.empty());
+    }
 
-        return list.stream().map(post -> toPost(post, currentUserId)).toList();
+    public List<ApiModels.Post> postsByType(
+            String type,
+            String q,
+            Long currentUserId,
+            Integer page,
+            Integer size,
+            PostFilters filters
+    ) {
+        var normalizedQuery = q == null || q.isBlank() ? null : q.trim();
+        var pageIndex = Math.max(page == null ? 0 : page, 0);
+        var pageSize = Math.min(Math.max(size == null ? Integer.MAX_VALUE : size, 1), 50);
+        var selectedTags = normalizeTags(filters == null ? List.of() : filters.tags());
+
+        return posts.findByTypeIgnoreCaseAndStatusIgnoreCase(type, "PUBLISHED").stream()
+                .filter(post -> normalizedQuery == null || post.getTitle().toLowerCase().contains(normalizedQuery.toLowerCase()))
+                .filter(post -> matchesPostFilters(post, filters, selectedTags))
+                .sorted(Comparator.comparing(PostEntity::getCreatedAt).reversed())
+                .skip(page == null || size == null ? 0 : (long) pageIndex * pageSize)
+                .limit(page == null || size == null ? Long.MAX_VALUE : pageSize)
+                .map(post -> toPost(post, currentUserId))
+                .toList();
+    }
+
+    private Set<String> normalizeTags(List<String> rawTags) {
+        if (rawTags == null) {
+            return Set.of();
+        }
+        return rawTags.stream()
+                .filter(tag -> tag != null && !tag.isBlank())
+                .map(tag -> tag.replace("#", "").trim().toLowerCase())
+                .collect(Collectors.toSet());
+    }
+
+    private boolean matchesPostFilters(PostEntity post, PostFilters filters, Set<String> selectedTags) {
+        if (filters == null) {
+            return selectedTags.isEmpty();
+        }
+        return matchesRange(post.getCookTimeMinutes(), filters.minTime(), filters.maxTime())
+                && matchesRange(post.getKcalPer100(), filters.minCalories(), filters.maxCalories())
+                && matchesRange(post.getProteinsPer100(), filters.minProteins(), filters.maxProteins())
+                && matchesRange(post.getFatsPer100(), filters.minFats(), filters.maxFats())
+                && matchesRange(post.getCarbsPer100(), filters.minCarbs(), filters.maxCarbs())
+                && matchesTags(post, selectedTags);
+    }
+
+    private boolean matchesRange(Integer value, Integer min, Integer max) {
+        if (min == null && max == null) {
+            return true;
+        }
+        if (value == null) {
+            return false;
+        }
+        return (min == null || value >= min) && (max == null || value <= max);
+    }
+
+    private boolean matchesRange(BigDecimal value, Double min, Double max) {
+        if (min == null && max == null) {
+            return true;
+        }
+        if (value == null) {
+            return false;
+        }
+        var current = value.doubleValue();
+        return (min == null || current >= min) && (max == null || current <= max);
+    }
+
+    private boolean matchesTags(PostEntity post, Set<String> selectedTags) {
+        if (selectedTags.isEmpty()) {
+            return true;
+        }
+        var postTags = post.getTags().stream()
+                .flatMap(tag -> List.of(tag.getName(), tag.getLabel()).stream())
+                .filter(tag -> tag != null && !tag.isBlank())
+                .map(tag -> tag.replace("#", "").trim().toLowerCase())
+                .collect(Collectors.toSet());
+        return postTags.containsAll(selectedTags);
     }
 
     @Transactional(readOnly = true)
@@ -229,10 +320,12 @@ public class DbService {
         return postsByAuthor(authorId, null);
     }
 
+
     @Transactional(readOnly = true)
     public List<ApiModels.Post> postsByAuthor(Long authorId, Long currentUserId) {
         return postsByAuthor(authorId, currentUserId, null, null, null);
     }
+
 
     @Transactional(readOnly = true)
     public List<ApiModels.Post> postsByAuthor(Long authorId, Long currentUserId, String q, Integer page, Integer size) {

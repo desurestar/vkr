@@ -6,32 +6,27 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -57,19 +52,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.ui.components.postCard.ArticleCardContent
+import ru.zagrebin.front_mobile.ui.screens.feed.FeedFiltersSheet
 import ru.zagrebin.front_mobile.ui.screens.feed.UserSearchState
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.FilterButtonCornerRadius
 import ru.zagrebin.front_mobile.ui.theme.FilterButtonIconPadding
 import ru.zagrebin.front_mobile.ui.theme.FilterButtonTonalElevation
-import ru.zagrebin.front_mobile.ui.theme.FilterFieldContainerColor
-import ru.zagrebin.front_mobile.ui.theme.FilterFieldCornerRadius
-import ru.zagrebin.front_mobile.ui.theme.FilterRangeFieldsSpacing
-import ru.zagrebin.front_mobile.ui.theme.FilterSheetBottomSpacer
-import ru.zagrebin.front_mobile.ui.theme.FilterSheetContentSpacing
-import ru.zagrebin.front_mobile.ui.theme.FilterSheetCornerRadius
-import ru.zagrebin.front_mobile.ui.theme.FilterSheetHorizontalPadding
-import ru.zagrebin.front_mobile.ui.theme.FilterSheetVerticalPadding
 import ru.zagrebin.front_mobile.ui.theme.ListBottomPadding
 import ru.zagrebin.front_mobile.ui.theme.ScrollTopButtonBottomPadding
 import ru.zagrebin.front_mobile.ui.theme.ScrollTopButtonContainerColor
@@ -83,7 +71,7 @@ import ru.zagrebin.front_mobile.ui.theme.SearchFieldCornerRadius
 import ru.zagrebin.front_mobile.ui.theme.TopBarHeight
 import ru.zagrebin.front_mobile.ui.theme.TransparentColor
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ArticlesFeedScreen(
     viewModel: ArticlesViewModel = viewModel(),
@@ -96,10 +84,6 @@ fun ArticlesFeedScreen(
     val scope = rememberCoroutineScope()
 
     var isFilterSheetOpen by rememberSaveable { mutableStateOf(false) }
-    var minTime by rememberSaveable { mutableStateOf("") }
-    var maxTime by rememberSaveable { mutableStateOf("") }
-    var minCalories by rememberSaveable { mutableStateOf("") }
-    var maxCalories by rememberSaveable { mutableStateOf("") }
 
     val topBarHeight = TopBarHeight
     val topContentPadding = topBarHeight
@@ -216,56 +200,25 @@ fun ArticlesFeedScreen(
     }
 
     if (isFilterSheetOpen) {
-        ModalBottomSheet(
-            onDismissRequest = { isFilterSheetOpen = false },
-            containerColor = AppPageBackgroundColor,
-            contentColor = MaterialTheme.colorScheme.onBackground,
-            shape = RoundedCornerShape(
-                topStart = FilterSheetCornerRadius,
-                topEnd = FilterSheetCornerRadius
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = FilterSheetHorizontalPadding,
-                        vertical = FilterSheetVerticalPadding
-                    )
-                    .navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(FilterSheetContentSpacing)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Фильтры", style = MaterialTheme.typography.titleLarge)
-                    IconButton(onClick = { isFilterSheetOpen = false }) {
-                        Icon(imageVector = Icons.Outlined.Close, contentDescription = "Закрыть")
-                    }
-                }
-
-                Text(text = "Время готовки, мин", style = MaterialTheme.typography.titleMedium)
-                FilterRangeRow(
-                    fromValue = minTime,
-                    toValue = maxTime,
-                    onFromChange = { minTime = it },
-                    onToChange = { maxTime = it }
-                )
-
-                Text(text = "Калории", style = MaterialTheme.typography.titleMedium)
-                FilterRangeRow(
-                    fromValue = minCalories,
-                    toValue = maxCalories,
-                    onFromChange = { minCalories = it },
-                    onToChange = { maxCalories = it }
-                )
-
-                Spacer(modifier = Modifier.height(FilterSheetBottomSpacer))
-            }
-        }
+        FeedFiltersSheet(
+            title = "Фильтры статей",
+            filters = state.filters,
+            tagQuery = state.tagQuery,
+            tagSuggestions = state.tagSuggestions,
+            showRecipeRanges = false,
+            onFilterChange = viewModel::onFilterDraftChange,
+            onTagQueryChange = viewModel::onTagQueryChange,
+            onAddTag = viewModel::onFilterTagAdd,
+            onRemoveTag = viewModel::onFilterTagRemove,
+            onApply = {
+                viewModel.onFilterApply()
+                isFilterSheetOpen = false
+            },
+            onClear = viewModel::onFilterClear,
+            onDismiss = { isFilterSheetOpen = false }
+        )
     }
+
 }
 
 @Composable
@@ -356,53 +309,5 @@ private fun SearchTopBar(
                 modifier = Modifier.padding(FilterButtonIconPadding)
             )
         }
-    }
-}
-
-@Composable
-private fun FilterRangeRow(
-    fromValue: String,
-    toValue: String,
-    onFromChange: (String) -> Unit,
-    onToChange: (String) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(FilterRangeFieldsSpacing),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        TextField(
-            value = fromValue,
-            onValueChange = onFromChange,
-            placeholder = { Text("От") },
-            singleLine = true,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(FilterFieldCornerRadius),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = FilterFieldContainerColor,
-                unfocusedContainerColor = FilterFieldContainerColor,
-                focusedIndicatorColor = TransparentColor,
-                unfocusedIndicatorColor = TransparentColor,
-                disabledIndicatorColor = TransparentColor
-            )
-        )
-
-        Text(text = "—")
-
-        TextField(
-            value = toValue,
-            onValueChange = onToChange,
-            placeholder = { Text("До") },
-            singleLine = true,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(FilterFieldCornerRadius),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = FilterFieldContainerColor,
-                unfocusedContainerColor = FilterFieldContainerColor,
-                focusedIndicatorColor = TransparentColor,
-                unfocusedIndicatorColor = TransparentColor,
-                disabledIndicatorColor = TransparentColor
-            )
-        )
     }
 }

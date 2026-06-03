@@ -16,6 +16,7 @@ import ru.zagrebin.front_mobile.data.remote.api.UserProfileDto
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
+import ru.zagrebin.front_mobile.ui.screens.feed.FeedFilters
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedState
 import ru.zagrebin.front_mobile.ui.screens.feed.UserSearchState
 
@@ -24,6 +25,13 @@ private const val NEXT_PAGE_SIZE = 5
 private const val SEARCH_DEBOUNCE_MS = 400L
 
 private data class LikeOverride(val isLiked: Boolean, val likes: String)
+private data class ArticleDecorations(
+    val likeOverrides: Map<Int, LikeOverride>,
+    val users: List<UserProfileDto>,
+    val filters: FeedFilters,
+    val tagQuery: String,
+    val tagSuggestions: List<TagState>
+)
 private data class PagingState(
     val isLoadingNextPage: Boolean = false,
     val hasMorePages: Boolean = true,
@@ -37,11 +45,22 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
     private val errorMessage = MutableStateFlow<String?>(null)
     private val userResults = MutableStateFlow<List<UserProfileDto>>(emptyList())
     private val likeOverrides = MutableStateFlow<Map<Int, LikeOverride>>(emptyMap())
+    private val filters = MutableStateFlow(FeedFilters())
+    private val tagQuery = MutableStateFlow("")
+    private val tagSuggestions = MutableStateFlow<List<TagState>>(emptyList())
     private val pagingState = MutableStateFlow(PagingState())
     private var nextPage = 0
     private var searchJob: Job? = null
 
-    private val searchDecorations = combine(likeOverrides, userResults) { overrides, users -> overrides to users }
+    private val searchDecorations = combine(
+        likeOverrides,
+        userResults,
+        filters,
+        tagQuery,
+        tagSuggestions
+    ) { overrides, users, currentFilters, currentTagQuery, currentTagSuggestions ->
+        ArticleDecorations(overrides, users, currentFilters, currentTagQuery, currentTagSuggestions)
+    }
 
     val state: StateFlow<FeedState> = combine(
         posts,
@@ -50,20 +69,23 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
         searchDecorations,
         pagingState
     ) { loadedPosts, q, error, decorations, paging ->
-        val (overrides, users) = decorations
         FeedState(
-            posts = loadedPosts.map { it.applyLikeOverride(overrides[it.id]).toUi() },
+            posts = loadedPosts.map { it.applyLikeOverride(decorations.likeOverrides[it.id]).toUi() },
             searchQuery = q,
             errorMessage = error,
             isUsingFallback = paging.isUsingFallback,
             isLoadingNextPage = paging.isLoadingNextPage,
             hasMorePages = paging.hasMorePages,
-            userResults = users.map { it.toUserSearchState() },
-            isUserSearch = q.trimStart().startsWith("@")
+            userResults = decorations.users.map { it.toUserSearchState() },
+            isUserSearch = q.trimStart().startsWith("@"),
+            filters = decorations.filters,
+            tagQuery = decorations.tagQuery,
+            tagSuggestions = decorations.tagSuggestions
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedState())
 
     init {
+        loadTagSuggestions("")
         retryRefresh()
     }
 
@@ -77,7 +99,7 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
         if (paging.isLoadingNextPage || !paging.hasMorePages || posts.value.isEmpty()) return
         viewModelScope.launch {
             pagingState.value = pagingState.value.copy(isLoadingNextPage = true)
-            val result = container.feedRepository.loadArticlesPage(query.value, nextPage, NEXT_PAGE_SIZE)
+            val result = container.feedRepository.loadArticlesPage(query.value, nextPage, NEXT_PAGE_SIZE, filters.value)
             if (result.isFromCache) {
                 errorMessage.value = "Сервер недоступен. Показан офлайн-кеш."
                 pagingState.value = pagingState.value.copy(hasMorePages = false, isUsingFallback = true)
@@ -102,7 +124,52 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun onTagClick(postId: Int, tagId: Int) = Unit
+    fun onFilterDraftChange(nextFilters: FeedFilters) {
+        filters.value = nextFilters.copy(
+            minTime = "",
+            maxTime = "",
+            minCalories = "",
+            maxCalories = "",
+            minProteins = "",
+            maxProteins = "",
+            minFats = "",
+            maxFats = "",
+            minCarbs = "",
+            maxCarbs = ""
+        )
+    }
+
+    fun onFilterApply() {
+        loadFirstPage(query.value)
+    }
+
+    fun onFilterClear() {
+        filters.value = FeedFilters()
+        tagQuery.value = ""
+        loadTagSuggestions("")
+        loadFirstPage(query.value)
+    }
+
+    fun onTagQueryChange(newQuery: String) {
+        tagQuery.value = newQuery
+        loadTagSuggestions(newQuery)
+    }
+
+    fun onFilterTagAdd(tag: TagState) {
+        filters.value = filters.value.copy(
+            selectedTags = (filters.value.selectedTags + tag.copy(isHighlighted = true)).distinctBy { it.id }
+        )
+    }
+
+    fun onFilterTagRemove(tagId: Int) {
+        filters.value = filters.value.copy(selectedTags = filters.value.selectedTags.filterNot { it.id == tagId })
+    }
+
+    fun onTagClick(postId: Int, tagId: Int) {
+        val tag = state.value.posts.firstOrNull { it.id == postId }?.tags?.firstOrNull { it.id == tagId } ?: return
+        onFilterTagAdd(tag)
+        loadFirstPage(query.value)
+    }
 
     fun onLikeClick(postId: Int) {
         val current = state.value.posts.firstOrNull { it.id == postId } ?: return
@@ -136,7 +203,7 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
             if (debounce) delay(SEARCH_DEBOUNCE_MS)
             pagingState.value = PagingState()
             nextPage = 0
-            val result = container.feedRepository.loadArticlesPage(searchQuery, nextPage, INITIAL_PAGE_SIZE)
+            val result = container.feedRepository.loadArticlesPage(searchQuery, nextPage, INITIAL_PAGE_SIZE, filters.value)
             posts.value = result.data
             nextPage = 1
             pagingState.value = pagingState.value.copy(hasMorePages = !result.isFromCache && result.data.size >= INITIAL_PAGE_SIZE)
@@ -147,6 +214,16 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
                 errorMessage.value = null
                 pagingState.value = pagingState.value.copy(isUsingFallback = false)
             }
+        }
+    }
+
+    private fun loadTagSuggestions(searchQuery: String) {
+        viewModelScope.launch {
+            val result = container.feedRepository.loadTags(searchQuery)
+            tagSuggestions.value = result.data
+                .filterNot { tag -> filters.value.selectedTags.any { it.id == tag.id } }
+                .take(12)
+                .map { TagState(it.id, it.name) }
         }
     }
 
