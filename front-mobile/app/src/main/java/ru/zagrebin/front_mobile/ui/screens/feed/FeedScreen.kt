@@ -34,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardContent
 import ru.zagrebin.front_mobile.ui.theme.FilterButtonCornerRadius
@@ -97,6 +98,19 @@ fun FeedScreen(
         if (result == SnackbarResult.ActionPerformed) {
             viewModel.retryRefresh()
         }
+    }
+
+    LaunchedEffect(listState, state.posts.size, state.hasMorePages, state.isLoadingNextPage) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { firstVisibleIndex ->
+                val shouldLoadNextPage = state.hasMorePages &&
+                    !state.isLoadingNextPage &&
+                    state.posts.size >= 10 &&
+                    firstVisibleIndex >= state.posts.size - 5
+                if (shouldLoadNextPage) {
+                    viewModel.loadNextPage()
+                }
+            }
     }
 
     Box(

@@ -6,5 +6,7 @@ data class FeedState(
     val posts: List<PostCardState> = emptyList(),
     val searchQuery: String = "",
     val errorMessage: String? = null,
-    val isUsingFallback: Boolean = false
+    val isUsingFallback: Boolean = false,
+    val isLoadingNextPage: Boolean = false,
+    val hasMorePages: Boolean = true
 )

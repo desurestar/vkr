@@ -16,6 +16,15 @@ import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 
 private const val RECIPE_TYPE = "RECIPE"
 private const val ARTICLE_TYPE = "ARTICLE"
+private const val INITIAL_PAGE_SIZE = 10
+private const val NEXT_PAGE_SIZE = 5
+
+private data class MyPostsPagingState(
+    val isLoadingNextPage: Boolean = false,
+    val hasMoreRecipes: Boolean = true,
+    val hasMoreArticles: Boolean = true,
+    val isUsingFallback: Boolean = false
+)
 
 data class MyPostsState(
     val recipes: List<PostCardState> = emptyList(),
@@ -23,31 +32,43 @@ data class MyPostsState(
     val savedPosts: List<PostCardState> = emptyList(),
     val currentUserId: Long? = null,
     val errorMessage: String? = null,
-    val isUsingFallback: Boolean = false
+    val isUsingFallback: Boolean = false,
+    val isLoadingNextPage: Boolean = false,
+    val hasMoreRecipes: Boolean = true,
+    val hasMoreArticles: Boolean = true,
+    val hasMoreSavedPosts: Boolean = true
 )
 
 class MyPostsViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
+    private val recipes = MutableStateFlow<List<FeedItem>>(emptyList())
+    private val articles = MutableStateFlow<List<FeedItem>>(emptyList())
     private val currentUserId = MutableStateFlow<Long?>(null)
     private val errorMessage = MutableStateFlow<String?>(null)
-    private val isUsingFallback = MutableStateFlow(false)
+    private val pagingState = MutableStateFlow(MyPostsPagingState())
+    private var nextRecipesPage = 0
+    private var nextArticlesPage = 0
 
     val state: StateFlow<MyPostsState> = combine(
-        container.observeRecipesFeedUseCase(),
-        container.observeArticlesFeedUseCase(),
+        recipes,
+        articles,
         currentUserId,
         errorMessage,
-        isUsingFallback
-    ) { recipes, articles, userId, error, fallback ->
-        val recipePosts = recipes.map { it.toUi(RECIPE_TYPE) }
-        val articlePosts = articles.map { it.toUi(ARTICLE_TYPE) }
+        pagingState
+    ) { recipeItems, articleItems, userId, error, paging ->
+        val recipePosts = recipeItems.map { it.toUi(RECIPE_TYPE) }
+        val articlePosts = articleItems.map { it.toUi(ARTICLE_TYPE) }
         MyPostsState(
             recipes = recipePosts.filterByAuthor(userId),
             articles = articlePosts.filterByAuthor(userId),
             savedPosts = (recipePosts + articlePosts).filter { it.isLiked },
             currentUserId = userId,
             errorMessage = error,
-            isUsingFallback = fallback
+            isUsingFallback = paging.isUsingFallback,
+            isLoadingNextPage = paging.isLoadingNextPage,
+            hasMoreRecipes = paging.hasMoreRecipes,
+            hasMoreArticles = paging.hasMoreArticles,
+            hasMoreSavedPosts = paging.hasMoreRecipes || paging.hasMoreArticles
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MyPostsState())
 
@@ -58,10 +79,21 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
     fun retryRefresh() {
         viewModelScope.launch {
             currentUserId.value = container.feedRepository.currentUserId()
-            val recipesResult = container.feedRepository.loadRecipes()
-            val articlesResult = container.feedRepository.loadArticles()
+            nextRecipesPage = 0
+            nextArticlesPage = 0
+            pagingState.value = MyPostsPagingState()
+            val recipesResult = container.feedRepository.loadRecipesPage("", nextRecipesPage, INITIAL_PAGE_SIZE)
+            val articlesResult = container.feedRepository.loadArticlesPage("", nextArticlesPage, INITIAL_PAGE_SIZE)
+            recipes.value = recipesResult.data
+            articles.value = articlesResult.data
+            nextRecipesPage = 1
+            nextArticlesPage = 1
+            pagingState.value = pagingState.value.copy(
+                hasMoreRecipes = !recipesResult.isFromCache && recipesResult.data.size >= INITIAL_PAGE_SIZE,
+                hasMoreArticles = !articlesResult.isFromCache && articlesResult.data.size >= INITIAL_PAGE_SIZE,
+                isUsingFallback = recipesResult.isFromCache || articlesResult.isFromCache
+            )
             val usesCache = recipesResult.isFromCache || articlesResult.isFromCache
-            isUsingFallback.value = usesCache
             errorMessage.value = if (usesCache) {
                 "Сервер недоступен. Показан офлайн-кеш."
             } else {
@@ -69,6 +101,15 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+
+    fun loadNextRecipesPage() = loadNextPage(loadRecipes = true, loadArticles = false)
+
+    fun loadNextArticlesPage() = loadNextPage(loadRecipes = false, loadArticles = true)
+
+    fun loadNextSavedPostsPage() = loadNextPage(
+        loadRecipes = pagingState.value.hasMoreRecipes,
+        loadArticles = pagingState.value.hasMoreArticles
+    )
 
     fun onTagClick(postId: Int, tagId: Int) = Unit
 
@@ -78,7 +119,56 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
             val success = container.feedRepository.toggleLike(postId, !current.isLiked)
             if (!success) {
                 errorMessage.value = "Не удалось синхронизировать лайк с сервером."
+            } else {
+                val update: (FeedItem) -> FeedItem = { item ->
+                    if (item.id == postId) item.withOptimisticLike(!current.isLiked) else item
+                }
+                recipes.value = recipes.value.map(update)
+                articles.value = articles.value.map(update)
             }
+        }
+    }
+
+    private fun loadNextPage(loadRecipes: Boolean, loadArticles: Boolean) {
+        val paging = pagingState.value
+        if (paging.isLoadingNextPage) return
+        if ((!loadRecipes || !paging.hasMoreRecipes) && (!loadArticles || !paging.hasMoreArticles)) return
+        viewModelScope.launch {
+            pagingState.value = pagingState.value.copy(isLoadingNextPage = true)
+            var usesCache = false
+            var loadedAny = false
+            if (loadRecipes && pagingState.value.hasMoreRecipes) {
+                val result = container.feedRepository.loadRecipesPage("", nextRecipesPage, NEXT_PAGE_SIZE)
+                usesCache = usesCache || result.isFromCache
+                if (result.isFromCache) {
+                    pagingState.value = pagingState.value.copy(hasMoreRecipes = false)
+                } else {
+                    recipes.value = (recipes.value + result.data).distinctBy { it.id }
+                    nextRecipesPage += 1
+                    pagingState.value = pagingState.value.copy(hasMoreRecipes = result.data.size >= NEXT_PAGE_SIZE)
+                    loadedAny = loadedAny || result.data.isNotEmpty()
+                }
+            }
+            if (loadArticles && pagingState.value.hasMoreArticles) {
+                val result = container.feedRepository.loadArticlesPage("", nextArticlesPage, NEXT_PAGE_SIZE)
+                usesCache = usesCache || result.isFromCache
+                if (result.isFromCache) {
+                    pagingState.value = pagingState.value.copy(hasMoreArticles = false)
+                } else {
+                    articles.value = (articles.value + result.data).distinctBy { it.id }
+                    nextArticlesPage += 1
+                    pagingState.value = pagingState.value.copy(hasMoreArticles = result.data.size >= NEXT_PAGE_SIZE)
+                    loadedAny = loadedAny || result.data.isNotEmpty()
+                }
+            }
+            if (usesCache) {
+                errorMessage.value = "Сервер недоступен. Показан офлайн-кеш."
+                pagingState.value = pagingState.value.copy(isUsingFallback = true)
+            } else if (loadedAny) {
+                errorMessage.value = null
+                pagingState.value = pagingState.value.copy(isUsingFallback = false)
+            }
+            pagingState.value = pagingState.value.copy(isLoadingNextPage = false)
         }
     }
 
@@ -106,4 +196,14 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
         views = views,
         tags = tags.map { TagState(it.id, it.name) }
     )
+}
+
+private fun FeedItem.withOptimisticLike(nextLiked: Boolean): FeedItem {
+    val currentLikes = likes.toIntOrNull() ?: 0
+    val delta = when {
+        nextLiked && !isLiked -> 1
+        !nextLiked && isLiked -> -1
+        else -> 0
+    }
+    return copy(isLiked = nextLiked, likes = (currentLikes + delta).coerceAtLeast(0).toString())
 }

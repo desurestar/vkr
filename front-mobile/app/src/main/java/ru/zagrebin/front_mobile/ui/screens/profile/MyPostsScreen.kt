@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.ui.components.postCard.ArticleCardContent
@@ -109,6 +110,28 @@ fun MyPostsScreen(
                 }
                 previousIndex = index
                 previousOffset = offset
+            }
+    }
+
+    LaunchedEffect(listState, selectedTab, filteredPosts.size, state.isLoadingNextPage) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { firstVisibleIndex ->
+                val hasMorePages = when (selectedTab) {
+                    MyPostsTab.Recipes -> state.hasMoreRecipes
+                    MyPostsTab.Articles -> state.hasMoreArticles
+                    MyPostsTab.Saved -> state.hasMoreSavedPosts
+                }
+                val shouldLoadNextPage = hasMorePages &&
+                    !state.isLoadingNextPage &&
+                    filteredPosts.size >= 10 &&
+                    firstVisibleIndex >= filteredPosts.size - 5
+                if (shouldLoadNextPage) {
+                    when (selectedTab) {
+                        MyPostsTab.Recipes -> myPostsViewModel.loadNextRecipesPage()
+                        MyPostsTab.Articles -> myPostsViewModel.loadNextArticlesPage()
+                        MyPostsTab.Saved -> myPostsViewModel.loadNextSavedPostsPage()
+                    }
+                }
             }
     }
 

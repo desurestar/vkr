@@ -51,6 +51,11 @@ class FeedRepository(
 
     suspend fun refreshRecipes(): RefreshResult = loadRecipes().toRefreshResult()
 
+    suspend fun loadRecipesPage(query: String, page: Int, pageSize: Int): ServerFirstResult<List<FeedItem>> =
+        loadFeedItemsPage(TYPE_RECIPE, page) {
+            feedApi.getRecipesFeed(query.takeIf { it.isNotBlank() }, page, pageSize)
+        }
+
     suspend fun searchRecipes(query: String, page: Int, pageSize: Int): ServerFirstResult<List<FeedItem>> {
         if (!networkConnectionChecker.isNetworkAvailable()) {
             return ServerFirstResult(emptyList(), isFromCache = true)
@@ -68,6 +73,11 @@ class FeedRepository(
     }
 
     suspend fun refreshArticles(): RefreshResult = loadArticles().toRefreshResult()
+
+    suspend fun loadArticlesPage(query: String, page: Int, pageSize: Int): ServerFirstResult<List<FeedItem>> =
+        loadFeedItemsPage(TYPE_ARTICLE, page) {
+            feedApi.getArticlesFeed(query.takeIf { it.isNotBlank() }, page, pageSize)
+        }
 
     suspend fun loadDrafts(): ServerFirstResult<List<FeedItem>> {
         if (!networkConnectionChecker.isNetworkAvailable()) {
@@ -204,6 +214,29 @@ class FeedRepository(
         }
 
         return ServerFirstResult(cachedItems.toDomain(), isFromCache = true)
+    }
+
+    private suspend fun loadFeedItemsPage(
+        type: String,
+        page: Int,
+        remoteRequest: suspend () -> List<FeedItemDto>
+    ): ServerFirstResult<List<FeedItem>> {
+        val cachedItems = feedDao.getByType(type)
+        if (networkConnectionChecker.isNetworkAvailable()) {
+            runCatching {
+                val cachedImagesById = cachedItems.associate { it.id to it.imageUrl }
+                remoteRequest().map { it.toEntity(type).withFallbackImage(cachedImagesById[it.id]) }
+            }.onSuccess { items ->
+                if (page == 0) {
+                    feedDao.replaceByType(type, items.savedForCache())
+                } else {
+                    upsertSavedFeedItems(items.savedForCache())
+                }
+                return ServerFirstResult(items.toDomain(), isFromCache = false)
+            }
+        }
+
+        return ServerFirstResult(if (page == 0) cachedItems.toDomain() else emptyList(), isFromCache = true)
     }
 
     private suspend fun refreshFromServer(syncBlock: suspend () -> Unit): RefreshResult {
