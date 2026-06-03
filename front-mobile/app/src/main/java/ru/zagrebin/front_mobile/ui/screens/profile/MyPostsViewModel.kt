@@ -3,6 +3,8 @@ package ru.zagrebin.front_mobile.ui.screens.profile
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +20,7 @@ private const val RECIPE_TYPE = "RECIPE"
 private const val ARTICLE_TYPE = "ARTICLE"
 private const val INITIAL_PAGE_SIZE = 10
 private const val NEXT_PAGE_SIZE = 5
+private const val SEARCH_DEBOUNCE_MS = 400L
 
 private data class MyPostsPagingState(
     val isLoadingNextPage: Boolean = false,
@@ -50,6 +53,7 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
     private val pagingState = MutableStateFlow(MyPostsPagingState())
     private var nextRecipesPage = 0
     private var nextArticlesPage = 0
+    private var searchJob: Job? = null
 
     private val searchMeta = combine(query, errorMessage) { searchQuery, error -> searchQuery to error }
 
@@ -83,12 +87,17 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun retryRefresh() {
-        viewModelScope.launch {
+        refreshPosts(query.value)
+    }
+
+    private fun refreshPosts(searchQuery: String, debounce: Boolean = false) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            if (debounce) delay(SEARCH_DEBOUNCE_MS)
             currentUserId.value = container.feedRepository.currentUserId()
             nextRecipesPage = 0
             nextArticlesPage = 0
             pagingState.value = MyPostsPagingState()
-            val searchQuery = query.value
             val recipesResult = container.feedRepository.loadRecipesPage(searchQuery, nextRecipesPage, INITIAL_PAGE_SIZE)
             val articlesResult = container.feedRepository.loadArticlesPage(searchQuery, nextArticlesPage, INITIAL_PAGE_SIZE)
             recipes.value = recipesResult.data
@@ -115,7 +124,7 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
 
     fun onSearch(newQuery: String) {
         query.value = newQuery
-        retryRefresh()
+        refreshPosts(newQuery, debounce = true)
     }
 
     fun loadNextSavedPostsPage() = loadNextPage(

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,7 @@ import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 
 private const val INITIAL_PAGE_SIZE = 10
 private const val NEXT_PAGE_SIZE = 5
+private const val SEARCH_DEBOUNCE_MS = 400L
 
 private data class PagingState(
     val isLoadingNextPage: Boolean = false,
@@ -88,10 +90,10 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
     fun onSearch(newQuery: String) {
         query.value = newQuery
         if (newQuery.trimStart().startsWith("@")) {
-            loadUsers(newQuery)
+            loadUsers(newQuery, debounce = true)
         } else {
             userResults.value = emptyList()
-            loadFirstPage(newQuery)
+            loadFirstPage(newQuery, debounce = true)
         }
     }
 
@@ -116,9 +118,10 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getPostById(postId: Int): PostCardState? = RecipeRepository.getPostById(postId)
 
-    private fun loadUsers(searchQuery: String) {
+    private fun loadUsers(searchQuery: String, debounce: Boolean = false) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
+            if (debounce) delay(SEARCH_DEBOUNCE_MS)
             posts.value = emptyList()
             pagingState.value = PagingState(hasMorePages = false)
             val result = container.feedRepository.searchUsers(searchQuery.trimStart().removePrefix("@").trim())
@@ -127,9 +130,10 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun loadFirstPage(searchQuery: String) {
+    private fun loadFirstPage(searchQuery: String, debounce: Boolean = false) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
+            if (debounce) delay(SEARCH_DEBOUNCE_MS)
             pagingState.value = PagingState()
             nextPage = 0
             val result = container.feedRepository.loadRecipesPage(searchQuery, nextPage, INITIAL_PAGE_SIZE)

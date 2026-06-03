@@ -50,8 +50,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
+import kotlinx.coroutines.delay
 import androidx.compose.material3.MenuAnchorType
 import kotlin.math.roundToInt
+
+private const val RECIPE_SEARCH_DEBOUNCE_MS = 400L
 
 private enum class RecipeSource(val title: String) {
     MY("Мои"),
@@ -109,6 +112,7 @@ fun AddMealBottomSheet(
     var selectedRecipeSource by rememberSaveable(initialRecipeSource) { mutableStateOf(initialRecipeSource) }
     var isRecipeMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var recipeQuery by rememberSaveable(initialDraft) { mutableStateOf(initialDraft?.title.orEmpty()) }
+    var debouncedRecipeQuery by rememberSaveable(initialDraft) { mutableStateOf(initialDraft?.title.orEmpty()) }
     var recipeFieldSize by remember { mutableStateOf(IntSize.Zero) }
     val recipeFocusRequester = remember { FocusRequester() }
     var selectedRecipeId by rememberSaveable(initialDraft) { mutableStateOf(initialDraft?.recipeId) }
@@ -124,9 +128,14 @@ fun AddMealBottomSheet(
     }
     val hasRecentRecipes = recentRecipeOptions.isNotEmpty()
 
-    LaunchedEffect(recipeQuery, selectedRecipeSource) {
+    LaunchedEffect(recipeQuery) {
+        delay(RECIPE_SEARCH_DEBOUNCE_MS)
+        debouncedRecipeQuery = recipeQuery
+    }
+
+    LaunchedEffect(debouncedRecipeQuery, selectedRecipeSource) {
         if (selectedRecipeSource == RecipeSource.ALL) {
-            onRecipeSearch(recipeQuery)
+            onRecipeSearch(debouncedRecipeQuery)
         }
     }
 
@@ -136,11 +145,11 @@ fun AddMealBottomSheet(
         RecipeSource.ALL -> recipeSearchResults
         RecipeSource.RECENT -> if (hasRecentRecipes) recentRecipeOptions else recipeSearchResults
     }
-    val filteredRecipes = remember(sourceRecipes, recipeQuery, selectedRecipeSource, recentRecipeIds) {
+    val filteredRecipes = remember(sourceRecipes, debouncedRecipeQuery, selectedRecipeSource, recentRecipeIds) {
         if (selectedRecipeSource == RecipeSource.ALL) {
             sourceRecipes.distinctBy { it.id }
         } else {
-            sourceRecipes.searchAndSortRecipes(recipeQuery, selectedRecipeSource, recentRecipeIds)
+            sourceRecipes.searchAndSortRecipes(debouncedRecipeQuery, selectedRecipeSource, recentRecipeIds)
         }
     }
 

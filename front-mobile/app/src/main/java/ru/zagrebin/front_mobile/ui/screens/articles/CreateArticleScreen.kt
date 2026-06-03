@@ -49,6 +49,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -69,8 +70,10 @@ import coil.compose.AsyncImage
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.LightPrimary
 import java.io.File
+import kotlinx.coroutines.delay
 
 private const val MAX_TAGS = 10
+private const val TAG_SEARCH_DEBOUNCE_MS = 400L
 
 @Composable
 fun CreateArticleScreen(
@@ -529,8 +532,15 @@ private fun TagPickBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var tagQuery by rememberSaveable { mutableStateOf("") }
-    val filteredTags = remember(tagQuery, tags) {
-        val query = tagQuery.trim()
+    var debouncedTagQuery by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(tagQuery) {
+        delay(TAG_SEARCH_DEBOUNCE_MS)
+        debouncedTagQuery = tagQuery
+    }
+
+    val filteredTags = remember(debouncedTagQuery, tags) {
+        val query = debouncedTagQuery.trim()
         if (query.isEmpty()) tags else tags.filter { it.contains(query, ignoreCase = true) }
     }
 

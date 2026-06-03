@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +29,7 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     private val recentRecipeIds = MutableStateFlow<List<Int>>(emptyList())
     private val recipeSearchState = MutableStateFlow(RecipeSearchState())
     private var lastRecipeSearchQuery: String = ""
+    private var recipeSearchJob: Job? = null
 
     val state: StateFlow<StatisticsUiState> = selectedMonth.flatMapLatest { month ->
         selectedDate.flatMapLatest { date ->
@@ -95,8 +98,12 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
 
     fun searchRecipes(query: String) {
         lastRecipeSearchQuery = query
-        recipeSearchState.value = RecipeSearchState(isLoading = true)
-        viewModelScope.launch { loadRecipeSearchPage(query, page = 0, append = false) }
+        recipeSearchJob?.cancel()
+        recipeSearchJob = viewModelScope.launch {
+            delay(RECIPE_SEARCH_DEBOUNCE_MS)
+            recipeSearchState.value = RecipeSearchState(isLoading = true)
+            loadRecipeSearchPage(query, page = 0, append = false)
+        }
     }
 
     fun loadMoreRecipes() {
@@ -131,6 +138,7 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
 }
 
 private const val RECIPE_SEARCH_PAGE_SIZE = 10
+private const val RECIPE_SEARCH_DEBOUNCE_MS = 400L
 
 private data class RecipeSearchState(
     val results: List<RecipeMealOption> = emptyList(),
