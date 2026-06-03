@@ -51,7 +51,6 @@ import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 import ru.zagrebin.front_mobile.ui.screens.statistics.AddMealBottomSheet
 import ru.zagrebin.front_mobile.ui.screens.statistics.MealDraft
 import ru.zagrebin.front_mobile.ui.screens.statistics.MealType
-import ru.zagrebin.front_mobile.ui.screens.statistics.StatisticsStore
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.StepBadgeBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.StepBadgeCornerRadius
@@ -63,7 +62,8 @@ fun RecipeDetailsScreen(
     onBackClick: () -> Unit,
     onSendComment: (String, Long?) -> Unit,
     onDeleteComment: (Long) -> Unit,
-    onAddToShoppingList: (List<String>) -> Unit
+    onAddToShoppingList: (List<String>) -> Unit,
+    onAddMeal: (MealType, MealDraft) -> Unit
 ) {
     var showComments by rememberSaveable { mutableStateOf(false) }
     var showIngredientsPicker by rememberSaveable { mutableStateOf(false) }
@@ -235,7 +235,7 @@ fun RecipeDetailsScreen(
             mealType = MealType.BREAKFAST,
             onDismiss = { showAddMeal = false },
             onAddClick = { type, draft ->
-                StatisticsStore.addMeal(type, draft)
+                onAddMeal(type, draft)
                 showAddMeal = false
             },
             allowMealTypeSelection = true,

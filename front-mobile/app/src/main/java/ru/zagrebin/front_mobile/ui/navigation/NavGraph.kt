@@ -487,7 +487,8 @@ fun NavGraph(
                         onBackClick = { navController.popBackStack() },
                         onSendComment = detailsViewModel::addComment,
                         onDeleteComment = detailsViewModel::deleteComment,
-                        onAddToShoppingList = detailsViewModel::addIngredientsToShoppingList
+                        onAddToShoppingList = detailsViewModel::addIngredientsToShoppingList,
+                        onAddMeal = detailsViewModel::addMeal
                     )
                 }
                 state.isLoading -> {
