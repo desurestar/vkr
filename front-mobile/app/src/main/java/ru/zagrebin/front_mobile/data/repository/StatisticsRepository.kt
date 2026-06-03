@@ -24,6 +24,7 @@ import ru.zagrebin.front_mobile.ui.screens.statistics.StatisticsUiState
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.roundToInt
 
 class StatisticsRepository(
@@ -59,7 +60,12 @@ class StatisticsRepository(
                     meals = MealType.entries.associateWith { type -> meals[type].orEmpty().map { it.toUi() } }
                 )
             }
-            StatisticsUiState(days = days, selectedDayId = selectedDate.toEpochDay().toInt(), settings = settings)
+            StatisticsUiState(
+                days = days,
+                selectedDayId = selectedDate.toEpochDay().toInt(),
+                settings = settings,
+                monthLabel = month.format(DateTimeFormatter.ofPattern("LLLL yyyy", Locale("ru")))
+            )
         }
     }
 

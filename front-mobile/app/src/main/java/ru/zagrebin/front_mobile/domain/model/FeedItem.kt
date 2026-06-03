@@ -14,5 +14,10 @@ data class FeedItem(
     val time: String,
     val calories: String,
     val views: String,
+    val isSaved: Boolean = false,
+    val proteinsPer100: Float = 0f,
+    val fatsPer100: Float = 0f,
+    val carbsPer100: Float = 0f,
+    val kcalPer100: Int = 0,
     val tags: List<RecipeTag> = emptyList()
 )

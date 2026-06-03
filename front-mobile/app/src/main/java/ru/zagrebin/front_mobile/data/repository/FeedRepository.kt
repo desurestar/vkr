@@ -231,7 +231,27 @@ class FeedRepository(
 
     private fun List<FeedItemEntity>.toDomain(): List<FeedItem> = map { it.toDomainItem() }
 
-    private fun FeedItemEntity.toDomainItem(): FeedItem = FeedItem(id, authorId, authorName, authorHandle, authorAvatarUrl, date, title, imageUrl, likes, isLiked, time, calories, views, tags)
+    private fun FeedItemEntity.toDomainItem(): FeedItem = FeedItem(
+        id = id,
+        authorId = authorId,
+        authorName = authorName,
+        authorHandle = authorHandle,
+        authorAvatarUrl = authorAvatarUrl,
+        date = date,
+        title = title,
+        imageUrl = imageUrl,
+        likes = likes,
+        isLiked = isLiked,
+        time = time,
+        calories = calories,
+        views = views,
+        isSaved = isSaved,
+        proteinsPer100 = proteinsPer100,
+        fatsPer100 = fatsPer100,
+        carbsPer100 = carbsPer100,
+        kcalPer100 = kcalPer100,
+        tags = tags
+    )
 
     private fun RecipeDetailsEntity.toFeedItemEntity(): FeedItemEntity = FeedItemEntity(
         id = id,
@@ -248,6 +268,11 @@ class FeedRepository(
         time = time,
         calories = calories,
         views = views,
+        isSaved = isSaved,
+        proteinsPer100 = proteinsPer100,
+        fatsPer100 = fatsPer100,
+        carbsPer100 = carbsPer100,
+        kcalPer100 = kcalPer100,
         tags = tags
     )
 
@@ -368,6 +393,11 @@ private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
         time = formatMinutes(preferValue(time, cookTimeMinutes)),
         calories = formatCalories(preferValue(calories, kcalPer100)),
         views = formatViews(views),
+        isSaved = isSaved || likedByMe,
+        proteinsPer100 = (proteinsPer100 ?: 0.0).toFloat(),
+        fatsPer100 = (fatsPer100 ?: 0.0).toFloat(),
+        carbsPer100 = (carbsPer100 ?: 0.0).toFloat(),
+        kcalPer100 = (kcalPer100 ?: 0.0).roundToInt(),
         tags = tags.toFeedRecipeTags()
     )
 

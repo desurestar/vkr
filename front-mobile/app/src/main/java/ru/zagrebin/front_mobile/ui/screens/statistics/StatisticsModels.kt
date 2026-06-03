@@ -25,7 +25,23 @@ data class MealDraft(
     val proteinsPer100: Float = 0f,
     val fatsPer100: Float = 0f,
     val carbsPer100: Float = 0f,
-    val kcalPer100: Int = 0
+    val kcalPer100: Int = 0,
+    val recipeId: Int? = null
+)
+
+data class RecipeMealOption(
+    val id: Int,
+    val authorId: String,
+    val authorName: String,
+    val date: String,
+    val title: String,
+    val calories: String,
+    val isSaved: Boolean,
+    val proteinsPer100: Float,
+    val fatsPer100: Float,
+    val carbsPer100: Float,
+    val kcalPer100: Int,
+    val tags: List<String> = emptyList()
 )
 
 data class StatisticsSettings(

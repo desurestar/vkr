@@ -18,6 +18,10 @@ data class FeedItemDto(
     val calories: Any? = null,
     val views: Any? = null,
     val cookTimeMinutes: Int? = null,
+    val proteinsPer100: Double? = null,
+    val fatsPer100: Double? = null,
+    val carbsPer100: Double? = null,
     val kcalPer100: Double? = null,
+    val isSaved: Boolean = false,
     val tags: List<TagDto> = emptyList()
 )
