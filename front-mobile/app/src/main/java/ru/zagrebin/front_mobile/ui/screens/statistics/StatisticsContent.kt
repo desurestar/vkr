@@ -28,6 +28,7 @@ fun StatisticsContent(
     onDayClick: (Int) -> Unit,
     onAddWater: (Int) -> Unit,
     onAddMeal: (MealType, MealDraft) -> Unit,
+    onUpdateSettings: (StatisticsSettings) -> Unit,
     myRecipeOptions: List<ru.zagrebin.front_mobile.ui.components.postCard.PostCardState> = emptyList(),
     savedRecipeOptions: List<ru.zagrebin.front_mobile.ui.components.postCard.PostCardState> = emptyList(),
     allRecipeOptions: List<ru.zagrebin.front_mobile.ui.components.postCard.PostCardState> = emptyList()
@@ -60,6 +61,10 @@ fun StatisticsContent(
 
         item {
             NutritionSummaryCard(day = selectedDay)
+        }
+
+        item {
+            StatisticsSettingsCard(settings = state.settings, onSave = onUpdateSettings)
         }
 
         item {
@@ -112,6 +117,7 @@ private fun StatisticsContentPreview() {
         state = previewStatisticsUiState(),
         onDayClick = {},
         onAddWater = {},
-        onAddMeal = { _, _ -> }
+        onAddMeal = { _, _ -> },
+        onUpdateSettings = {}
     )
 }

@@ -29,10 +29,14 @@ fun previewStatisticsDay(): StatisticsDay {
     val breakfast = previewMealEntries()
     return StatisticsDay(
         id = 30,
+        dateIso = "2026-06-30",
         dayNumber = "30",
         goalKcal = 1000,
         waterGoalMl = 1500,
         waterConsumedMl = 500,
+        proteinGoalGrams = 90,
+        fatGoalGrams = 70,
+        carbsGoalGrams = 250,
         meals = mapOf(
             MealType.BREAKFAST to breakfast,
             MealType.LUNCH to emptyList(),
@@ -51,7 +55,8 @@ fun previewStatisticsUiState(): StatisticsUiState {
     return StatisticsUiState(
         isLoading = false,
         days = listOf(day28, day29, day30, day31),
-        selectedDayId = day30.id
+        selectedDayId = day30.id,
+        settings = StatisticsSettings()
     )
 }
 

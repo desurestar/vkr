@@ -2,6 +2,7 @@ package ru.zagrebin.server.common;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -54,4 +55,32 @@ public class ApiModels {
 
     public record ShoppingItem(Long id, String name, String amount, boolean checked) {
     }
+
+    public record StatisticsSettings(int retentionMonths, int goalKcal, int waterGoalMl,
+                                     int proteinGoalGrams, int fatGoalGrams, int carbsGoalGrams) {
+    }
+
+    public record StatisticsMealEntry(Long id, String name, String amountLabel, String timeLabel, int kcal,
+                                      BigDecimal proteins, BigDecimal fats, BigDecimal carbs) {
+    }
+
+    public record StatisticsDay(LocalDate date, int goalKcal, int waterGoalMl, int waterConsumedMl,
+                                List<StatisticsMealEntry> breakfast, List<StatisticsMealEntry> lunch,
+                                List<StatisticsMealEntry> dinner, List<StatisticsMealEntry> snack) {
+    }
+
+    public record StatisticsResponse(StatisticsSettings settings, List<StatisticsDay> days) {
+    }
+
+    public record StatisticsSettingsRequest(Integer retentionMonths, Integer goalKcal, Integer waterGoalMl,
+                                            Integer proteinGoalGrams, Integer fatGoalGrams, Integer carbsGoalGrams) {
+    }
+
+    public record AddWaterRequest(LocalDate date, Integer amountMl) {
+    }
+
+    public record AddMealRequest(LocalDate date, String type, String name, String amountLabel, String timeLabel,
+                                 Integer kcal, BigDecimal proteins, BigDecimal fats, BigDecimal carbs) {
+    }
+
 }

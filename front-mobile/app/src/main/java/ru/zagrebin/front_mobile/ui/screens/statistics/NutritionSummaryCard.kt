@@ -45,9 +45,9 @@ fun NutritionSummaryCard(day: StatisticsDay) {
         remainingKcal = remainingKcal,
         totalKcal = day.goalKcal,
         consumedKcal = consumedKcal,
-        protein = MacroValue(proteins, 50),
-        fat = MacroValue(fats, 33),
-        carbs = MacroValue(carbs, 125),
+        protein = MacroValue(proteins, day.proteinGoalGrams),
+        fat = MacroValue(fats, day.fatGoalGrams),
+        carbs = MacroValue(carbs, day.carbsGoalGrams),
         modifier = Modifier.fillMaxWidth()
     )
 }
