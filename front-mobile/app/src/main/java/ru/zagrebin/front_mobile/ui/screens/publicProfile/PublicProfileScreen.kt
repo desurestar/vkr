@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,6 +32,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -71,6 +74,7 @@ fun PublicProfileScreen(
         onBackClick = onBackClick,
         onToggleFollow = viewModel::toggleFollow,
         onLikeClick = viewModel::toggleLike,
+        onSearch = viewModel::onSearch,
         onTagClick = { _, _ -> },
         onOpenRecipe = onOpenRecipe,
         onOpenArticle = onOpenArticle
@@ -88,6 +92,7 @@ private fun PublicProfileContent(
     onBackClick: () -> Unit,
     onToggleFollow: () -> Unit,
     onLikeClick: (Int) -> Unit,
+    onSearch: (String) -> Unit,
     onTagClick: (Int, Int) -> Unit,
     onOpenRecipe: (Int) -> Unit,
     onOpenArticle: (Int) -> Unit
@@ -139,6 +144,13 @@ private fun PublicProfileContent(
             PublicProfileTabSelector(
                 selectedTab = selectedTab,
                 onTabChange = { selectedTab = it }
+            )
+        }
+
+        item {
+            PublicProfileSearchField(
+                value = state.searchQuery,
+                onValueChange = onSearch
             )
         }
 
@@ -346,6 +358,36 @@ private fun PublicProfileTabButton(
 }
 
 @Composable
+private fun PublicProfileSearchField(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        placeholder = { Text("Поиск по названию") },
+        singleLine = true,
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Outlined.Search,
+                contentDescription = "Искать"
+            )
+        },
+        shape = RoundedCornerShape(16.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent
+        )
+    )
+}
+
+@Composable
 private fun EmptyPublicProfilePosts(tab: PublicProfileTab) {
     Card(
         modifier = Modifier
@@ -417,6 +459,7 @@ private fun PublicProfileScreenPreview() {
         onBackClick = {},
         onToggleFollow = {},
         onLikeClick = {},
+        onSearch = {},
         onTagClick = { _, _ -> },
         onOpenRecipe = {},
         onOpenArticle = {}

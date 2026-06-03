@@ -22,6 +22,7 @@ import ru.zagrebin.front_mobile.data.remote.dto.RecipeIngredientDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeStepDto
 import ru.zagrebin.front_mobile.data.remote.dto.RecipeTagDto
 import ru.zagrebin.front_mobile.data.remote.dto.TagDto
+import ru.zagrebin.front_mobile.data.remote.api.UserProfileDto
 import ru.zagrebin.front_mobile.data.sync.NetworkConnectionChecker
 import ru.zagrebin.front_mobile.domain.model.ArticleDetails
 import ru.zagrebin.front_mobile.domain.model.FeedItem
@@ -150,6 +151,18 @@ class FeedRepository(
     }
 
     suspend fun currentUserId(): Long? = runCatching { feedApi.me().id }.getOrNull()
+
+    suspend fun searchUsers(query: String, page: Int = 0, pageSize: Int = 10): ServerFirstResult<List<UserProfileDto>> {
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            return ServerFirstResult(emptyList(), isFromCache = true)
+        }
+        return runCatching {
+            feedApi.searchUsers(query, page, pageSize)
+        }.fold(
+            onSuccess = { ServerFirstResult(it, isFromCache = false) },
+            onFailure = { ServerFirstResult(emptyList(), isFromCache = true) }
+        )
+    }
 
     private suspend fun refreshPostDetails(postId: Int) {
         val post = feedApi.getRecipeDetails(postId)

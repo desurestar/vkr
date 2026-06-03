@@ -33,6 +33,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -153,6 +154,17 @@ fun FeedScreen(
                 .align(Alignment.TopCenter)
         )
 
+        UserSearchResults(
+            users = state.userResults,
+            visible = state.isUserSearch,
+            onOpenPublicProfile = { userId -> onOpenPublicProfile(userId.toString()) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = SearchBarHorizontalPadding)
+                .padding(top = topBarHeight + 8.dp)
+                .align(Alignment.TopCenter)
+        )
+
         AnimatedVisibility(
             visible = showScrollToTop,
             enter = fadeIn() + scaleIn(),
@@ -232,6 +244,48 @@ fun FeedScreen(
                 )
 
                 Spacer(modifier = Modifier.height(FilterSheetBottomSpacer))
+            }
+        }
+    }
+}
+
+@Composable
+private fun UserSearchResults(
+    users: List<UserSearchState>,
+    visible: Boolean,
+    onOpenPublicProfile: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(visible = visible && users.isNotEmpty(), modifier = modifier) {
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = SearchFieldContainerColor,
+            tonalElevation = 6.dp
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                users.forEach { user ->
+                    Surface(
+                        onClick = { onOpenPublicProfile(user.id) },
+                        color = TransparentColor,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = user.displayName.ifBlank { "Пользователь" },
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                text = if (user.username.startsWith("@")) user.username else "@${user.username}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         }
     }

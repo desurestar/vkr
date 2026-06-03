@@ -13,4 +13,7 @@ public interface PostRepository extends JpaRepository<PostEntity, Long> {
     List<PostEntity> findByTypeIgnoreCaseAndStatusIgnoreCase(String type, String status, Pageable pageable);
     List<PostEntity> findByStatusIgnoreCaseAndTitleContainingIgnoreCase(String status, String q);
     List<PostEntity> findByAuthorIdAndStatusIgnoreCaseOrderByCreatedAtDesc(Long authorId, String status);
+    List<PostEntity> findByAuthorIdAndStatusIgnoreCaseOrderByCreatedAtDesc(Long authorId, String status, Pageable pageable);
+    List<PostEntity> findByAuthorIdAndStatusIgnoreCaseAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(Long authorId, String status, String q);
+    List<PostEntity> findByAuthorIdAndStatusIgnoreCaseAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(Long authorId, String status, String q, Pageable pageable);
 }

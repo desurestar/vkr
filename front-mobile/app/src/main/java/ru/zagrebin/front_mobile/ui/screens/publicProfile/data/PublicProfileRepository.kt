@@ -15,7 +15,7 @@ data class PublicProfileData(
 )
 
 interface PublicProfileRepository {
-    suspend fun getPublicProfile(userId: String): PublicProfileData
+    suspend fun getPublicProfile(userId: String, query: String = ""): PublicProfileData
     suspend fun setFollowState(userId: String, isFollowing: Boolean): Boolean
 }
 

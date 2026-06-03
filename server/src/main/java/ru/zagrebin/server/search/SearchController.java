@@ -13,7 +13,22 @@ public class SearchController {
     public SearchController(DbService db) { this.db = db; }
 
     @GetMapping
-    public Map<String, List<?>> search(@RequestParam String query, @RequestParam(required = false) String type, @RequestParam(required = false) String tag) {
-        return db.search(query, type, tag);
+    public Map<String, List<?>> search(
+            @RequestParam String query,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        return db.search(query, type, tag, page, size);
+    }
+
+    @GetMapping("/users")
+    public List<ru.zagrebin.server.common.ApiModels.User> users(
+            @RequestParam String query,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        return db.searchUsers(query, page, size);
     }
 }
