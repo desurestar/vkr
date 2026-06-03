@@ -16,6 +16,9 @@ import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.components.postCard.RecipeIngredientState
 import ru.zagrebin.front_mobile.ui.components.postCard.RecipeStepState
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
+import ru.zagrebin.front_mobile.ui.screens.statistics.MealDraft
+import ru.zagrebin.front_mobile.ui.screens.statistics.MealType
+import java.time.LocalDate
 
 data class RecipeDetailsUiState(
     val isLoading: Boolean = false,
@@ -72,6 +75,12 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             container.feedRepository.deleteComment(postId, commentId)
             details.value = container.feedRepository.loadRecipeDetails(postId).data
+        }
+    }
+
+    fun addMeal(type: MealType, draft: MealDraft) {
+        viewModelScope.launch {
+            container.statisticsRepository.addMeal(LocalDate.now(), type, draft)
         }
     }
 
