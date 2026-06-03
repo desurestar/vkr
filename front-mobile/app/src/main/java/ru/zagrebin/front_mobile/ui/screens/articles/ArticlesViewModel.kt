@@ -23,6 +23,7 @@ import ru.zagrebin.front_mobile.ui.screens.feed.UserSearchState
 private const val INITIAL_PAGE_SIZE = 10
 private const val NEXT_PAGE_SIZE = 5
 private const val SEARCH_DEBOUNCE_MS = 400L
+private const val TAG_SUGGESTIONS_LIMIT = 10
 
 private data class LikeOverride(val isLiked: Boolean, val likes: String)
 private data class ArticleDecorations(
@@ -159,10 +160,12 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
         filters.value = filters.value.copy(
             selectedTags = (filters.value.selectedTags + tag.copy(isHighlighted = true)).distinctBy { it.id }
         )
+        loadTagSuggestions(tagQuery.value)
     }
 
     fun onFilterTagRemove(tagId: Int) {
         filters.value = filters.value.copy(selectedTags = filters.value.selectedTags.filterNot { it.id == tagId })
+        loadTagSuggestions(tagQuery.value)
     }
 
     fun onTagClick(postId: Int, tagId: Int) {
@@ -222,7 +225,7 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
             val result = container.feedRepository.loadTags(searchQuery)
             tagSuggestions.value = result.data
                 .filterNot { tag -> filters.value.selectedTags.any { it.id == tag.id } }
-                .take(12)
+                .take(TAG_SUGGESTIONS_LIMIT)
                 .map { TagState(it.id, it.name) }
         }
     }
