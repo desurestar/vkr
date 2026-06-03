@@ -150,22 +150,6 @@ fun FeedFiltersSheet(
                 colors = filterTextFieldColors()
             )
 
-            if (filters.selectedTags.isNotEmpty()) {
-                Text(
-                    text = "Выбрано",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                FlowRow {
-                    filters.selectedTags.forEach { tag ->
-                        TagScreen(
-                            state = tag.copy(isHighlighted = true),
-                            onClick = { onRemoveTag(tag.id) }
-                        )
-                    }
-                }
-            }
-
             if (tagSuggestions.isNotEmpty()) {
                 Text(
                     text = "Подходящие теги",
@@ -177,6 +161,22 @@ fun FeedFiltersSheet(
                         TagScreen(
                             state = tag,
                             onClick = { onAddTag(tag) }
+                        )
+                    }
+                }
+            }
+
+            if (filters.selectedTags.isNotEmpty()) {
+                Text(
+                    text = "Выбрано",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                FlowRow {
+                    filters.selectedTags.forEach { tag ->
+                        TagScreen(
+                            state = tag.copy(isHighlighted = true),
+                            onClick = { onRemoveTag(tag.id) }
                         )
                     }
                 }
