@@ -7,6 +7,9 @@ data class StatisticsUiState(
     val settings: StatisticsSettings = StatisticsSettings(),
     val monthLabel: String = "",
     val recipeOptions: List<RecipeMealOption> = emptyList(),
+    val recipeSearchResults: List<RecipeMealOption> = emptyList(),
+    val isRecipeSearchLoading: Boolean = false,
+    val hasMoreRecipeSearchResults: Boolean = false,
     val currentUserId: String? = null,
     val recentRecipeIds: List<Int> = emptyList(),
     val errorMessage: String? = null

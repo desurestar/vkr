@@ -1,5 +1,7 @@
 package ru.zagrebin.server.data;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -203,9 +205,21 @@ public class DbService {
     }
 
     public List<ApiModels.Post> postsByType(String type, String q, Long currentUserId) {
-        var list = (q == null)
-                ? posts.findByTypeIgnoreCaseAndStatusIgnoreCase(type, "PUBLISHED")
-                : posts.findByTypeIgnoreCaseAndStatusIgnoreCaseAndTitleContainingIgnoreCase(type, "PUBLISHED", q);
+        return postsByType(type, q, currentUserId, null, null);
+    }
+
+    public List<ApiModels.Post> postsByType(String type, String q, Long currentUserId, Integer page, Integer size) {
+        var normalizedQuery = q == null || q.isBlank() ? null : q;
+        var pageable = page != null && size != null
+                ? PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50), Sort.by(Sort.Direction.DESC, "createdAt"))
+                : null;
+        var list = normalizedQuery == null
+                ? (pageable == null
+                        ? posts.findByTypeIgnoreCaseAndStatusIgnoreCase(type, "PUBLISHED")
+                        : posts.findByTypeIgnoreCaseAndStatusIgnoreCase(type, "PUBLISHED", pageable))
+                : (pageable == null
+                        ? posts.findByTypeIgnoreCaseAndStatusIgnoreCaseAndTitleContainingIgnoreCase(type, "PUBLISHED", normalizedQuery)
+                        : posts.findByTypeIgnoreCaseAndStatusIgnoreCaseAndTitleContainingIgnoreCase(type, "PUBLISHED", normalizedQuery, pageable));
 
         return list.stream().map(post -> toPost(post, currentUserId)).toList();
     }

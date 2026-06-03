@@ -19,10 +19,18 @@ import ru.zagrebin.front_mobile.data.remote.dto.CommentDto
 
 interface FeedApi {
     @GET("api/v1/feed/recipes")
-    suspend fun getRecipesFeed(@Query("q") query: String? = null): List<FeedItemDto>
+    suspend fun getRecipesFeed(
+        @Query("q") query: String? = null,
+        @Query("page") page: Int? = null,
+        @Query("size") size: Int? = null
+    ): List<FeedItemDto>
 
     @GET("api/v1/feed/articles")
-    suspend fun getArticlesFeed(@Query("q") query: String? = null): List<FeedItemDto>
+    suspend fun getArticlesFeed(
+        @Query("q") query: String? = null,
+        @Query("page") page: Int? = null,
+        @Query("size") size: Int? = null
+    ): List<FeedItemDto>
 
     @GET("api/v1/recipes/{id}")
     suspend fun getRecipeDetails(@Path("id") id: Int): RecipeDetailsDto

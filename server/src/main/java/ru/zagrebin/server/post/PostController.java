@@ -19,13 +19,23 @@ public class PostController {
     }
 
     @GetMapping("/feed/recipes")
-    public List<ApiModels.Post> recipes(@RequestParam Optional<String> q, HttpSession s) {
-        return db.postsByType("RECIPE", q.orElse(null), currentUid(s));
+    public List<ApiModels.Post> recipes(
+            @RequestParam Optional<String> q,
+            @RequestParam Optional<Integer> page,
+            @RequestParam Optional<Integer> size,
+            HttpSession s
+    ) {
+        return db.postsByType("RECIPE", q.orElse(null), currentUid(s), page.orElse(null), size.orElse(null));
     }
 
     @GetMapping("/feed/articles")
-    public List<ApiModels.Post> articles(@RequestParam Optional<String> q, HttpSession s) {
-        return db.postsByType("ARTICLE", q.orElse(null), currentUid(s));
+    public List<ApiModels.Post> articles(
+            @RequestParam Optional<String> q,
+            @RequestParam Optional<Integer> page,
+            @RequestParam Optional<Integer> size,
+            HttpSession s
+    ) {
+        return db.postsByType("ARTICLE", q.orElse(null), currentUid(s), page.orElse(null), size.orElse(null));
     }
 
     @GetMapping("/tags")

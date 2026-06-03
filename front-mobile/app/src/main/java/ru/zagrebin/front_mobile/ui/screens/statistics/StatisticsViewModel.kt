@@ -25,6 +25,8 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     private val selectedMonth = MutableStateFlow(YearMonth.now())
     private val currentUserId = MutableStateFlow<String?>(null)
     private val recentRecipeIds = MutableStateFlow<List<Int>>(emptyList())
+    private val recipeSearchState = MutableStateFlow(RecipeSearchState())
+    private var lastRecipeSearchQuery: String = ""
 
     val state: StateFlow<StatisticsUiState> = selectedMonth.flatMapLatest { month ->
         selectedDate.flatMapLatest { date ->
@@ -41,6 +43,12 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         statisticsState.copy(currentUserId = userId)
     }.combine(recentRecipeIds) { statisticsState, ids ->
         statisticsState.copy(recentRecipeIds = ids)
+    }.combine(recipeSearchState) { statisticsState, searchState ->
+        statisticsState.copy(
+            recipeSearchResults = searchState.results,
+            isRecipeSearchLoading = searchState.isLoading,
+            hasMoreRecipeSearchResults = searchState.hasMore
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StatisticsUiState(isLoading = true))
 
     init {
@@ -85,6 +93,19 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch { repository.updateSettings(settings) }
     }
 
+    fun searchRecipes(query: String) {
+        lastRecipeSearchQuery = query
+        recipeSearchState.value = RecipeSearchState(isLoading = true)
+        viewModelScope.launch { loadRecipeSearchPage(query, page = 0, append = false) }
+    }
+
+    fun loadMoreRecipes() {
+        val current = recipeSearchState.value
+        if (current.isLoading || !current.hasMore) return
+        recipeSearchState.value = current.copy(isLoading = true)
+        viewModelScope.launch { loadRecipeSearchPage(lastRecipeSearchQuery, current.page + 1, append = true) }
+    }
+
     fun refresh() {
         viewModelScope.launch { repository.refreshMonth(selectedMonth.value) }
     }
@@ -93,8 +114,30 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch { feedRepository.loadRecipes() }
     }
 
+    private suspend fun loadRecipeSearchPage(query: String, page: Int, append: Boolean) {
+        val result = feedRepository.searchRecipes(query, page, RECIPE_SEARCH_PAGE_SIZE)
+        if (query != lastRecipeSearchQuery) return
+        val items = result.data.map { it.toRecipeMealOption() }
+        val current = recipeSearchState.value
+        recipeSearchState.value = RecipeSearchState(
+            results = if (append) (current.results + items).distinctBy { it.id } else items,
+            page = page,
+            isLoading = false,
+            hasMore = !result.isFromCache && items.size >= RECIPE_SEARCH_PAGE_SIZE
+        )
+    }
+
     fun addMockMeal(type: MealType) = Unit
 }
+
+private const val RECIPE_SEARCH_PAGE_SIZE = 10
+
+private data class RecipeSearchState(
+    val results: List<RecipeMealOption> = emptyList(),
+    val page: Int = 0,
+    val isLoading: Boolean = false,
+    val hasMore: Boolean = false
+)
 
 private fun FeedItem.toRecipeMealOption() = RecipeMealOption(
     id = id,

@@ -30,7 +30,9 @@ fun StatisticsContent(
     onAddMeal: (MealType, MealDraft) -> Unit,
     onUpdateSettings: (StatisticsSettings) -> Unit,
     onPreviousMonth: () -> Unit,
-    onNextMonth: () -> Unit
+    onNextMonth: () -> Unit,
+    onRecipeSearch: (String) -> Unit = {},
+    onLoadMoreRecipes: () -> Unit = {}
 ) {
     var openedMealType by remember { mutableStateOf<MealType?>(null) }
 
@@ -107,7 +109,12 @@ fun StatisticsContent(
             },
             recipeOptions = state.recipeOptions,
             currentUserId = state.currentUserId,
-            recentRecipeIds = state.recentRecipeIds
+            recentRecipeIds = state.recentRecipeIds,
+            recipeSearchResults = state.recipeSearchResults,
+            isRecipeSearchLoading = state.isRecipeSearchLoading,
+            hasMoreRecipeSearchResults = state.hasMoreRecipeSearchResults,
+            onRecipeSearch = onRecipeSearch,
+            onLoadMoreRecipes = onLoadMoreRecipes
         )
     }
 }

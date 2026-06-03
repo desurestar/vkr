@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -26,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,10 +67,15 @@ fun AddMealBottomSheet(
     onDismiss: () -> Unit,
     onAddClick: (MealType, MealDraft) -> Unit,
     recipeOptions: List<RecipeMealOption> = emptyList(),
+    recipeSearchResults: List<RecipeMealOption> = emptyList(),
+    isRecipeSearchLoading: Boolean = false,
+    hasMoreRecipeSearchResults: Boolean = false,
     currentUserId: String? = null,
     recentRecipeIds: List<Int> = emptyList(),
     allowMealTypeSelection: Boolean = false,
-    initialDraft: MealDraft? = null
+    initialDraft: MealDraft? = null,
+    onRecipeSearch: (String) -> Unit = {},
+    onLoadMoreRecipes: () -> Unit = {}
 ) {
     var selectedMealType by rememberSaveable(mealType, allowMealTypeSelection) {
         mutableStateOf(mealType)
@@ -93,7 +100,7 @@ fun AddMealBottomSheet(
     }
     val savedRecipeOptions = remember(recipeOptions) { recipeOptions.filter { it.isSaved } }
     val allRecipeOptions = recipeOptions
-    val hasRecipeSources = recipeOptions.isNotEmpty()
+    val hasRecipeSources = true
     val initialRecipeSource = when {
         myRecipeOptions.isNotEmpty() -> RecipeSource.MY
         savedRecipeOptions.isNotEmpty() -> RecipeSource.SAVED
@@ -117,14 +124,24 @@ fun AddMealBottomSheet(
     }
     val hasRecentRecipes = recentRecipeOptions.isNotEmpty()
 
+    LaunchedEffect(recipeQuery, selectedRecipeSource) {
+        if (selectedRecipeSource == RecipeSource.ALL) {
+            onRecipeSearch(recipeQuery)
+        }
+    }
+
     val sourceRecipes = when (selectedRecipeSource) {
         RecipeSource.MY -> myRecipeOptions
         RecipeSource.SAVED -> savedRecipeOptions
-        RecipeSource.ALL -> allRecipeOptions
-        RecipeSource.RECENT -> if (hasRecentRecipes) recentRecipeOptions else allRecipeOptions
+        RecipeSource.ALL -> recipeSearchResults
+        RecipeSource.RECENT -> if (hasRecentRecipes) recentRecipeOptions else recipeSearchResults
     }
     val filteredRecipes = remember(sourceRecipes, recipeQuery, selectedRecipeSource, recentRecipeIds) {
-        sourceRecipes.searchAndSortRecipes(recipeQuery, selectedRecipeSource, recentRecipeIds)
+        if (selectedRecipeSource == RecipeSource.ALL) {
+            sourceRecipes.distinctBy { it.id }
+        } else {
+            sourceRecipes.searchAndSortRecipes(recipeQuery, selectedRecipeSource, recentRecipeIds)
+        }
     }
 
     val portionValue = portion.toIntOrNull()?.coerceAtLeast(0) ?: 0
@@ -205,7 +222,7 @@ fun AddMealBottomSheet(
                     selected = selectedRecipeSource,
                     hasMy = myRecipeOptions.isNotEmpty(),
                     hasSaved = savedRecipeOptions.isNotEmpty(),
-                    hasAll = allRecipeOptions.isNotEmpty(),
+                    hasAll = true,
                     hasRecent = hasRecentRecipes,
                     onSelected = { selectedRecipeSource = it }
                 )
@@ -262,39 +279,56 @@ fun AddMealBottomSheet(
                                 recipeFieldSize.width.toDp()
                             })
                     ) {
-                        if (filteredRecipes.isEmpty()) {
-                            DropdownMenuItem(
-                                text = { Text("Ничего не найдено") },
-                                onClick = {}
-                            )
-                        } else {
-                            filteredRecipes.forEachIndexed { index, recipe ->
-                                val shape = when (index) {
-                                    filteredRecipes.lastIndex -> RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
-                                    else -> RoundedCornerShape(0.dp)
+                        Column(
+                            modifier = Modifier
+                                .heightIn(max = 280.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            if (filteredRecipes.isEmpty() && !isRecipeSearchLoading) {
+                                DropdownMenuItem(
+                                    text = { Text("Ничего не найдено") },
+                                    onClick = {}
+                                )
+                            } else {
+                                filteredRecipes.forEachIndexed { index, recipe ->
+                                    val shape = when (index) {
+                                        filteredRecipes.lastIndex -> RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
+                                        else -> RoundedCornerShape(0.dp)
+                                    }
+                                    Surface(
+                                        shape = shape,
+                                        color = Color.White,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(text = highlightQuery(recipe.title, recipeQuery, accentColor))
+                                            },
+                                            onClick = {
+                                                val selectedTitle = recipe.title
+                                                recipeQuery = selectedTitle
+                                                title = selectedTitle
+                                                proteins100 = recipe.proteinsPer100.pretty()
+                                                fats100 = recipe.fatsPer100.pretty()
+                                                carbs100 = recipe.carbsPer100.pretty()
+                                                kcal100 = recipe.kcalPer100.toString()
+                                                selectedRecipeId = recipe.id
+                                                isRecipeMenuExpanded = false
+                                            }
+                                        )
+                                    }
                                 }
-                                Surface(
-                                    shape = shape,
-                                    color = Color.White,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
+                                if (isRecipeSearchLoading) {
                                     DropdownMenuItem(
-                                        text = {
-                                            Text(text = highlightQuery(recipe.title, recipeQuery, accentColor))
-                                        },
-                                        onClick = {
-                                            val selectedTitle = recipe.title
-                                            recipeQuery = selectedTitle
-                                            title = selectedTitle
-                                            proteins100 = recipe.proteinsPer100.pretty()
-                                            fats100 = recipe.fatsPer100.pretty()
-                                            carbs100 = recipe.carbsPer100.pretty()
-                                            kcal100 = recipe.kcalPer100.toString()
-                                            selectedRecipeId = recipe.id
-                                            isRecipeMenuExpanded = false
-                                        }
+                                        text = { Text("Загрузка...") },
+                                        onClick = {}
+                                    )
+                                } else if (selectedRecipeSource == RecipeSource.ALL && hasMoreRecipeSearchResults) {
+                                    DropdownMenuItem(
+                                        text = { Text("Показать еще") },
+                                        onClick = onLoadMoreRecipes
                                     )
                                 }
                             }
