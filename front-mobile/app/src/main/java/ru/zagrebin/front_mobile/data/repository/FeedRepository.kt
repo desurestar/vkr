@@ -51,6 +51,18 @@ class FeedRepository(
 
     suspend fun refreshRecipes(): RefreshResult = loadRecipes().toRefreshResult()
 
+    suspend fun searchRecipes(query: String, page: Int, pageSize: Int): ServerFirstResult<List<FeedItem>> {
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            return ServerFirstResult(emptyList(), isFromCache = true)
+        }
+        return runCatching {
+            feedApi.getRecipesFeed(query.takeIf { it.isNotBlank() }, page, pageSize).map { it.toEntity(TYPE_RECIPE).toDomainItem() }
+        }.fold(
+            onSuccess = { ServerFirstResult(it, isFromCache = false) },
+            onFailure = { ServerFirstResult(emptyList(), isFromCache = true) }
+        )
+    }
+
     suspend fun loadArticles(): ServerFirstResult<List<FeedItem>> = loadFeedItems(TYPE_ARTICLE) {
         feedApi.getArticlesFeed()
     }
@@ -147,7 +159,7 @@ class FeedRepository(
         return runCatching {
             val createdArticle = feedApi.createArticle(request).toArticleDetailsEntity()
             articleDetailsDao.upsert(createdArticle)
-            feedDao.upsertAll(listOf(createdArticle.toFeedItemEntity()))
+            upsertSavedFeedItems(listOf(createdArticle.toFeedItemEntity()))
             loadArticles()
             CreateArticleResult.Success(createdArticle.id)
         }.getOrElse { CreateArticleResult.Fallback }
@@ -173,7 +185,7 @@ class FeedRepository(
         return runCatching {
             val createdRecipe = feedApi.createRecipe(request).toRecipeDetailsEntity()
             recipeDetailsDao.upsert(createdRecipe)
-            feedDao.upsertAll(listOf(createdRecipe.toFeedItemEntity()))
+            upsertSavedFeedItems(listOf(createdRecipe.toFeedItemEntity()))
             loadRecipes()
             CreateRecipeResult.Success(createdRecipe.id)
         }.getOrElse { CreateRecipeResult.Fallback }
@@ -186,7 +198,7 @@ class FeedRepository(
                 val cachedImagesById = cachedItems.associate { it.id to it.imageUrl }
                 remoteRequest().map { it.toEntity(type).withFallbackImage(cachedImagesById[it.id]) }
             }.onSuccess { items ->
-                feedDao.replaceByType(type, items)
+                feedDao.replaceByType(type, items.savedForCache())
                 return ServerFirstResult(items.toDomain(), isFromCache = false)
             }
         }
@@ -205,7 +217,12 @@ class FeedRepository(
     private suspend fun upsertLikedPost(updated: FeedItemDto) {
         val type = updated.type?.lowercase()
             ?: if (recipeDetailsDao.getById(updated.id) != null) TYPE_RECIPE else TYPE_ARTICLE
-        feedDao.upsertAll(listOf(updated.toEntity(type)))
+        val entity = updated.toEntity(type)
+        if (entity.isLiked || entity.isSaved) {
+            upsertSavedFeedItems(listOf(entity))
+        } else {
+            feedDao.deleteByIdAndType(entity.id, entity.type)
+        }
         if (type == TYPE_RECIPE) {
             recipeDetailsDao.getById(updated.id)?.let { cached ->
                 recipeDetailsDao.upsert(
@@ -228,6 +245,15 @@ class FeedRepository(
             }
         }
     }
+
+    private suspend fun upsertSavedFeedItems(items: List<FeedItemEntity>) {
+        val cachedItems = items.savedForCache()
+        if (cachedItems.isNotEmpty()) {
+            feedDao.upsertAll(cachedItems)
+        }
+    }
+
+    private fun List<FeedItemEntity>.savedForCache(): List<FeedItemEntity> = filter { it.isLiked || it.isSaved }
 
     private fun List<FeedItemEntity>.toDomain(): List<FeedItem> = map { it.toDomainItem() }
 

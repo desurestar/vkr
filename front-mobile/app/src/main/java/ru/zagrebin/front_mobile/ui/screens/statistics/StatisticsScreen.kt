@@ -19,7 +19,9 @@ fun StatisticsScreen(
         onAddMeal = viewModel::addMeal,
         onUpdateSettings = viewModel::updateSettings,
         onPreviousMonth = viewModel::showPreviousMonth,
-        onNextMonth = viewModel::showNextMonth
+        onNextMonth = viewModel::showNextMonth,
+        onRecipeSearch = viewModel::searchRecipes,
+        onLoadMoreRecipes = viewModel::loadMoreRecipes
     )
 }
 
