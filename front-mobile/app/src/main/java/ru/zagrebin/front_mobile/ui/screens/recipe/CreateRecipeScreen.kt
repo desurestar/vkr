@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -726,50 +727,40 @@ private fun TagPickBottomSheet(
     onDismiss: () -> Unit,
     onAddClick: () -> Unit
 ) {
-
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
-    )
-
-    var tagQuery by rememberSaveable {
-        mutableStateOf("")
-    }
-    var debouncedTagQuery by rememberSaveable {
-        mutableStateOf("")
-    }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val draftSelected = remember { mutableStateListOf<String>().apply { addAll(selected) } }
+    var tagQuery by rememberSaveable { mutableStateOf("") }
+    var debouncedTagQuery by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(tagQuery) {
         delay(TAG_SEARCH_DEBOUNCE_MS)
         debouncedTagQuery = tagQuery
     }
 
-    val filteredTags = remember(debouncedTagQuery, tags) {
-
+    val filteredTags = remember(debouncedTagQuery, tags, draftSelected.size) {
         val query = debouncedTagQuery.trim()
-
+        val availableTags = tags.filterNot { draftSelected.contains(it) }
         if (query.isEmpty()) {
-            tags
+            availableTags
         } else {
-            tags.filter {
-                it.contains(query, ignoreCase = true)
-            }
+            availableTags.filter { it.contains(query, ignoreCase = true) }
         }
     }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        modifier = Modifier.fillMaxHeight(0.92f),
         containerColor = Color(0xFFF7F5F2),
         scrimColor = Color.Black.copy(alpha = 0.32f)
     ) {
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
             Text(
                 text = "Выберите теги",
                 style = MaterialTheme.typography.titleMedium
@@ -785,61 +776,106 @@ private fun TagPickBottomSheet(
                 colors = inputColors()
             )
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 260.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                contentPadding = PaddingValues(bottom = 72.dp)
-            ) {
-
-                items(filteredTags) { tag ->
-
-                    val checked = selected.contains(tag)
-                    val canAddMore = selected.size < MAX_TAGS
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Color.White,
-                                RoundedCornerShape(12.dp)
-                            )
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Checkbox(
-                            checked = checked,
-                            enabled = checked || canAddMore,
-                            onCheckedChange = { value ->
-
-                                if (value) {
-                                    if (checked || canAddMore) {
-                                        if (!selected.contains(tag)) {
-                                            selected.add(tag)
-                                        }
-                                    }
-                                } else {
-                                    selected.remove(tag)
-                                }
-                            },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = LightPrimary
-                            )
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Text(
-                            text = tag,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+            Text(
+                text = "Выбранные теги",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (draftSelected.isEmpty()) {
+                Text(
+                    text = "Пока ничего не выбрано",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF8A8A8A)
+                )
+            } else {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    draftSelected.forEach { tag ->
+                        Surface(
+                            color = LightPrimary.copy(alpha = 0.14f),
+                            shape = RoundedCornerShape(50)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .clickable { draftSelected.remove(tag) }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = tag,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = LightPrimary
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "Удалить тег",
+                                    tint = LightPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            if (selected.size >= MAX_TAGS) {
+            Text(
+                text = "Результаты поиска",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                contentPadding = PaddingValues(bottom = 8.dp)
+            ) {
+                if (filteredTags.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Подходящих тегов не найдено",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF8A8A8A),
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    items(filteredTags) { tag ->
+                        val canAddMore = draftSelected.size < MAX_TAGS
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.White, RoundedCornerShape(12.dp))
+                                .clickable(enabled = canAddMore) {
+                                    if (!draftSelected.contains(tag)) draftSelected.add(tag)
+                                }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = false,
+                                enabled = canAddMore,
+                                onCheckedChange = { value ->
+                                    if (value && !draftSelected.contains(tag)) draftSelected.add(tag)
+                                },
+                                colors = CheckboxDefaults.colors(checkedColor = LightPrimary)
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Text(
+                                text = tag,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (draftSelected.size >= MAX_TAGS) {
                 Text(
                     text = "Лимит: не более $MAX_TAGS тегов",
                     style = MaterialTheme.typography.bodySmall,
@@ -848,16 +884,19 @@ private fun TagPickBottomSheet(
             }
 
             Button(
-                onClick = onAddClick,
+                onClick = {
+                    selected.clear()
+                    selected.addAll(draftSelected)
+                    onAddClick()
+                },
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = LightPrimary
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
-
                 Text(
-                    text = "Добавить",
+                    text = "Применить",
                     color = Color.White
                 )
             }
