@@ -36,7 +36,8 @@ data class MyPostsState(
     val isLoadingNextPage: Boolean = false,
     val hasMoreRecipes: Boolean = true,
     val hasMoreArticles: Boolean = true,
-    val hasMoreSavedPosts: Boolean = true
+    val hasMoreSavedPosts: Boolean = true,
+    val searchQuery: String = ""
 )
 
 class MyPostsViewModel(application: Application) : AndroidViewModel(application) {
@@ -44,18 +45,22 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
     private val recipes = MutableStateFlow<List<FeedItem>>(emptyList())
     private val articles = MutableStateFlow<List<FeedItem>>(emptyList())
     private val currentUserId = MutableStateFlow<Long?>(null)
+    private val query = MutableStateFlow("")
     private val errorMessage = MutableStateFlow<String?>(null)
     private val pagingState = MutableStateFlow(MyPostsPagingState())
     private var nextRecipesPage = 0
     private var nextArticlesPage = 0
 
+    private val searchMeta = combine(query, errorMessage) { searchQuery, error -> searchQuery to error }
+
     val state: StateFlow<MyPostsState> = combine(
         recipes,
         articles,
         currentUserId,
-        errorMessage,
+        searchMeta,
         pagingState
-    ) { recipeItems, articleItems, userId, error, paging ->
+    ) { recipeItems, articleItems, userId, meta, paging ->
+        val (searchQuery, error) = meta
         val recipePosts = recipeItems.map { it.toUi(RECIPE_TYPE) }
         val articlePosts = articleItems.map { it.toUi(ARTICLE_TYPE) }
         MyPostsState(
@@ -68,7 +73,8 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
             isLoadingNextPage = paging.isLoadingNextPage,
             hasMoreRecipes = paging.hasMoreRecipes,
             hasMoreArticles = paging.hasMoreArticles,
-            hasMoreSavedPosts = paging.hasMoreRecipes || paging.hasMoreArticles
+            hasMoreSavedPosts = paging.hasMoreRecipes || paging.hasMoreArticles,
+            searchQuery = searchQuery
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MyPostsState())
 
@@ -82,8 +88,9 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
             nextRecipesPage = 0
             nextArticlesPage = 0
             pagingState.value = MyPostsPagingState()
-            val recipesResult = container.feedRepository.loadRecipesPage("", nextRecipesPage, INITIAL_PAGE_SIZE)
-            val articlesResult = container.feedRepository.loadArticlesPage("", nextArticlesPage, INITIAL_PAGE_SIZE)
+            val searchQuery = query.value
+            val recipesResult = container.feedRepository.loadRecipesPage(searchQuery, nextRecipesPage, INITIAL_PAGE_SIZE)
+            val articlesResult = container.feedRepository.loadArticlesPage(searchQuery, nextArticlesPage, INITIAL_PAGE_SIZE)
             recipes.value = recipesResult.data
             articles.value = articlesResult.data
             nextRecipesPage = 1
@@ -105,6 +112,11 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
     fun loadNextRecipesPage() = loadNextPage(loadRecipes = true, loadArticles = false)
 
     fun loadNextArticlesPage() = loadNextPage(loadRecipes = false, loadArticles = true)
+
+    fun onSearch(newQuery: String) {
+        query.value = newQuery
+        retryRefresh()
+    }
 
     fun loadNextSavedPostsPage() = loadNextPage(
         loadRecipes = pagingState.value.hasMoreRecipes,
@@ -138,7 +150,7 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
             var usesCache = false
             var loadedAny = false
             if (loadRecipes && pagingState.value.hasMoreRecipes) {
-                val result = container.feedRepository.loadRecipesPage("", nextRecipesPage, NEXT_PAGE_SIZE)
+                val result = container.feedRepository.loadRecipesPage(query.value, nextRecipesPage, NEXT_PAGE_SIZE)
                 usesCache = usesCache || result.isFromCache
                 if (result.isFromCache) {
                     pagingState.value = pagingState.value.copy(hasMoreRecipes = false)
@@ -150,7 +162,7 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
             if (loadArticles && pagingState.value.hasMoreArticles) {
-                val result = container.feedRepository.loadArticlesPage("", nextArticlesPage, NEXT_PAGE_SIZE)
+                val result = container.feedRepository.loadArticlesPage(query.value, nextArticlesPage, NEXT_PAGE_SIZE)
                 usesCache = usesCache || result.isFromCache
                 if (result.isFromCache) {
                     pagingState.value = pagingState.value.copy(hasMoreArticles = false)

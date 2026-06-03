@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.remote.api.UserProfileDto
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.data.RecipeRepository
@@ -30,6 +31,7 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
     private val query = MutableStateFlow("")
     private val posts = MutableStateFlow<List<FeedItem>>(emptyList())
     private val errorMessage = MutableStateFlow<String?>(null)
+    private val userResults = MutableStateFlow<List<UserProfileDto>>(emptyList())
     private val pagingState = MutableStateFlow(PagingState())
     private var nextPage = 0
     private var searchJob: Job? = null
@@ -38,15 +40,18 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
         posts,
         query,
         errorMessage,
+        userResults,
         pagingState
-    ) { loadedPosts, q, error, paging ->
+    ) { loadedPosts, q, error, users, paging ->
         FeedState(
             posts = loadedPosts.map { it.toUi() },
             searchQuery = q,
             errorMessage = error,
             isUsingFallback = paging.isUsingFallback,
             isLoadingNextPage = paging.isLoadingNextPage,
-            hasMorePages = paging.hasMorePages
+            hasMorePages = paging.hasMorePages,
+            userResults = users.map { it.toUserSearchState() },
+            isUserSearch = q.trimStart().startsWith("@")
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedState())
 
@@ -60,6 +65,7 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadNextPage() {
         val paging = pagingState.value
+        if (query.value.trimStart().startsWith("@")) return
         if (paging.isLoadingNextPage || !paging.hasMorePages || posts.value.isEmpty()) return
         viewModelScope.launch {
             pagingState.value = pagingState.value.copy(isLoadingNextPage = true)
@@ -81,7 +87,12 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onSearch(newQuery: String) {
         query.value = newQuery
-        loadFirstPage(newQuery)
+        if (newQuery.trimStart().startsWith("@")) {
+            loadUsers(newQuery)
+        } else {
+            userResults.value = emptyList()
+            loadFirstPage(newQuery)
+        }
     }
 
     fun onTagClick(postId: Int, tagId: Int) = Unit
@@ -105,6 +116,17 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getPostById(postId: Int): PostCardState? = RecipeRepository.getPostById(postId)
 
+    private fun loadUsers(searchQuery: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            posts.value = emptyList()
+            pagingState.value = PagingState(hasMorePages = false)
+            val result = container.feedRepository.searchUsers(searchQuery.trimStart().removePrefix("@").trim())
+            userResults.value = result.data
+            errorMessage.value = if (result.isFromCache) "Сервер недоступен. Поиск пользователей недоступен." else null
+        }
+    }
+
     private fun loadFirstPage(searchQuery: String) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
@@ -123,6 +145,13 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    private fun UserProfileDto.toUserSearchState(): UserSearchState = UserSearchState(
+        id = id,
+        username = username.orEmpty(),
+        displayName = displayName?.takeIf { it.isNotBlank() } ?: username.orEmpty(),
+        avatarUrl = avatarUrl
+    )
 
     private fun FeedItem.toUi(): PostCardState = PostCardState(
         id = id,

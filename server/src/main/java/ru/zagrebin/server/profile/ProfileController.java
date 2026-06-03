@@ -63,12 +63,18 @@ public class ProfileController {
     }
 
     @GetMapping("/{userId}")
-    public ApiModels.PublicProfile publicProfile(@PathVariable Long userId, HttpSession session) {
+    public ApiModels.PublicProfile publicProfile(
+            @PathVariable Long userId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            HttpSession session
+    ) {
         var user = db.getUser(userId);
         var viewerId = (Long) session.getAttribute("uid");
         var isFollowing = viewerId != null && db.isFollowing(viewerId, userId);
 
-        return new ApiModels.PublicProfile(user, isFollowing, db.postsByAuthor(userId, viewerId));
+        return new ApiModels.PublicProfile(user, isFollowing, db.postsByAuthor(userId, viewerId, q, page, size));
     }
 
     @PostMapping("/{userId}/follow")
@@ -77,7 +83,7 @@ public class ProfileController {
 
         db.followUser(requireUid(session), userId);
 
-        return publicProfile(userId, session);
+        return publicProfile(userId, null, null, null, session);
     }
 
     @DeleteMapping("/{userId}/follow")
@@ -86,7 +92,7 @@ public class ProfileController {
 
         db.unfollowUser(requireUid(session), userId);
 
-        return publicProfile(userId, session);
+        return publicProfile(userId, null, null, null, session);
     }
 
     @GetMapping("/shopping-list")

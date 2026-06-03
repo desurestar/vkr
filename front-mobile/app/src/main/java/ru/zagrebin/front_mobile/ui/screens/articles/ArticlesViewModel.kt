@@ -11,10 +11,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.remote.api.UserProfileDto
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedState
+import ru.zagrebin.front_mobile.ui.screens.feed.UserSearchState
 
 private const val INITIAL_PAGE_SIZE = 10
 private const val NEXT_PAGE_SIZE = 5
@@ -31,25 +33,31 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
     private val query = MutableStateFlow("")
     private val posts = MutableStateFlow<List<FeedItem>>(emptyList())
     private val errorMessage = MutableStateFlow<String?>(null)
+    private val userResults = MutableStateFlow<List<UserProfileDto>>(emptyList())
     private val likeOverrides = MutableStateFlow<Map<Int, LikeOverride>>(emptyMap())
     private val pagingState = MutableStateFlow(PagingState())
     private var nextPage = 0
     private var searchJob: Job? = null
 
+    private val searchDecorations = combine(likeOverrides, userResults) { overrides, users -> overrides to users }
+
     val state: StateFlow<FeedState> = combine(
         posts,
         query,
         errorMessage,
-        likeOverrides,
+        searchDecorations,
         pagingState
-    ) { loadedPosts, q, error, overrides, paging ->
+    ) { loadedPosts, q, error, decorations, paging ->
+        val (overrides, users) = decorations
         FeedState(
             posts = loadedPosts.map { it.applyLikeOverride(overrides[it.id]).toUi() },
             searchQuery = q,
             errorMessage = error,
             isUsingFallback = paging.isUsingFallback,
             isLoadingNextPage = paging.isLoadingNextPage,
-            hasMorePages = paging.hasMorePages
+            hasMorePages = paging.hasMorePages,
+            userResults = users.map { it.toUserSearchState() },
+            isUserSearch = q.trimStart().startsWith("@")
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedState())
 
@@ -63,6 +71,7 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
 
     fun loadNextPage() {
         val paging = pagingState.value
+        if (query.value.trimStart().startsWith("@")) return
         if (paging.isLoadingNextPage || !paging.hasMorePages || posts.value.isEmpty()) return
         viewModelScope.launch {
             pagingState.value = pagingState.value.copy(isLoadingNextPage = true)
@@ -83,7 +92,12 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
 
     fun onSearch(newQuery: String) {
         query.value = newQuery
-        loadFirstPage(newQuery)
+        if (newQuery.trimStart().startsWith("@")) {
+            loadUsers(newQuery)
+        } else {
+            userResults.value = emptyList()
+            loadFirstPage(newQuery)
+        }
     }
 
     fun onTagClick(postId: Int, tagId: Int) = Unit
@@ -99,6 +113,17 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
                 likeOverrides.value = likeOverrides.value + (postId to LikeOverride(current.isLiked, current.likes))
                 errorMessage.value = "Не удалось синхронизировать лайк с сервером."
             }
+        }
+    }
+
+    private fun loadUsers(searchQuery: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            posts.value = emptyList()
+            pagingState.value = PagingState(hasMorePages = false)
+            val result = container.feedRepository.searchUsers(searchQuery.trimStart().removePrefix("@").trim())
+            userResults.value = result.data
+            errorMessage.value = if (result.isFromCache) "Сервер недоступен. Поиск пользователей недоступен." else null
         }
     }
 
@@ -120,6 +145,13 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
+
+    private fun UserProfileDto.toUserSearchState(): UserSearchState = UserSearchState(
+        id = id,
+        username = username.orEmpty(),
+        displayName = displayName?.takeIf { it.isNotBlank() } ?: username.orEmpty(),
+        avatarUrl = avatarUrl
+    )
 
     private fun FeedItem.toUi(): PostCardState = PostCardState(
         id = id,

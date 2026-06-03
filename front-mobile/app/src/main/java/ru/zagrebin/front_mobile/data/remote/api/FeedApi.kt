@@ -55,9 +55,10 @@ interface FeedApi {
 
     @POST("api/v1/profile/{userId}/follow") suspend fun follow(@Path("userId") userId: Long)
     @DELETE("api/v1/profile/{userId}/follow") suspend fun unfollow(@Path("userId") userId: Long)
-    @GET("api/v1/profile/{userId}") suspend fun getPublicProfile(@Path("userId") userId: Long): PublicProfileDto
+    @GET("api/v1/profile/{userId}") suspend fun getPublicProfile(@Path("userId") userId: Long, @Query("q") query: String? = null, @Query("page") page: Int? = null, @Query("size") size: Int? = null): PublicProfileDto
 
-    @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null): SearchResponse
+    @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null, @Query("page") page: Int? = null, @Query("size") size: Int? = null): SearchResponse
+    @GET("api/v1/search/users") suspend fun searchUsers(@Query("query") query: String, @Query("page") page: Int? = null, @Query("size") size: Int? = null): List<UserProfileDto>
     @POST("api/v1/recipes") suspend fun createRecipe(@Body request: CreateRecipeRequest): RecipeDetailsDto
     @POST("api/v1/articles") suspend fun createArticle(@Body request: CreateArticleRequest): ArticleDetailsDto
     @GET("api/v1/drafts") suspend fun getDrafts(): List<FeedItemDto>
@@ -87,7 +88,7 @@ data class SessionUserDto(val id: Long, val username: String? = null, val displa
 data class UpdateProfileRequest(val displayName: String, val bio: String, val avatarUrl: String?)
 data class UpdatePasswordRequest(val oldPassword: String, val newPassword: String)
 data class CommentRequest(val text: String, val parentId: Long? = null)
-data class SearchResponse(val posts: List<ServerPostDto> = emptyList(), val users: List<SessionUserDto> = emptyList())
+data class SearchResponse(val posts: List<ServerPostDto> = emptyList(), val users: List<UserProfileDto> = emptyList())
 data class MediaUploadResponse(val url: String)
 
 

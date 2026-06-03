@@ -11,10 +11,10 @@ import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 
 class RemotePublicProfileRepository(private val api: FeedApi) : PublicProfileRepository {
-    override suspend fun getPublicProfile(userId: String): PublicProfileData {
+    override suspend fun getPublicProfile(userId: String, query: String): PublicProfileData {
         val normalizedUserId = userId.toLongUserId()
         val currentUserId = runCatching { api.me().id }.getOrNull()
-        val profile = api.getPublicProfile(normalizedUserId)
+        val profile = api.getPublicProfile(normalizedUserId, query.takeIf { it.isNotBlank() }, 0, 50)
         val user = profile.user
         val username = user.username.orEmpty()
 

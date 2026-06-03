@@ -21,10 +21,18 @@ class PublicProfileViewModel(application: Application) : AndroidViewModel(applic
 
     fun load(userId: String) {
         if (_state.value.userId == userId && _state.value.posts.isNotEmpty()) return
+        loadProfile(userId, _state.value.searchQuery)
+    }
 
+    fun onSearch(newQuery: String) {
+        _state.update { it.copy(searchQuery = newQuery) }
+        loadProfile(_state.value.userId, newQuery)
+    }
+
+    private fun loadProfile(userId: String, searchQuery: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null, userId = userId) }
-            runCatching { repository.getPublicProfile(userId) }
+            runCatching { repository.getPublicProfile(userId, searchQuery) }
                 .onSuccess { profile ->
                     _state.update {
                         it.copy(
@@ -40,6 +48,7 @@ class PublicProfileViewModel(application: Application) : AndroidViewModel(applic
                             isFollowing = profile.isFollowing,
                             isOwnProfile = profile.isOwnProfile,
                             posts = profile.posts,
+                            searchQuery = searchQuery,
                             error = null
                         )
                     }

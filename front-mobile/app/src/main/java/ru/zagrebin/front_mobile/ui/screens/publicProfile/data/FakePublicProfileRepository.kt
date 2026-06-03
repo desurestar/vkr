@@ -8,7 +8,7 @@ class FakePublicProfileRepository : PublicProfileRepository {
 
     private val follows = mutableMapOf<String, Boolean>()
 
-    override suspend fun getPublicProfile(userId: String): PublicProfileData {
+    override suspend fun getPublicProfile(userId: String, query: String): PublicProfileData {
         delay(120)
 
         val posts = List(4) { index ->
@@ -33,6 +33,8 @@ class FakePublicProfileRepository : PublicProfileRepository {
             )
         }
 
+        val visiblePosts = posts.filter { it.title.contains(query, ignoreCase = true) }
+
         return PublicProfileData(
             userId = userId,
             name = "Дмитрий Загребин",
@@ -42,7 +44,7 @@ class FakePublicProfileRepository : PublicProfileRepository {
             followersCount = 72_900,
             isFollowing = follows[userId] ?: false,
             isOwnProfile = false,
-            posts = posts
+            posts = visiblePosts
         )
     }
 

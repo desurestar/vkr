@@ -209,7 +209,7 @@ public class DbService {
     }
 
     public List<ApiModels.Post> postsByType(String type, String q, Long currentUserId, Integer page, Integer size) {
-        var normalizedQuery = q == null || q.isBlank() ? null : q;
+        var normalizedQuery = q == null || q.isBlank() ? null : q.trim();
         var pageable = page != null && size != null
                 ? PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50), Sort.by(Sort.Direction.DESC, "createdAt"))
                 : null;
@@ -231,7 +231,24 @@ public class DbService {
 
     @Transactional(readOnly = true)
     public List<ApiModels.Post> postsByAuthor(Long authorId, Long currentUserId) {
-        return posts.findByAuthorIdAndStatusIgnoreCaseOrderByCreatedAtDesc(authorId, "PUBLISHED").stream().map(post -> toPost(post, currentUserId)).toList();
+        return postsByAuthor(authorId, currentUserId, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApiModels.Post> postsByAuthor(Long authorId, Long currentUserId, String q, Integer page, Integer size) {
+        var normalizedQuery = q == null || q.isBlank() ? null : q.trim();
+        var pageable = page != null && size != null
+                ? PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50), Sort.by(Sort.Direction.DESC, "createdAt"))
+                : null;
+        var list = normalizedQuery == null
+                ? (pageable == null
+                        ? posts.findByAuthorIdAndStatusIgnoreCaseOrderByCreatedAtDesc(authorId, "PUBLISHED")
+                        : posts.findByAuthorIdAndStatusIgnoreCaseOrderByCreatedAtDesc(authorId, "PUBLISHED", pageable))
+                : (pageable == null
+                        ? posts.findByAuthorIdAndStatusIgnoreCaseAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(authorId, "PUBLISHED", normalizedQuery)
+                        : posts.findByAuthorIdAndStatusIgnoreCaseAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(authorId, "PUBLISHED", normalizedQuery, pageable));
+
+        return list.stream().map(post -> toPost(post, currentUserId)).toList();
     }
 
     @Transactional(readOnly = true)
@@ -253,19 +270,52 @@ public class DbService {
     }
 
     public Map<String, List<?>> search(String query, String type, String tag) {
+        return search(query, type, tag, null, null);
+    }
 
-        var p = posts.findByStatusIgnoreCaseAndTitleContainingIgnoreCase("PUBLISHED", query).stream()
+    public Map<String, List<?>> search(String query, String type, String tag, Integer page, Integer size) {
+        var normalizedQuery = normalizeSearchQuery(query);
+        var pageable = page != null && size != null
+                ? PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50), Sort.by(Sort.Direction.DESC, "createdAt"))
+                : null;
+
+        var p = posts.findByStatusIgnoreCaseAndTitleContainingIgnoreCase("PUBLISHED", normalizedQuery).stream()
                 .filter(x -> type == null || x.getType().equalsIgnoreCase(type))
                 .filter(x -> tag == null || x.getTags().stream().anyMatch(t -> t.getName().equalsIgnoreCase(tag)))
+                .skip(pageable == null ? 0 : pageable.getOffset())
+                .limit(pageable == null ? Long.MAX_VALUE : pageable.getPageSize())
                 .map(this::toPost)
                 .toList();
 
-        var u = users.findAll().stream()
-                .filter(x -> x.getUsername().toLowerCase().contains(query.toLowerCase()))
-                .map(this::toUser)
-                .toList();
+        var u = searchUsers(normalizedQuery, page, size);
 
         return Map.of("posts", p, "users", u);
+    }
+
+    public List<ApiModels.User> searchUsers(String query, Integer page, Integer size) {
+        var normalizedQuery = normalizeSearchQuery(query);
+        if (normalizedQuery.isBlank()) {
+            return List.of();
+        }
+        var pageable = PageRequest.of(
+                Math.max(page == null ? 0 : page, 0),
+                Math.min(Math.max(size == null ? 10 : size, 1), 25),
+                Sort.by(Sort.Direction.ASC, "username")
+        );
+        return users.findByUsernameContainingIgnoreCaseOrDisplayNameContainingIgnoreCase(normalizedQuery, normalizedQuery, pageable).stream()
+                .map(this::toUser)
+                .toList();
+    }
+
+    private String normalizeSearchQuery(String query) {
+        if (query == null) {
+            return "";
+        }
+        var normalized = query.trim();
+        while (normalized.startsWith("@")) {
+            normalized = normalized.substring(1).trim();
+        }
+        return normalized;
     }
 
 

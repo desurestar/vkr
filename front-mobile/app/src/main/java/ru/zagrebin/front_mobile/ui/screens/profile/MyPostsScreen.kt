@@ -82,7 +82,6 @@ fun MyPostsScreen(
     val state by myPostsViewModel.state.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedTab by rememberSaveable { mutableStateOf(MyPostsTab.Recipes) }
     var isScrollingUp by remember { mutableStateOf(true) }
     var previousIndex by remember { mutableStateOf(0) }
@@ -94,11 +93,7 @@ fun MyPostsScreen(
         MyPostsTab.Saved -> state.savedPosts
     }
 
-    val filteredPosts = remember(tabPosts, searchQuery) {
-        tabPosts.filter { post ->
-            post.title.contains(searchQuery, ignoreCase = true)
-        }
-    }
+    val filteredPosts = tabPosts
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
@@ -193,8 +188,8 @@ fun MyPostsScreen(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     SearchField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it }
+                        value = state.searchQuery,
+                        onValueChange = myPostsViewModel::onSearch
                     )
 
                     TabSelector(
