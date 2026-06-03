@@ -64,6 +64,11 @@ interface FeedApi {
     @DELETE("api/v1/profile/shopping-list/items/{itemId}") suspend fun deleteShoppingItem(@Path("itemId") itemId: Long)
     @POST("api/v1/recipes/{id}/shopping-list") suspend fun addRecipeToShoppingList(@Path("id") id: Int)
 
+    @GET("api/v1/statistics") suspend fun getStatistics(@Query("month") month: String? = null): StatisticsResponseDto
+    @PATCH("api/v1/statistics/settings") suspend fun updateStatisticsSettings(@Body request: StatisticsSettingsRequest): StatisticsSettingsDto
+    @POST("api/v1/statistics/water") suspend fun addStatisticsWater(@Body request: AddWaterRequest): StatisticsDayDto
+    @POST("api/v1/statistics/meals") suspend fun addStatisticsMeal(@Body request: AddMealRequest): StatisticsMealEntryDto
+
     @GET("api/v1/tags") suspend fun getTags(@Query("q") query: String? = null): List<TagDto>
     @Multipart
     @POST("api/v1/media") suspend fun uploadMedia(@Part file: MultipartBody.Part): MediaUploadResponse
@@ -128,3 +133,56 @@ data class CreateArticleRequest(
 data class ShoppingListDto(val id: Long, val name: String, val items: List<ShoppingItemDto> = emptyList())
 data class ShoppingItemDto(val id: Long, val name: String, val amount: String = "", val checked: Boolean = false)
 data class ShoppingItemRequest(val name: String? = null, val amount: String? = null, val checked: Boolean? = null)
+
+data class StatisticsSettingsDto(
+    val retentionMonths: Int = 3,
+    val goalKcal: Int = 2000,
+    val waterGoalMl: Int = 1500,
+    val proteinGoalGrams: Int = 90,
+    val fatGoalGrams: Int = 70,
+    val carbsGoalGrams: Int = 250
+)
+
+data class StatisticsMealEntryDto(
+    val id: Long,
+    val name: String,
+    val amountLabel: String,
+    val timeLabel: String,
+    val kcal: Int,
+    val proteins: Float,
+    val fats: Float,
+    val carbs: Float
+)
+
+data class StatisticsDayDto(
+    val date: String,
+    val goalKcal: Int,
+    val waterGoalMl: Int,
+    val waterConsumedMl: Int,
+    val breakfast: List<StatisticsMealEntryDto> = emptyList(),
+    val lunch: List<StatisticsMealEntryDto> = emptyList(),
+    val dinner: List<StatisticsMealEntryDto> = emptyList(),
+    val snack: List<StatisticsMealEntryDto> = emptyList()
+)
+
+data class StatisticsResponseDto(val settings: StatisticsSettingsDto, val days: List<StatisticsDayDto>)
+data class StatisticsSettingsRequest(
+    val retentionMonths: Int? = null,
+    val goalKcal: Int? = null,
+    val waterGoalMl: Int? = null,
+    val proteinGoalGrams: Int? = null,
+    val fatGoalGrams: Int? = null,
+    val carbsGoalGrams: Int? = null
+)
+data class AddWaterRequest(val date: String, val amountMl: Int)
+data class AddMealRequest(
+    val date: String,
+    val type: String,
+    val name: String,
+    val amountLabel: String,
+    val timeLabel: String,
+    val kcal: Int,
+    val proteins: Float,
+    val fats: Float,
+    val carbs: Float
+)

@@ -28,11 +28,24 @@ data class MealDraft(
     val kcalPer100: Int = 0
 )
 
+data class StatisticsSettings(
+    val retentionMonths: Int = 3,
+    val goalKcal: Int = 2000,
+    val waterGoalMl: Int = 1500,
+    val proteinGoalGrams: Int = 90,
+    val fatGoalGrams: Int = 70,
+    val carbsGoalGrams: Int = 250
+)
+
 data class StatisticsDay(
     val id: Int,
+    val dateIso: String,
     val dayNumber: String,
     val goalKcal: Int,
     val waterGoalMl: Int,
     val waterConsumedMl: Int,
+    val proteinGoalGrams: Int,
+    val fatGoalGrams: Int,
+    val carbsGoalGrams: Int,
     val meals: Map<MealType, List<MealEntry>>
 )

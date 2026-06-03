@@ -19,6 +19,7 @@ fun StatisticsScreen(
         onDayClick = viewModel::selectDay,
         onAddWater = viewModel::addWater,
         onAddMeal = viewModel::addMeal,
+        onUpdateSettings = viewModel::updateSettings,
         myRecipeOptions = RecipeRepository.getMyPosts(currentUserId),
         savedRecipeOptions = RecipeRepository.getSavedPosts(currentUserId),
         allRecipeOptions = RecipeRepository.getAllPosts()
@@ -32,6 +33,7 @@ private fun StatisticsScreenPreview() {
         state = previewStatisticsUiState(),
         onDayClick = {},
         onAddWater = {},
-        onAddMeal = { _, _ -> }
+        onAddMeal = { _, _ -> },
+        onUpdateSettings = {}
     )
 }
