@@ -16,6 +16,7 @@ data class PublicProfileUiState(
     val posts: List<PostCardState> = emptyList(),
     val searchQuery: String = "",
     val isLoading: Boolean = false,
+    val isPostsLoading: Boolean = false,
     val isFollowUpdating: Boolean = false,
     val error: String? = null
 )

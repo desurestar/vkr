@@ -54,6 +54,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardContent
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
+import ru.zagrebin.front_mobile.ui.theme.SearchFieldContainerColor
+import ru.zagrebin.front_mobile.ui.theme.SearchFieldCornerRadius
 
 @Composable
 fun PublicProfileScreen(
@@ -154,7 +156,18 @@ private fun PublicProfileContent(
             )
         }
 
-        if (visiblePosts.isEmpty()) {
+        if (state.isPostsLoading) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        } else if (visiblePosts.isEmpty()) {
             item {
                 EmptyPublicProfilePosts(tab = selectedTab)
             }
@@ -376,10 +389,10 @@ private fun PublicProfileSearchField(
                 contentDescription = "Искать"
             )
         },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(SearchFieldCornerRadius),
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
+            focusedContainerColor = SearchFieldContainerColor,
+            unfocusedContainerColor = SearchFieldContainerColor,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent
