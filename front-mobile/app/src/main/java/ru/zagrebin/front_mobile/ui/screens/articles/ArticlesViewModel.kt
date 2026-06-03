@@ -3,6 +3,7 @@ package ru.zagrebin.front_mobile.ui.screens.articles
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -10,32 +11,46 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
-import ru.zagrebin.front_mobile.data.repository.RefreshResult
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedState
 
+private const val INITIAL_PAGE_SIZE = 10
+private const val NEXT_PAGE_SIZE = 5
+
 private data class LikeOverride(val isLiked: Boolean, val likes: String)
+private data class PagingState(
+    val isLoadingNextPage: Boolean = false,
+    val hasMorePages: Boolean = true,
+    val isUsingFallback: Boolean = false
+)
 
 class ArticlesViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
     private val query = MutableStateFlow("")
+    private val posts = MutableStateFlow<List<FeedItem>>(emptyList())
     private val errorMessage = MutableStateFlow<String?>(null)
-    private val isUsingFallback = MutableStateFlow(false)
     private val likeOverrides = MutableStateFlow<Map<Int, LikeOverride>>(emptyMap())
+    private val pagingState = MutableStateFlow(PagingState())
+    private var nextPage = 0
+    private var searchJob: Job? = null
 
     val state: StateFlow<FeedState> = combine(
-        container.observeArticlesFeedUseCase(),
+        posts,
         query,
         errorMessage,
-        isUsingFallback,
-        likeOverrides
-    ) { posts, q, error, fallback, overrides ->
-        val mapped = posts.map { it.applyLikeOverride(overrides[it.id]).toUi() }.let { list ->
-            if (q.isBlank()) list else list.filter { it.title.contains(q, true) }
-        }
-        FeedState(posts = mapped, searchQuery = q, errorMessage = error, isUsingFallback = fallback)
+        likeOverrides,
+        pagingState
+    ) { loadedPosts, q, error, overrides, paging ->
+        FeedState(
+            posts = loadedPosts.map { it.applyLikeOverride(overrides[it.id]).toUi() },
+            searchQuery = q,
+            errorMessage = error,
+            isUsingFallback = paging.isUsingFallback,
+            isLoadingNextPage = paging.isLoadingNextPage,
+            hasMorePages = paging.hasMorePages
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedState())
 
     init {
@@ -43,22 +58,34 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun retryRefresh() {
+        loadFirstPage(query.value)
+    }
+
+    fun loadNextPage() {
+        val paging = pagingState.value
+        if (paging.isLoadingNextPage || !paging.hasMorePages || posts.value.isEmpty()) return
         viewModelScope.launch {
-            val result = container.refreshArticlesFeedUseCase()
-            when (result) {
-                RefreshResult.Success -> {
-                    errorMessage.value = null
-                    isUsingFallback.value = false
-                }
-                RefreshResult.Fallback -> {
-                    errorMessage.value = "Сервер недоступен. Показан офлайн-кеш."
-                    isUsingFallback.value = true
-                }
+            pagingState.value = pagingState.value.copy(isLoadingNextPage = true)
+            val result = container.feedRepository.loadArticlesPage(query.value, nextPage, NEXT_PAGE_SIZE)
+            if (result.isFromCache) {
+                errorMessage.value = "Сервер недоступен. Показан офлайн-кеш."
+                pagingState.value = pagingState.value.copy(hasMorePages = false, isUsingFallback = true)
+            } else {
+                posts.value = (posts.value + result.data).distinctBy { it.id }
+                nextPage += 1
+                pagingState.value = pagingState.value.copy(hasMorePages = result.data.size >= NEXT_PAGE_SIZE)
+                errorMessage.value = null
+                pagingState.value = pagingState.value.copy(isUsingFallback = false)
             }
+            pagingState.value = pagingState.value.copy(isLoadingNextPage = false)
         }
     }
 
-    fun onSearch(newQuery: String) { query.value = newQuery }
+    fun onSearch(newQuery: String) {
+        query.value = newQuery
+        loadFirstPage(newQuery)
+    }
+
     fun onTagClick(postId: Int, tagId: Int) = Unit
 
     fun onLikeClick(postId: Int) {
@@ -71,6 +98,25 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
             if (!success) {
                 likeOverrides.value = likeOverrides.value + (postId to LikeOverride(current.isLiked, current.likes))
                 errorMessage.value = "Не удалось синхронизировать лайк с сервером."
+            }
+        }
+    }
+
+    private fun loadFirstPage(searchQuery: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            pagingState.value = PagingState()
+            nextPage = 0
+            val result = container.feedRepository.loadArticlesPage(searchQuery, nextPage, INITIAL_PAGE_SIZE)
+            posts.value = result.data
+            nextPage = 1
+            pagingState.value = pagingState.value.copy(hasMorePages = !result.isFromCache && result.data.size >= INITIAL_PAGE_SIZE)
+            if (result.isFromCache) {
+                errorMessage.value = "Сервер недоступен. Показан офлайн-кеш."
+                pagingState.value = pagingState.value.copy(isUsingFallback = true)
+            } else {
+                errorMessage.value = null
+                pagingState.value = pagingState.value.copy(isUsingFallback = false)
             }
         }
     }
