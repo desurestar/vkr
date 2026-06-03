@@ -29,9 +29,8 @@ fun StatisticsContent(
     onAddWater: (Int) -> Unit,
     onAddMeal: (MealType, MealDraft) -> Unit,
     onUpdateSettings: (StatisticsSettings) -> Unit,
-    myRecipeOptions: List<ru.zagrebin.front_mobile.ui.components.postCard.PostCardState> = emptyList(),
-    savedRecipeOptions: List<ru.zagrebin.front_mobile.ui.components.postCard.PostCardState> = emptyList(),
-    allRecipeOptions: List<ru.zagrebin.front_mobile.ui.components.postCard.PostCardState> = emptyList()
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit
 ) {
     var openedMealType by remember { mutableStateOf<MealType?>(null) }
 
@@ -55,6 +54,9 @@ fun StatisticsContent(
             DayStrip(
                 days = state.days,
                 selectedDayId = state.selectedDayId,
+                monthLabel = state.monthLabel,
+                onPreviousMonth = onPreviousMonth,
+                onNextMonth = onNextMonth,
                 onDayClick = onDayClick
             )
         }
@@ -103,9 +105,9 @@ fun StatisticsContent(
                 onAddMeal(type, draft)
                 openedMealType = null
             },
-            myRecipeOptions = myRecipeOptions,
-            savedRecipeOptions = savedRecipeOptions,
-            allRecipeOptions = allRecipeOptions
+            recipeOptions = state.recipeOptions,
+            currentUserId = state.currentUserId,
+            recentRecipeIds = state.recentRecipeIds
         )
     }
 }
@@ -118,6 +120,8 @@ private fun StatisticsContentPreview() {
         onDayClick = {},
         onAddWater = {},
         onAddMeal = { _, _ -> },
-        onUpdateSettings = {}
+        onUpdateSettings = {},
+        onPreviousMonth = {},
+        onNextMonth = {}
     )
 }

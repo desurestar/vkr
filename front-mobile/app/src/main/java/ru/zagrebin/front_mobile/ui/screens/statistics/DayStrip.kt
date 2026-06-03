@@ -2,17 +2,22 @@ package ru.zagrebin.front_mobile.ui.screens.statistics
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -20,28 +25,60 @@ import androidx.compose.ui.unit.dp
 fun DayStrip(
     days: List<StatisticsDay>,
     selectedDayId: Int,
+    monthLabel: String,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
     onDayClick: (Int) -> Unit
 ) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(days) { day ->
-            val selected = day.id == selectedDayId
-            Surface(
-                onClick = { onDayClick(day.id) },
-                shape = CircleShape,
-                color = if (selected) Color.White else Color(0xFFB9B9B9),
-                border = if (selected) BorderStroke(1.dp, Color(0xFFFF6B6B)) else null
-            ) {
-                Text(
-                    text = day.dayNumber,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (selected) Color(0xFFFF4D4D) else Color.White
-                )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            MonthNavButton(text = "‹", onClick = onPreviousMonth)
+            Text(
+                text = monthLabel.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF2A2A2A)
+            )
+            MonthNavButton(text = "›", onClick = onNextMonth)
+        }
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(days) { day ->
+                val selected = day.id == selectedDayId
+                Surface(
+                    onClick = { onDayClick(day.id) },
+                    shape = CircleShape,
+                    color = if (selected) Color.White else Color(0xFFB9B9B9),
+                    border = if (selected) BorderStroke(1.dp, Color(0xFFFF6B6B)) else null
+                ) {
+                    Text(
+                        text = day.dayNumber,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (selected) Color(0xFFFF4D4D) else Color.White
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun MonthNavButton(text: String, onClick: () -> Unit) {
+    Surface(onClick = onClick, shape = RoundedCornerShape(10.dp), color = Color.White) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.titleMedium,
+            color = Color(0xFFF59B5A),
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -51,8 +88,9 @@ private fun DayStripPreview() {
     DayStrip(
         days = previewStatisticsUiState().days,
         selectedDayId = 30,
+        monthLabel = "июнь 2026",
+        onPreviousMonth = {},
+        onNextMonth = {},
         onDayClick = {}
     )
 }
-
-

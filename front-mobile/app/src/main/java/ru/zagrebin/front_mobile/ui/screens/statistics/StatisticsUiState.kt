@@ -5,6 +5,10 @@ data class StatisticsUiState(
     val days: List<StatisticsDay> = emptyList(),
     val selectedDayId: Int = 0,
     val settings: StatisticsSettings = StatisticsSettings(),
+    val monthLabel: String = "",
+    val recipeOptions: List<RecipeMealOption> = emptyList(),
+    val currentUserId: String? = null,
+    val recentRecipeIds: List<Int> = emptyList(),
     val errorMessage: String? = null
 ) {
     val selectedDay: StatisticsDay?

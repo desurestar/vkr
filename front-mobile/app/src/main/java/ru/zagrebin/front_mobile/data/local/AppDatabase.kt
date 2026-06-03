@@ -29,7 +29,7 @@ import ru.zagrebin.front_mobile.data.local.entities.StatisticsSettingsEntity
         StatisticsDayEntity::class,
         StatisticsMealEntryEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

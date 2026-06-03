@@ -48,7 +48,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
-import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import androidx.compose.material3.MenuAnchorType
 import kotlin.math.roundToInt
 
@@ -65,9 +64,9 @@ fun AddMealBottomSheet(
     mealType: MealType,
     onDismiss: () -> Unit,
     onAddClick: (MealType, MealDraft) -> Unit,
-    myRecipeOptions: List<PostCardState> = emptyList(),
-    savedRecipeOptions: List<PostCardState> = emptyList(),
-    allRecipeOptions: List<PostCardState> = emptyList(),
+    recipeOptions: List<RecipeMealOption> = emptyList(),
+    currentUserId: String? = null,
+    recentRecipeIds: List<Int> = emptyList(),
     allowMealTypeSelection: Boolean = false,
     initialDraft: MealDraft? = null
 ) {
@@ -89,7 +88,12 @@ fun AddMealBottomSheet(
     var kcal100 by rememberSaveable(mealType, initialDraft) {
         mutableStateOf(initialDraft?.kcalPer100?.toString() ?: "0")
     }
-    val hasRecipeSources = myRecipeOptions.isNotEmpty() || savedRecipeOptions.isNotEmpty() || allRecipeOptions.isNotEmpty()
+    val myRecipeOptions = remember(recipeOptions, currentUserId) {
+        recipeOptions.filter { option -> currentUserId != null && option.authorId == currentUserId }
+    }
+    val savedRecipeOptions = remember(recipeOptions) { recipeOptions.filter { it.isSaved } }
+    val allRecipeOptions = recipeOptions
+    val hasRecipeSources = recipeOptions.isNotEmpty()
     val initialRecipeSource = when {
         myRecipeOptions.isNotEmpty() -> RecipeSource.MY
         savedRecipeOptions.isNotEmpty() -> RecipeSource.SAVED
@@ -100,22 +104,16 @@ fun AddMealBottomSheet(
     var recipeQuery by rememberSaveable(initialDraft) { mutableStateOf(initialDraft?.title.orEmpty()) }
     var recipeFieldSize by remember { mutableStateOf(IntSize.Zero) }
     val recipeFocusRequester = remember { FocusRequester() }
-    var recipeHistory by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var selectedRecipeId by rememberSaveable(initialDraft) { mutableStateOf(initialDraft?.recipeId) }
     var showErrors by rememberSaveable { mutableStateOf(false) }
     var isMealTypeMenuExpanded by rememberSaveable { mutableStateOf(false) }
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
 
-    val recentRecipes = remember(recipeHistory) {
-        recipeHistory.asReversed().distinct().take(5)
-    }
-
-    val allCombinedRecipes = remember(myRecipeOptions, savedRecipeOptions, allRecipeOptions) {
-        (myRecipeOptions + savedRecipeOptions + allRecipeOptions).distinctBy { it.title }
-    }
-    val recentRecipeOptions = remember(recentRecipes, allCombinedRecipes) {
-        recentRecipes.mapNotNull { title -> allCombinedRecipes.firstOrNull { it.title == title } }
+    val recentRecipeOptions = remember(recentRecipeIds, allRecipeOptions) {
+        val recipesById = allRecipeOptions.associateBy { it.id }
+        recentRecipeIds.mapNotNull { recipesById[it] }
     }
     val hasRecentRecipes = recentRecipeOptions.isNotEmpty()
 
@@ -125,11 +123,8 @@ fun AddMealBottomSheet(
         RecipeSource.ALL -> allRecipeOptions
         RecipeSource.RECENT -> if (hasRecentRecipes) recentRecipeOptions else allRecipeOptions
     }
-    val filteredRecipes = if (recipeQuery.isBlank()) {
-        sourceRecipes
-    } else {
-        val query = recipeQuery.trim().lowercase()
-        sourceRecipes.filter { it.title.lowercase().contains(query) }
+    val filteredRecipes = remember(sourceRecipes, recipeQuery, selectedRecipeSource, recentRecipeIds) {
+        sourceRecipes.searchAndSortRecipes(recipeQuery, selectedRecipeSource, recentRecipeIds)
     }
 
     val portionValue = portion.toIntOrNull()?.coerceAtLeast(0) ?: 0
@@ -227,6 +222,7 @@ fun AddMealBottomSheet(
                         value = recipeQuery,
                         onValueChange = {
                             recipeQuery = it
+                            selectedRecipeId = null
                             if (!isRecipeMenuExpanded) {
                                 isRecipeMenuExpanded = true
                             }
@@ -296,7 +292,7 @@ fun AddMealBottomSheet(
                                             fats100 = recipe.fatsPer100.pretty()
                                             carbs100 = recipe.carbsPer100.pretty()
                                             kcal100 = recipe.kcalPer100.toString()
-                                            recipeHistory = (recipeHistory + selectedTitle).takeLast(20)
+                                            selectedRecipeId = recipe.id
                                             isRecipeMenuExpanded = false
                                         }
                                     )
@@ -318,7 +314,10 @@ fun AddMealBottomSheet(
 
             TextField(
                 value = title,
-                onValueChange = { title = it },
+                onValueChange = {
+                    title = it
+                    selectedRecipeId = null
+                },
                 placeholder = { Text("Введите название") },
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -414,7 +413,8 @@ fun AddMealBottomSheet(
                          proteinsPer100 = proteins100Value,
                          fatsPer100 = fats100Value,
                          carbsPer100 = carbs100Value,
-                         kcalPer100 = kcal100Value
+                         kcalPer100 = kcal100Value,
+                         recipeId = selectedRecipeId
                      )
                      onAddClick(selectedMealType, draft)
                  },
@@ -668,6 +668,59 @@ private fun PortionChip(text: String, selected: Boolean, onClick: () -> Unit) {
         )
     }
 }
+
+private fun List<RecipeMealOption>.searchAndSortRecipes(
+    query: String,
+    source: RecipeSource,
+    recentRecipeIds: List<Int>
+): List<RecipeMealOption> {
+    val base = distinctBy { it.id }
+    val normalizedQuery = query.normalizeForRecipeSearch()
+    if (normalizedQuery.isBlank()) {
+        return when (source) {
+            RecipeSource.RECENT -> base
+            else -> base.sortedByDescending { it.sortDateKey.ifBlank { it.id.toString().padStart(10, '0') } }
+        }
+    }
+    val tokens = normalizedQuery.split(' ').filter { it.isNotBlank() }
+    return base.mapNotNull { recipe ->
+        val searchable = recipe.searchableText
+        if (tokens.all { token -> searchable.contains(token) }) {
+            recipe to recipe.searchScore(normalizedQuery, tokens, recentRecipeIds)
+        } else {
+            null
+        }
+    }.sortedWith(
+        compareByDescending<Pair<RecipeMealOption, Int>> { it.second }
+            .thenByDescending { it.first.sortDateKey.ifBlank { it.first.id.toString().padStart(10, '0') } }
+            .thenBy { it.first.title }
+    ).map { it.first }
+}
+
+private val RecipeMealOption.searchableText: String
+    get() = (listOf(title, authorName, calories) + tags).joinToString(" ").normalizeForRecipeSearch()
+
+private val RecipeMealOption.sortDateKey: String
+    get() = date.split('.').takeIf { it.size == 3 }?.let { (day, month, year) -> "$year$month$day" }.orEmpty()
+
+private fun RecipeMealOption.searchScore(query: String, tokens: List<String>, recentRecipeIds: List<Int>): Int {
+    val titleText = title.normalizeForRecipeSearch()
+    val tagText = tags.joinToString(" ").normalizeForRecipeSearch()
+    val recentBonus = recentRecipeIds.indexOf(id).takeIf { it >= 0 }?.let { (recentRecipeIds.size - it) * 2 } ?: 0
+    return recentBonus + when {
+        titleText == query -> 1000
+        titleText.startsWith(query) -> 800
+        tokens.all { titleText.split(' ').any { word -> word.startsWith(it) } } -> 650
+        titleText.contains(query) -> 500
+        tokens.any { tagText.contains(it) } -> 300
+        else -> 100
+    }
+}
+
+private fun String.normalizeForRecipeSearch(): String = lowercase()
+    .replace('ё', 'е')
+    .replace(Regex("[^a-zа-я0-9]+"), " ")
+    .trim()
 
 private fun highlightQuery(text: String, query: String, highlightColor: Color): androidx.compose.ui.text.AnnotatedString {
     val trimmedQuery = query.trim()
