@@ -8,27 +8,28 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagScreen
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
@@ -60,8 +61,13 @@ fun FeedFiltersSheet(
     onClear: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = AppPageBackgroundColor,
         contentColor = MaterialTheme.colorScheme.onBackground,
         shape = RoundedCornerShape(
@@ -72,29 +78,33 @@ fun FeedFiltersSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .navigationBarsPadding()
                 .padding(
                     horizontal = FilterSheetHorizontalPadding,
                     vertical = FilterSheetVerticalPadding
-                )
-                .navigationBarsPadding(),
+                ),
             verticalArrangement = Arrangement.spacedBy(FilterSheetContentSpacing)
         ) {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column {
-                    Text(text = title, style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        text = "Подберите публикации по нужным параметрам",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onDismiss) {
-                    Icon(imageVector = Icons.Outlined.Close, contentDescription = "Закрыть")
-                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text(
+                    text = "Подберите публикации по нужным параметрам",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             if (showRecipeRanges) {
@@ -102,44 +112,65 @@ fun FeedFiltersSheet(
                 FilterRangeRow(
                     fromValue = filters.minTime,
                     toValue = filters.maxTime,
-                    onFromChange = { onFilterChange(filters.copy(minTime = it.onlyDecimalInput())) },
-                    onToChange = { onFilterChange(filters.copy(maxTime = it.onlyDecimalInput())) }
+                    onFromChange = {
+                        onFilterChange(filters.copy(minTime = it.onlyDecimalInput()))
+                    },
+                    onToChange = {
+                        onFilterChange(filters.copy(maxTime = it.onlyDecimalInput()))
+                    }
                 )
 
                 FilterSectionTitle("Калории, ккал")
                 FilterRangeRow(
                     fromValue = filters.minCalories,
                     toValue = filters.maxCalories,
-                    onFromChange = { onFilterChange(filters.copy(minCalories = it.onlyDecimalInput())) },
-                    onToChange = { onFilterChange(filters.copy(maxCalories = it.onlyDecimalInput())) }
+                    onFromChange = {
+                        onFilterChange(filters.copy(minCalories = it.onlyDecimalInput()))
+                    },
+                    onToChange = {
+                        onFilterChange(filters.copy(maxCalories = it.onlyDecimalInput()))
+                    }
                 )
 
                 FilterSectionTitle("Белки на 100 г")
                 FilterRangeRow(
                     fromValue = filters.minProteins,
                     toValue = filters.maxProteins,
-                    onFromChange = { onFilterChange(filters.copy(minProteins = it.onlyDecimalInput())) },
-                    onToChange = { onFilterChange(filters.copy(maxProteins = it.onlyDecimalInput())) }
+                    onFromChange = {
+                        onFilterChange(filters.copy(minProteins = it.onlyDecimalInput()))
+                    },
+                    onToChange = {
+                        onFilterChange(filters.copy(maxProteins = it.onlyDecimalInput()))
+                    }
                 )
 
                 FilterSectionTitle("Жиры на 100 г")
                 FilterRangeRow(
                     fromValue = filters.minFats,
                     toValue = filters.maxFats,
-                    onFromChange = { onFilterChange(filters.copy(minFats = it.onlyDecimalInput())) },
-                    onToChange = { onFilterChange(filters.copy(maxFats = it.onlyDecimalInput())) }
+                    onFromChange = {
+                        onFilterChange(filters.copy(minFats = it.onlyDecimalInput()))
+                    },
+                    onToChange = {
+                        onFilterChange(filters.copy(maxFats = it.onlyDecimalInput()))
+                    }
                 )
 
                 FilterSectionTitle("Углеводы на 100 г")
                 FilterRangeRow(
                     fromValue = filters.minCarbs,
                     toValue = filters.maxCarbs,
-                    onFromChange = { onFilterChange(filters.copy(minCarbs = it.onlyDecimalInput())) },
-                    onToChange = { onFilterChange(filters.copy(maxCarbs = it.onlyDecimalInput())) }
+                    onFromChange = {
+                        onFilterChange(filters.copy(minCarbs = it.onlyDecimalInput()))
+                    },
+                    onToChange = {
+                        onFilterChange(filters.copy(maxCarbs = it.onlyDecimalInput()))
+                    }
                 )
             }
 
             FilterSectionTitle("Теги")
+
             TextField(
                 value = tagQuery,
                 onValueChange = onTagQueryChange,
@@ -156,6 +187,7 @@ fun FeedFiltersSheet(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
                 FlowRow {
                     tagSuggestions.forEach { tag ->
                         TagScreen(
@@ -172,6 +204,7 @@ fun FeedFiltersSheet(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
                 FlowRow {
                     filters.selectedTags.forEach { tag ->
                         TagScreen(
@@ -193,6 +226,7 @@ fun FeedFiltersSheet(
                 ) {
                     Text("Сбросить")
                 }
+
                 Button(
                     onClick = onApply,
                     modifier = Modifier.weight(1f),
@@ -256,12 +290,11 @@ private fun FilterRangeRow(
 
 @Composable
 private fun filterTextFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = FilterFieldContainerColor,
+    focusedContainerColor = SearchFieldContainerColor,
     unfocusedContainerColor = SearchFieldContainerColor,
-    focusedIndicatorColor = TransparentColor,
-    unfocusedIndicatorColor = TransparentColor,
-    disabledIndicatorColor = TransparentColor
-)
+    focusedIndicatorColor = SearchFieldContainerColor,
+    unfocusedIndicatorColor = SearchFieldContainerColor,
+    disabledIndicatorColor = SearchFieldContainerColor)
 
 private fun String.onlyDecimalInput(): String = filterIndexed { index, char ->
     char.isDigit() || (char == '.' && index > 0 && take(index).none { it == '.' })
