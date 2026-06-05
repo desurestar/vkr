@@ -31,6 +31,7 @@ import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileStatsCard
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    isAuthorized: Boolean = true,
     onOpenShoppingList: () -> Unit,
     onOpenMyPosts: () -> Unit,
     onOpenDrafts: () -> Unit,
@@ -62,9 +63,9 @@ fun ProfileScreen(
 
             item {
                 ProfileHeader(
-                    name = state.name,
-                    email = state.email,
-                    avatarUrl = state.avatarUrl,
+                    name = if (isAuthorized) state.name else "Гость",
+                    email = if (isAuthorized) state.email else "Войдите, чтобы публиковать и сохранять данные",
+                    avatarUrl = if (isAuthorized) state.avatarUrl else null,
                     onCreateRecipeClick = {
                         viewModel.onEvent(ProfileEvent.OnCreateRecipeClick)
                         onOpenCreateRecipe()
@@ -80,9 +81,9 @@ fun ProfileScreen(
 
             item {
                 ProfileStatsCard(
-                    following = state.following,
-                    followers = state.followers,
-                    likes = state.likes
+                    following = if (isAuthorized) state.following else "0",
+                    followers = if (isAuthorized) state.followers else "0",
+                    likes = if (isAuthorized) state.likes else "0"
                 )
             }
 
@@ -155,7 +156,7 @@ fun ProfileScreen(
                 ProfileMenuGroup {
                     ProfileMenuItem(
                         icon = FeatherIcons.LogOut,
-                        title = "Выйти из аккаунта",
+                        title = if (isAuthorized) "Выйти из аккаунта" else "Войти или зарегистрироваться",
                         onClick = onLogout
                     )
                 }
@@ -170,6 +171,7 @@ fun ProfileScreen(
 @Composable
 fun ProfileScreenPreview() {
     ProfileScreen(
+        isAuthorized = false,
         onOpenShoppingList = {},
         onOpenMyPosts = {},
         onOpenDrafts = {},

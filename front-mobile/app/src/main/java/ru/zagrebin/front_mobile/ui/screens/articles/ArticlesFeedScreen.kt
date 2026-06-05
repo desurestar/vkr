@@ -75,6 +75,8 @@ import ru.zagrebin.front_mobile.ui.theme.TransparentColor
 @Composable
 fun ArticlesFeedScreen(
     viewModel: ArticlesViewModel = viewModel(),
+    isAuthorized: Boolean = true,
+    onAuthRequired: () -> Unit = {},
     onOpenArticle: (Int) -> Unit = {},
     onOpenPublicProfile: (String) -> Unit = {}
 ) {
@@ -138,7 +140,9 @@ fun ArticlesFeedScreen(
                         viewModel.onTagClick(post.id, tagId)
                     },
                     onOpenArticle = onOpenArticle,
-                    onLikeClick = { viewModel.onLikeClick(post.id) },
+                    onLikeClick = {
+                        if (isAuthorized) viewModel.onLikeClick(post.id) else onAuthRequired()
+                    },
                     onAuthorClick = onOpenPublicProfile
                 )
             }

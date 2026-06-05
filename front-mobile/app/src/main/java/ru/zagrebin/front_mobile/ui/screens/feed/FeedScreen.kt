@@ -57,6 +57,8 @@ import ru.zagrebin.front_mobile.ui.theme.TransparentColor
 @Composable
 fun FeedScreen(
     viewModel: FeedViewModel = viewModel(),
+    isAuthorized: Boolean = true,
+    onAuthRequired: () -> Unit = {},
     onOpenRecipe: (Int) -> Unit = {},
     onOpenPublicProfile: (String) -> Unit = {}
 ) {
@@ -121,7 +123,9 @@ fun FeedScreen(
                         viewModel.onTagClick(post.id, tagId)
                     },
                     onOpenRecipe = onOpenRecipe,
-                    onLikeClick = { viewModel.onLikeClick(post.id) },
+                    onLikeClick = {
+                        if (isAuthorized) viewModel.onLikeClick(post.id) else onAuthRequired()
+                    },
                     onAuthorClick = onOpenPublicProfile
                 )
             }

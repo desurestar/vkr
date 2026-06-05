@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.domain.model.ProfileData
+import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileEvent
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
@@ -29,11 +30,19 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     ) { loadedProfile, refreshing, error ->
         loadedProfile?.toState(isLoading = false, error = error)
             ?: ProfileState(isLoading = refreshing, error = error)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileState(isLoading = true))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileState())
 
-    init { loadProfile() }
+    init {
+        if (AuthSessionState.isAuthorized.value) loadProfile()
+    }
 
     fun loadProfile() {
+        if (!AuthSessionState.isAuthorized.value) {
+            profile.value = null
+            isRefreshing.value = false
+            errorMessage.value = null
+            return
+        }
         viewModelScope.launch {
             isRefreshing.value = true
             errorMessage.value = null

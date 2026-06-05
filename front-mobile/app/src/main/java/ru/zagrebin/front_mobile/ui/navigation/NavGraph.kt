@@ -72,6 +72,10 @@ fun NavGraph(
     val api = appContainer.feedApi
     val profileRepository = ProfileRepository(appContainer.feedApi, appContainer.db.profileDao(), appContainer.networkConnectionChecker)
     val profileViewModel: ProfileViewModel = viewModel()
+    val requestAuthorization = { navController.navigate(Screen.EntryOptions.route) { launchSingleTop = true } }
+    val requireAuthorization: (() -> Unit) -> Unit = { action ->
+        if (isAuthorized) action() else requestAuthorization()
+    }
 
     NavHost(
         navController = navController,
@@ -81,6 +85,8 @@ fun NavGraph(
 
         composable(BottomNavItem.Recipes.route) {
             FeedScreen(
+                isAuthorized = isAuthorized,
+                onAuthRequired = requestAuthorization,
                 onOpenRecipe = { postId ->
                     navController.navigate(Screen.RecipeDetails.createRoute(postId))
                 },
@@ -92,6 +98,8 @@ fun NavGraph(
 
         composable(BottomNavItem.Articles.route) {
             ArticlesFeedScreen(
+                isAuthorized = isAuthorized,
+                onAuthRequired = requestAuthorization,
                 onOpenArticle = { postId ->
                     navController.navigate(Screen.ArticleDetails.createRoute(postId))
                 },
@@ -127,20 +135,25 @@ fun NavGraph(
 
             ProfileScreen(
                 viewModel = profileViewModel,
-                onOpenShoppingList = { navController.navigate(Screen.ShoppingList.route) },
-                onOpenMyPosts = { navController.navigate(Screen.MyPosts.route) },
-                onOpenDrafts = { navController.navigate(Screen.Drafts.route) },
-                onOpenEditAccount = { navController.navigate(Screen.EditAccount.route) },
-                onOpenPasswordSecurity = { navController.navigate(Screen.PasswordSecurity.route) },
-                onOpenCreateRecipe = { navController.navigate(Screen.CreateRecipe.route) },
-                onOpenCreateArticle = { navController.navigate(Screen.CreateArticle.route) },
+                isAuthorized = isAuthorized,
+                onOpenShoppingList = { requireAuthorization { navController.navigate(Screen.ShoppingList.route) } },
+                onOpenMyPosts = { requireAuthorization { navController.navigate(Screen.MyPosts.route) } },
+                onOpenDrafts = { requireAuthorization { navController.navigate(Screen.Drafts.route) } },
+                onOpenEditAccount = { requireAuthorization { navController.navigate(Screen.EditAccount.route) } },
+                onOpenPasswordSecurity = { requireAuthorization { navController.navigate(Screen.PasswordSecurity.route) } },
+                onOpenCreateRecipe = { requireAuthorization { navController.navigate(Screen.CreateRecipe.route) } },
+                onOpenCreateArticle = { requireAuthorization { navController.navigate(Screen.CreateArticle.route) } },
                 onLogout = {
-                    scope.launch {
-                        runCatching { api.logout() }
-                        profileRepository.clearProfile()
-                        AuthSessionState.setAuthorized(context, false)
-                        navController.navigate(Screen.EntryOptions.route) {
-                            popUpTo(navController.graph.id) { inclusive = true }
+                    if (!isAuthorized) {
+                        requestAuthorization()
+                    } else {
+                        scope.launch {
+                            runCatching { api.logout() }
+                            profileRepository.clearProfile()
+                            AuthSessionState.setAuthorized(context, false)
+                            navController.navigate(Screen.EntryOptions.route) {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                            }
                         }
                     }
                 }
@@ -148,14 +161,26 @@ fun NavGraph(
         }
 
         composable(Screen.ShoppingList.route) {
+            if (!isAuthorized) {
+                LaunchedEffect(Unit) { requestAuthorization() }
+                return@composable
+            }
             ShoppingListScreen(onBackClick = { navController.popBackStack() })
         }
 
         composable(Screen.MyPosts.route) {
+            if (!isAuthorized) {
+                LaunchedEffect(Unit) { requestAuthorization() }
+                return@composable
+            }
             MyPostsScreen(onBackClick = { navController.popBackStack() })
         }
 
         composable(Screen.Drafts.route) {
+            if (!isAuthorized) {
+                LaunchedEffect(Unit) { requestAuthorization() }
+                return@composable
+            }
             DraftsScreen(
                 onBackClick = { navController.popBackStack() },
                 onOpenRecipe = { postId -> navController.navigate(Screen.RecipeDetails.createRoute(postId)) },
@@ -164,6 +189,10 @@ fun NavGraph(
         }
 
         composable(Screen.EditAccount.route) {
+            if (!isAuthorized) {
+                LaunchedEffect(Unit) { requestAuthorization() }
+                return@composable
+            }
             val profileState = profileViewModel.state.collectAsState().value
 
             EditAccountScreen(
@@ -186,12 +215,20 @@ fun NavGraph(
         }
 
         composable(Screen.PasswordSecurity.route) {
+            if (!isAuthorized) {
+                LaunchedEffect(Unit) { requestAuthorization() }
+                return@composable
+            }
             PasswordSecurityScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }
 
         composable(Screen.CreateRecipe.route) {
+            if (!isAuthorized) {
+                LaunchedEffect(Unit) { requestAuthorization() }
+                return@composable
+            }
             var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
 
             LaunchedEffect(Unit) {
@@ -316,6 +353,10 @@ fun NavGraph(
         }
 
         composable(Screen.CreateArticle.route) {
+            if (!isAuthorized) {
+                LaunchedEffect(Unit) { requestAuthorization() }
+                return@composable
+            }
             var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
 
             LaunchedEffect(Unit) {
@@ -439,6 +480,8 @@ fun NavGraph(
                         article = state.post,
                         content = state.content,
                         currentUserId = state.currentUserId,
+                        isAuthorized = isAuthorized,
+                        onAuthRequired = requestAuthorization,
                         onBackClick = { navController.popBackStack() },
                         onSendComment = detailsViewModel::addComment,
                         onDeleteComment = detailsViewModel::deleteComment
@@ -484,6 +527,8 @@ fun NavGraph(
                     RecipeDetailsScreen(
                         post = state.post,
                         currentUserId = state.currentUserId,
+                        isAuthorized = isAuthorized,
+                        onAuthRequired = requestAuthorization,
                         onBackClick = { navController.popBackStack() },
                         onSendComment = detailsViewModel::addComment,
                         onDeleteComment = detailsViewModel::deleteComment,
