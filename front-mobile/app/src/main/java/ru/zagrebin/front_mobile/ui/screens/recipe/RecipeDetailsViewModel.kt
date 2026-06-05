@@ -79,8 +79,9 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun addMeal(type: MealType, draft: MealDraft) {
+        val postId = currentId ?: return
         viewModelScope.launch {
-            container.statisticsRepository.addMeal(LocalDate.now(), type, draft)
+            container.statisticsRepository.addRecipeMeal(LocalDate.now(), type, postId, draft)
         }
     }
 

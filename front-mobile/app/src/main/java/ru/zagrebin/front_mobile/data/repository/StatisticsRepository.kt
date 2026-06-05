@@ -7,6 +7,7 @@ import ru.zagrebin.front_mobile.data.local.entities.StatisticsDayEntity
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsMealEntryEntity
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsSettingsEntity
 import ru.zagrebin.front_mobile.data.remote.api.AddMealRequest
+import ru.zagrebin.front_mobile.data.remote.api.AddRecipeMealRequest
 import ru.zagrebin.front_mobile.data.remote.api.AddWaterRequest
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.remote.api.StatisticsDayDto
@@ -91,12 +92,36 @@ class StatisticsRepository(
     }
 
     suspend fun addMeal(date: LocalDate, type: MealType, draft: MealDraft) {
-        val entry = buildMealEntry(date.toString(), type, draft)
+        val dateIso = date.toString()
+        val entry = buildMealEntry(dateIso, type, draft)
         dao.upsertMeal(entry)
         if (networkConnectionChecker.isNetworkAvailable()) {
             runCatching {
-                val saved = api.addStatisticsMeal(entry.toRequest(date.toString()))
-                dao.upsertMeal(saved.toEntity(date.toString(), type))
+                val saved = api.addStatisticsMeal(entry.toRequest(dateIso))
+                dao.deleteMeal(entry.id)
+                dao.upsertMeal(saved.toEntity(dateIso, type))
+            }
+        }
+    }
+
+    suspend fun addRecipeMeal(date: LocalDate, type: MealType, recipeId: Int, draft: MealDraft) {
+        val dateIso = date.toString()
+        val entry = buildMealEntry(dateIso, type, draft.copy(recipeId = recipeId))
+        dao.upsertMeal(entry)
+        if (networkConnectionChecker.isNetworkAvailable()) {
+            runCatching {
+                val saved = api.addRecipeStatisticsMeal(
+                    recipeId = recipeId,
+                    request = AddRecipeMealRequest(
+                        date = dateIso,
+                        type = type.name,
+                        portionGrams = draft.portionGrams.coerceAtLeast(0),
+                        liquid = draft.isLiquid,
+                        timeLabel = entry.timeLabel
+                    )
+                )
+                dao.deleteMeal(entry.id)
+                dao.upsertMeal(saved.toEntity(dateIso, type))
             }
         }
     }

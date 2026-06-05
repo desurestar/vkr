@@ -103,7 +103,7 @@ fun AddMealBottomSheet(
     }
     val savedRecipeOptions = remember(recipeOptions) { recipeOptions.filter { it.isSaved } }
     val allRecipeOptions = recipeOptions
-    val hasRecipeSources = true
+    val hasRecipeSources = initialDraft == null || recipeOptions.isNotEmpty() || recipeSearchResults.isNotEmpty()
     val initialRecipeSource = when {
         myRecipeOptions.isNotEmpty() -> RecipeSource.MY
         savedRecipeOptions.isNotEmpty() -> RecipeSource.SAVED

@@ -42,6 +42,9 @@ interface StatisticsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMeal(meal: StatisticsMealEntryEntity)
 
+    @Query("DELETE FROM statistics_meals WHERE id = :id")
+    suspend fun deleteMeal(id: Long)
+
     @Query("DELETE FROM statistics_days WHERE dateIso BETWEEN :start AND :end")
     suspend fun clearDays(start: String, end: String)
 

@@ -89,7 +89,8 @@ fun RecipeDetailsScreen(
             proteinsPer100 = post.proteinsPer100,
             fatsPer100 = post.fatsPer100,
             carbsPer100 = post.carbsPer100,
-            kcalPer100 = post.kcalPer100
+            kcalPer100 = post.kcalPer100,
+            recipeId = post.id
         )
     }
 
