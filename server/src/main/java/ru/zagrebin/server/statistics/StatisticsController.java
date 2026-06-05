@@ -14,6 +14,7 @@ import ru.zagrebin.server.data.repo.StatisticsSettingsRepository;
 import ru.zagrebin.server.data.DbService;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -106,6 +107,40 @@ public class StatisticsController {
         return toMeal(saved);
     }
 
+
+    @PostMapping("/recipes/{recipeId}/meals")
+    public ApiModels.StatisticsMealEntry addRecipeMeal(@PathVariable Long recipeId,
+                                                       @RequestBody ApiModels.AddRecipeMealRequest req,
+                                                       HttpSession session) {
+        var uid = requireUid(session);
+        var recipe = db.getPostEntity(recipeId);
+        if (!"RECIPE".equalsIgnoreCase(recipe.getType())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Post is not a recipe");
+        }
+        if ("DRAFT".equalsIgnoreCase(recipe.getStatus()) && !recipe.getAuthor().getId().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
+        }
+
+        var portion = req.portionGrams() == null ? 100 : Math.max(0, req.portionGrams());
+        var factor = BigDecimal.valueOf(portion).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+
+        var meal = new StatisticsMealEntryEntity();
+        meal.setUser(db.getUserEntity(uid));
+        meal.setDate(req.date() == null ? LocalDate.now() : req.date());
+        meal.setType(cleanType(req.type()));
+        meal.setName(recipe.getTitle() == null || recipe.getTitle().isBlank() ? "Рецепт" : recipe.getTitle().trim());
+        meal.setAmountLabel(portion + (Boolean.TRUE.equals(req.liquid()) ? "мл" : "гр"));
+        meal.setTimeLabel(req.timeLabel() == null || req.timeLabel().isBlank() ? currentTimeLabel() : req.timeLabel().trim());
+        meal.setKcal(scaled(recipe.getKcalPer100(), factor).setScale(0, RoundingMode.HALF_UP).intValue());
+        meal.setProteins(scaled(recipe.getProteinsPer100(), factor));
+        meal.setFats(scaled(recipe.getFatsPer100(), factor));
+        meal.setCarbs(scaled(recipe.getCarbsPer100(), factor));
+        meal.setCreatedAt(Instant.now());
+        var saved = mealsRepo.save(meal);
+        prune(uid, getOrCreateSettings(uid).getRetentionMonths());
+        return toMeal(saved);
+    }
+
     private ApiModels.StatisticsDay toDay(LocalDate date, StatisticsSettingsEntity settings, int water, List<StatisticsMealEntryEntity> meals) {
         return new ApiModels.StatisticsDay(
                 date,
@@ -142,6 +177,8 @@ public class StatisticsController {
     }
 
     private int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
+    private BigDecimal scaled(BigDecimal value, BigDecimal factor) { return (value == null ? BigDecimal.ZERO : value).multiply(factor).setScale(2, RoundingMode.HALF_UP); }
+    private String currentTimeLabel() { return java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")); }
     private BigDecimal nonNegative(BigDecimal value) { return value == null || value.signum() < 0 ? BigDecimal.ZERO : value; }
     private String cleanType(String type) {
         if (type == null) return "SNACK";

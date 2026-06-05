@@ -89,6 +89,7 @@ interface FeedApi {
     @PATCH("api/v1/statistics/settings") suspend fun updateStatisticsSettings(@Body request: StatisticsSettingsRequest): StatisticsSettingsDto
     @POST("api/v1/statistics/water") suspend fun addStatisticsWater(@Body request: AddWaterRequest): StatisticsDayDto
     @POST("api/v1/statistics/meals") suspend fun addStatisticsMeal(@Body request: AddMealRequest): StatisticsMealEntryDto
+    @POST("api/v1/statistics/recipes/{recipeId}/meals") suspend fun addRecipeStatisticsMeal(@Path("recipeId") recipeId: Int, @Body request: AddRecipeMealRequest): StatisticsMealEntryDto
 
     @GET("api/v1/tags") suspend fun getTags(@Query("q") query: String? = null): List<TagDto>
     @Multipart
@@ -206,4 +207,12 @@ data class AddMealRequest(
     val proteins: Float,
     val fats: Float,
     val carbs: Float
+)
+
+data class AddRecipeMealRequest(
+    val date: String,
+    val type: String,
+    val portionGrams: Int,
+    val liquid: Boolean,
+    val timeLabel: String
 )

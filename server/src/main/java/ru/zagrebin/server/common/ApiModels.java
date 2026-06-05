@@ -83,4 +83,7 @@ public class ApiModels {
                                  Integer kcal, BigDecimal proteins, BigDecimal fats, BigDecimal carbs) {
     }
 
+    public record AddRecipeMealRequest(LocalDate date, String type, Integer portionGrams, Boolean liquid, String timeLabel) {
+    }
+
 }
