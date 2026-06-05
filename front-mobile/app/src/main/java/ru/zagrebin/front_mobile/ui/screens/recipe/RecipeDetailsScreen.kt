@@ -59,6 +59,8 @@ import ru.zagrebin.front_mobile.ui.theme.StepBadgeCornerRadius
 fun RecipeDetailsScreen(
     post: PostCardState,
     currentUserId: Long?,
+    isAuthorized: Boolean = true,
+    onAuthRequired: () -> Unit = {},
     onBackClick: () -> Unit,
     onSendComment: (String, Long?) -> Unit,
     onDeleteComment: (Long) -> Unit,
@@ -104,7 +106,7 @@ fun RecipeDetailsScreen(
         item {
             RecipeTopBar(
                 onBackClick = onBackClick,
-                onEatClick = { showAddMeal = true }
+                onEatClick = { if (isAuthorized) showAddMeal = true else onAuthRequired() }
             )
         }
 
@@ -139,7 +141,7 @@ fun RecipeDetailsScreen(
         item {
             IngredientsSection(
                 post = post,
-                onAddToListClick = { showIngredientsPicker = true }
+                onAddToListClick = { if (isAuthorized) showIngredientsPicker = true else onAuthRequired() }
             )
         }
 
@@ -210,8 +212,12 @@ fun RecipeDetailsScreen(
         RecipeCommentsBottomSheet(
             comments = comments,
             onDismiss = { showComments = false },
-            onSendClick = { text, replyTo -> onSendComment(text, replyTo?.serverId) },
-            onDeleteClick = { comment -> onDeleteComment(comment.serverId) }
+            onSendClick = { text, replyTo ->
+                if (isAuthorized) onSendComment(text, replyTo?.serverId) else onAuthRequired()
+            },
+            onDeleteClick = { comment ->
+                if (isAuthorized) onDeleteComment(comment.serverId) else onAuthRequired()
+            }
         )
     }
 

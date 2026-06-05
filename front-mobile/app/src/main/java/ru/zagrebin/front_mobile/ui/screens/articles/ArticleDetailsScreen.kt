@@ -50,6 +50,8 @@ fun ArticleDetailsScreen(
     article: PostCardState,
     content: String,
     currentUserId: Long?,
+    isAuthorized: Boolean = true,
+    onAuthRequired: () -> Unit = {},
     onBackClick: () -> Unit,
     onSendComment: (String, Long?) -> Unit,
     onDeleteComment: (Long) -> Unit
@@ -114,8 +116,12 @@ fun ArticleDetailsScreen(
         RecipeCommentsBottomSheet(
             comments = comments,
             onDismiss = { showComments = false },
-            onSendClick = { text, replyTo -> onSendComment(text, replyTo?.serverId) },
-            onDeleteClick = { comment -> onDeleteComment(comment.serverId) }
+            onSendClick = { text, replyTo ->
+                if (isAuthorized) onSendComment(text, replyTo?.serverId) else onAuthRequired()
+            },
+            onDeleteClick = { comment ->
+                if (isAuthorized) onDeleteComment(comment.serverId) else onAuthRequired()
+            }
         )
     }
 }
