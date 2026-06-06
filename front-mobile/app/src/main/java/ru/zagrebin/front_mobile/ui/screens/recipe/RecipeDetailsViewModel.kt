@@ -141,6 +141,7 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
         authorAvatarUrl = authorAvatarUrl,
         date = date,
         title = title,
+        description = description,
         imageUrl = imageUrl,
         likes = likes,
         isLiked = isLiked,

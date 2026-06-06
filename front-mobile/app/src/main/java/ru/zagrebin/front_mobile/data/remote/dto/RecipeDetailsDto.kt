@@ -11,6 +11,8 @@ data class RecipeDetailsDto(
     val createdAt: String? = null,
     val status: String? = null,
     val title: String? = null,
+    val summary: String? = null,
+    val content: String? = null,
     val imageUrl: String? = null,
     val likes: Any? = null,
     val likedByMe: Boolean = false,

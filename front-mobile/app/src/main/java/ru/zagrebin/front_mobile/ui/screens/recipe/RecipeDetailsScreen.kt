@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ImageNotSupported
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -139,6 +138,17 @@ fun RecipeDetailsScreen(
             }
         }
 
+        if (post.description.isNotBlank()) {
+            item {
+                Text(
+                    text = post.description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color(0xFF3A3A3A),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+        }
+
         item {
             IngredientsSection(
                 post = post,
@@ -190,8 +200,6 @@ fun RecipeDetailsScreen(
                             .clip(RoundedCornerShape(14.dp)),
                         contentScale = ContentScale.Crop
                     )
-                } else {
-                    NoImageStepPlaceholder()
                 }
             }
         }
@@ -423,36 +431,5 @@ private fun IngredientBulletItem(text: String) {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f)
         )
-    }
-}
-
-@Composable
-private fun NoImageStepPlaceholder() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(180.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = Icons.Default.ImageNotSupported,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Фото шага отсутствует",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
     }
 }
