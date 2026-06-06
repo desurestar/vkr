@@ -2,6 +2,7 @@ package ru.zagrebin.front_mobile.ui.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -21,12 +22,15 @@ import compose.icons.feathericons.Folder
 import compose.icons.feathericons.Lock
 import compose.icons.feathericons.LogOut
 import compose.icons.feathericons.User
+import ru.zagrebin.front_mobile.ui.components.BottomBarIslandDefaults
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileEvent
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileHeader
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileMenuGroup
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileMenuItem
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileSectionTitle
 import ru.zagrebin.front_mobile.ui.screens.profile.components.ProfileStatsCard
+
+private val ProfileBottomMenuPadding = BottomBarIslandDefaults.BottomPadding + 54.dp
 
 @Composable
 fun ProfileScreen(
@@ -59,7 +63,11 @@ fun ProfileScreen(
             .background(Color(0xFFF3F3F3))
     ) {
 
-        LazyColumn {
+        LazyColumn(
+            contentPadding = PaddingValues(
+                bottom = ProfileBottomMenuPadding
+            )
+        ) {
 
             item {
                 ProfileHeader(
