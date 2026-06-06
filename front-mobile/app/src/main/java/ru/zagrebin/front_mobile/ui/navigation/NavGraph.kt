@@ -601,7 +601,7 @@ private suspend fun uploadRecipeImageToServer(context: android.content.Context, 
 
             val requestBody = target.asRequestBody(mimeType.toMediaTypeOrNull())
             val multipart = MultipartBody.Part.createFormData("file", target.name, requestBody)
-            api.uploadMedia(multipart).url
+            AppContainer.toRelativeMediaPath(api.uploadMedia(multipart).url)
         } finally {
             target.delete()
         }
@@ -627,6 +627,6 @@ private suspend fun uploadAvatarToServer(
         val requestBody = file.asRequestBody(mimeType.toMediaTypeOrNull())
         val multipart = MultipartBody.Part.createFormData("file", file.name, requestBody)
 
-        api.uploadMedia(multipart).url
+        AppContainer.toRelativeMediaPath(api.uploadMedia(multipart).url)
     }.getOrNull()
 }

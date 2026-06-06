@@ -56,6 +56,7 @@ import ru.zagrebin.front_mobile.ui.components.postCard.PostCardContent
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.theme.SearchFieldContainerColor
 import ru.zagrebin.front_mobile.ui.theme.SearchFieldCornerRadius
+import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
 
 @Composable
 fun PublicProfileScreen(
@@ -257,7 +258,7 @@ private fun PublicProfileHeader(
                         )
                     } else {
                         AsyncImage(
-                            model = state.avatarUrl,
+                            model = state.avatarUrl.asImageModelUrl(),
                             contentDescription = "Аватар пользователя",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop

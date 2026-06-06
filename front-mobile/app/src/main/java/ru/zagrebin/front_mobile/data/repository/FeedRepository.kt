@@ -1,5 +1,6 @@
 package ru.zagrebin.front_mobile.data.repository
 
+import ru.zagrebin.front_mobile.data.AppContainer
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.flow.Flow
@@ -804,11 +805,13 @@ private fun String?.normalizeImageUrl(steps: List<RecipeStepDto> = emptyList()):
 private fun String?.cleanImageUrl(): String {
     val value = this?.trim().orEmpty()
     if (value.isBlank()) return ""
+    val relative = AppContainer.toRelativeMediaPath(value) ?: return ""
     return when {
-        value.startsWith("http://", ignoreCase = true) -> value
-        value.startsWith("https://", ignoreCase = true) -> value
-        value.startsWith("content://", ignoreCase = true) -> value
-        value.startsWith("file://", ignoreCase = true) -> value
+        relative.startsWith("/media/", ignoreCase = true) -> relative
+        relative.startsWith("content://", ignoreCase = true) -> relative
+        relative.startsWith("file://", ignoreCase = true) -> relative
+        relative.startsWith("http://", ignoreCase = true) -> relative
+        relative.startsWith("https://", ignoreCase = true) -> relative
         else -> ""
     }
 }

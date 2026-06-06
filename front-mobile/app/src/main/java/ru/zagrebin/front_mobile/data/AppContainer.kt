@@ -84,10 +84,39 @@ class AppContainer(context: Context) {
         PersistentCookieJar.clear(appContext)
     }
 
-    private companion object {
+    companion object {
         // const val BASE_URL = "http://192.168.4.103:8080/"
         const val BASE_URL = "http://192.168.0.9:8080/"
         // const val BASE_URL = "http://10.0.2.2:8080/"
+
+        fun resolveMediaUrl(url: String?): String? {
+            val value = url?.trim()?.takeIf { it.isNotBlank() } ?: return null
+            if (value.startsWith("http://", ignoreCase = true) ||
+                value.startsWith("https://", ignoreCase = true) ||
+                value.startsWith("content://", ignoreCase = true) ||
+                value.startsWith("file://", ignoreCase = true)
+            ) {
+                return value
+            }
+
+            val base = BASE_URL.trimEnd('/')
+            val path = if (value.startsWith('/')) value else "/$value"
+            return base + path
+        }
+
+        fun toRelativeMediaPath(url: String?): String? {
+            val value = url?.trim()?.takeIf { it.isNotBlank() } ?: return null
+            if (value.startsWith("/media/")) return value
+            if (value.startsWith("media/")) return "/$value"
+
+            if (value.startsWith("http://", ignoreCase = true) || value.startsWith("https://", ignoreCase = true)) {
+                return runCatching {
+                    java.net.URI.create(value).path?.takeIf { it.startsWith("/media/") }
+                }.getOrNull() ?: value
+            }
+
+            return value
+        }
 
         private val lock = Any()
         @Volatile private var dbInstance: AppDatabase? = null
