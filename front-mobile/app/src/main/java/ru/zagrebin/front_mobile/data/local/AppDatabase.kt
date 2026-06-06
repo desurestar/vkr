@@ -8,6 +8,7 @@ import ru.zagrebin.front_mobile.data.local.dao.FeedDao
 import ru.zagrebin.front_mobile.data.local.dao.ProfileDao
 import ru.zagrebin.front_mobile.data.local.dao.RecipeDetailsDao
 import ru.zagrebin.front_mobile.data.local.dao.TagDao
+import ru.zagrebin.front_mobile.data.local.dao.SyncDao
 import ru.zagrebin.front_mobile.data.local.dao.StatisticsDao
 import ru.zagrebin.front_mobile.data.local.entities.ArticleDetailsEntity
 import ru.zagrebin.front_mobile.data.local.entities.FeedItemEntity
@@ -17,6 +18,8 @@ import ru.zagrebin.front_mobile.data.local.entities.TagEntity
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsDayEntity
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsMealEntryEntity
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsSettingsEntity
+import ru.zagrebin.front_mobile.data.local.entities.LocalDraftEntity
+import ru.zagrebin.front_mobile.data.local.entities.PendingStatisticsOpEntity
 
 @Database(
     entities = [
@@ -27,9 +30,11 @@ import ru.zagrebin.front_mobile.data.local.entities.StatisticsSettingsEntity
         TagEntity::class,
         StatisticsSettingsEntity::class,
         StatisticsDayEntity::class,
-        StatisticsMealEntryEntity::class
+        StatisticsMealEntryEntity::class,
+        PendingStatisticsOpEntity::class,
+        LocalDraftEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -40,4 +45,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
     abstract fun tagDao(): TagDao
     abstract fun statisticsDao(): StatisticsDao
+    abstract fun syncDao(): SyncDao
 }

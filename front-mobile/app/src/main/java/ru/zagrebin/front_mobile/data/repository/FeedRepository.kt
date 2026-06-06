@@ -1,13 +1,18 @@
 package ru.zagrebin.front_mobile.data.repository
 
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import ru.zagrebin.front_mobile.data.local.dao.ArticleDetailsDao
 import ru.zagrebin.front_mobile.data.local.dao.FeedDao
+import ru.zagrebin.front_mobile.data.local.dao.SyncDao
 import ru.zagrebin.front_mobile.data.local.dao.RecipeDetailsDao
 import ru.zagrebin.front_mobile.data.local.dao.TagDao
 import ru.zagrebin.front_mobile.data.local.entities.ArticleDetailsEntity
 import ru.zagrebin.front_mobile.data.local.entities.FeedItemEntity
+import ru.zagrebin.front_mobile.data.local.entities.LocalDraftEntity
 import ru.zagrebin.front_mobile.data.local.entities.RecipeDetailsEntity
 import ru.zagrebin.front_mobile.data.local.entities.TagEntity
 import ru.zagrebin.front_mobile.data.remote.api.CommentRequest
@@ -32,18 +37,26 @@ import ru.zagrebin.front_mobile.domain.model.RecipeIngredient
 import ru.zagrebin.front_mobile.domain.model.RecipeStep
 import ru.zagrebin.front_mobile.domain.model.RecipeTag
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedFilters
+import java.text.SimpleDateFormat
 import java.time.OffsetDateTime
+import java.util.Date
+import java.util.Locale
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 class FeedRepository(
     private val feedDao: FeedDao,
+    private val syncDao: SyncDao,
     private val feedApi: FeedApi,
     private val recipeDetailsDao: RecipeDetailsDao,
     private val articleDetailsDao: ArticleDetailsDao,
     private val tagDao: TagDao,
     private val networkConnectionChecker: NetworkConnectionChecker
 ) {
+    private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+    private val recipeRequestAdapter = moshi.adapter(CreateRecipeRequest::class.java)
+    private val articleRequestAdapter = moshi.adapter(CreateArticleRequest::class.java)
+
     fun observeRecipes(): Flow<List<FeedItem>> = feedDao.observeByType(TYPE_RECIPE).map { it.toDomain() }
     fun observeArticles(): Flow<List<FeedItem>> = feedDao.observeByType(TYPE_ARTICLE).map { it.toDomain() }
 
@@ -112,18 +125,24 @@ class FeedRepository(
         }
 
     suspend fun loadDrafts(): ServerFirstResult<List<FeedItem>> {
+        val localDrafts = syncDao.observeLocalDrafts().first().map { it.toFeedItem() }
         if (!networkConnectionChecker.isNetworkAvailable()) {
-            return ServerFirstResult(emptyList(), isFromCache = true)
+            return ServerFirstResult(localDrafts, isFromCache = true)
         }
         return runCatching {
-            feedApi.getDrafts().map { dto -> dto.toEntity(dto.type?.lowercase().orEmpty()).toDomainItem() }
+            val remoteDrafts = feedApi.getDrafts().map { dto -> dto.toEntity(dto.type?.lowercase().orEmpty()).toDomainItem() }
+            localDrafts + remoteDrafts
         }.fold(
             onSuccess = { ServerFirstResult(it, isFromCache = false) },
-            onFailure = { ServerFirstResult(emptyList(), isFromCache = true) }
+            onFailure = { ServerFirstResult(localDrafts, isFromCache = true) }
         )
     }
 
     suspend fun deleteDraft(postId: Int): Boolean {
+        if (postId < 0) {
+            syncDao.deleteLocalDraft(postId)
+            return true
+        }
         if (!networkConnectionChecker.isNetworkAvailable()) return false
         return runCatching {
             feedApi.deleteDraft(postId)
@@ -209,14 +228,19 @@ class FeedRepository(
     }
 
     suspend fun createArticle(request: CreateArticleRequest): CreateArticleResult {
-        if (!networkConnectionChecker.isNetworkAvailable()) return CreateArticleResult.Fallback
+        if (request.status.equals(STATUS_DRAFT, ignoreCase = true) && !networkConnectionChecker.isNetworkAvailable()) {
+            return saveLocalArticleDraft(request)
+        }
         return runCatching {
+            if (!networkConnectionChecker.isNetworkAvailable()) error("Network is unavailable")
             val createdArticle = feedApi.createArticle(request).toArticleDetailsEntity()
             articleDetailsDao.upsert(createdArticle)
             upsertSavedFeedItems(listOf(createdArticle.toFeedItemEntity()))
             loadArticles()
             CreateArticleResult.Success(createdArticle.id)
-        }.getOrElse { CreateArticleResult.Fallback }
+        }.getOrElse {
+            if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) saveLocalArticleDraft(request) else CreateArticleResult.Fallback
+        }
     }
 
     suspend fun loadTags(query: String? = null): ServerFirstResult<List<RecipeTag>> {
@@ -264,15 +288,74 @@ class FeedRepository(
     }
 
     suspend fun createRecipe(request: CreateRecipeRequest): CreateRecipeResult {
-        if (!networkConnectionChecker.isNetworkAvailable()) return CreateRecipeResult.Fallback
+        if (request.status.equals(STATUS_DRAFT, ignoreCase = true) && !networkConnectionChecker.isNetworkAvailable()) {
+            return saveLocalRecipeDraft(request)
+        }
         return runCatching {
+            if (!networkConnectionChecker.isNetworkAvailable()) error("Network is unavailable")
             val createdRecipe = feedApi.createRecipe(request).toRecipeDetailsEntity()
             recipeDetailsDao.upsert(createdRecipe)
             upsertSavedFeedItems(listOf(createdRecipe.toFeedItemEntity()))
             loadRecipes()
             CreateRecipeResult.Success(createdRecipe.id)
-        }.getOrElse { CreateRecipeResult.Fallback }
+        }.getOrElse {
+            if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) saveLocalRecipeDraft(request) else CreateRecipeResult.Fallback
+        }
     }
+
+    suspend fun syncLocalDrafts(): Boolean {
+        if (!networkConnectionChecker.isNetworkAvailable()) return false
+        val drafts = syncDao.getLocalDraftsForSync()
+        for (draft in drafts) {
+            val success = runCatching {
+                when (draft.type) {
+                    TYPE_RECIPE -> feedApi.createRecipe(recipeRequestAdapter.fromJson(draft.requestJson) ?: error("Invalid recipe draft"))
+                    TYPE_ARTICLE -> feedApi.createArticle(articleRequestAdapter.fromJson(draft.requestJson) ?: error("Invalid article draft"))
+                    else -> error("Unknown draft type")
+                }
+            }.isSuccess
+            if (success) {
+                syncDao.deleteLocalDraft(draft.id)
+            } else {
+                return false
+            }
+        }
+        return true
+    }
+
+    private suspend fun saveLocalRecipeDraft(request: CreateRecipeRequest): CreateRecipeResult {
+        val id = nextLocalDraftId()
+        syncDao.upsertLocalDraft(
+            LocalDraftEntity(
+                id = id,
+                type = TYPE_RECIPE,
+                title = request.title,
+                summary = request.summary,
+                content = request.content,
+                imageUrl = request.imageUrl,
+                requestJson = recipeRequestAdapter.toJson(request.copy(status = STATUS_DRAFT))
+            )
+        )
+        return CreateRecipeResult.Success(id)
+    }
+
+    private suspend fun saveLocalArticleDraft(request: CreateArticleRequest): CreateArticleResult {
+        val id = nextLocalDraftId()
+        syncDao.upsertLocalDraft(
+            LocalDraftEntity(
+                id = id,
+                type = TYPE_ARTICLE,
+                title = request.title,
+                summary = request.summary,
+                content = request.content,
+                imageUrl = request.imageUrl,
+                requestJson = articleRequestAdapter.toJson(request.copy(status = STATUS_DRAFT))
+            )
+        )
+        return CreateArticleResult.Success(id)
+    }
+
+    private fun nextLocalDraftId(): Int = -(System.currentTimeMillis() % Int.MAX_VALUE).toInt().coerceAtLeast(1)
 
     private suspend fun loadFeedItems(type: String, remoteRequest: suspend () -> List<FeedItemDto>): ServerFirstResult<List<FeedItem>> {
         val cachedItems = feedDao.getByType(type)
@@ -351,6 +434,25 @@ class FeedRepository(
             }
         }
     }
+
+
+    private fun LocalDraftEntity.toFeedItem(): FeedItem = FeedItem(
+        id = id,
+        authorId = "",
+        authorName = "Локальный черновик",
+        authorHandle = "",
+        authorAvatarUrl = null,
+        date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(createdAt)),
+        title = title,
+        imageUrl = imageUrl.orEmpty(),
+        likes = "0",
+        isLiked = false,
+        time = if (type == TYPE_RECIPE) "Черновик" else "",
+        calories = "",
+        views = "0",
+        isSaved = true,
+        tags = emptyList()
+    )
 
     private suspend fun upsertSavedFeedItems(items: List<FeedItemEntity>) {
         val cachedItems = items.savedForCache()
@@ -472,6 +574,7 @@ class FeedRepository(
     private companion object {
         const val TYPE_RECIPE = "recipe"
         const val TYPE_ARTICLE = "article"
+        const val STATUS_DRAFT = "DRAFT"
     }
 }
 

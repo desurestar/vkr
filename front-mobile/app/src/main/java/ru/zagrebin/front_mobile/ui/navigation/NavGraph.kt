@@ -138,11 +138,11 @@ fun NavGraph(
                 isAuthorized = isAuthorized,
                 onOpenShoppingList = { requireAuthorization { navController.navigate(Screen.ShoppingList.route) } },
                 onOpenMyPosts = { requireAuthorization { navController.navigate(Screen.MyPosts.route) } },
-                onOpenDrafts = { requireAuthorization { navController.navigate(Screen.Drafts.route) } },
+                onOpenDrafts = { navController.navigate(Screen.Drafts.route) },
                 onOpenEditAccount = { requireAuthorization { navController.navigate(Screen.EditAccount.route) } },
                 onOpenPasswordSecurity = { requireAuthorization { navController.navigate(Screen.PasswordSecurity.route) } },
-                onOpenCreateRecipe = { requireAuthorization { navController.navigate(Screen.CreateRecipe.route) } },
-                onOpenCreateArticle = { requireAuthorization { navController.navigate(Screen.CreateArticle.route) } },
+                onOpenCreateRecipe = { navController.navigate(Screen.CreateRecipe.route) },
+                onOpenCreateArticle = { navController.navigate(Screen.CreateArticle.route) },
                 onLogout = {
                     if (!isAuthorized) {
                         requestAuthorization()
@@ -177,10 +177,6 @@ fun NavGraph(
         }
 
         composable(Screen.Drafts.route) {
-            if (!isAuthorized) {
-                LaunchedEffect(Unit) { requestAuthorization() }
-                return@composable
-            }
             DraftsScreen(
                 onBackClick = { navController.popBackStack() },
                 onOpenRecipe = { postId -> navController.navigate(Screen.RecipeDetails.createRoute(postId)) },
@@ -225,10 +221,6 @@ fun NavGraph(
         }
 
         composable(Screen.CreateRecipe.route) {
-            if (!isAuthorized) {
-                LaunchedEffect(Unit) { requestAuthorization() }
-                return@composable
-            }
             var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
 
             LaunchedEffect(Unit) {
@@ -240,6 +232,9 @@ fun NavGraph(
                 onBackClick = { navController.popBackStack() },
                 availableTags = availableTags,
                 onPublish = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, proteins, fats, carbs, kcal ->
+                    if (!isAuthorized) {
+                        requestAuthorization()
+                    } else {
                     scope.launch {
                         val publishResult = runCatching {
                             val mainImageUrl = uploadRecipeImageToServer(
@@ -293,23 +288,23 @@ fun NavGraph(
                             }
                         }
                     }
+                    }
                 },
                 onDraft = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, proteins, fats, carbs, kcal ->
                     scope.launch {
                         val draftResult = runCatching {
-                            val mainImageUrl = uploadRecipeImageToServer(
-                                context = context,
-                                api = appContainer.feedApi,
-                                sourceUri = recipePhotoUri,
-                                prefix = "recipe_draft_main"
-                            )
+                            val canUploadDraftImages = isAuthorized && appContainer.networkConnectionChecker.isNetworkAvailable()
+                            val mainImageUrl = if (canUploadDraftImages) {
+                                uploadRecipeImageToServer(context, appContainer.feedApi, recipePhotoUri, "recipe_draft_main")
+                            } else {
+                                recipePhotoUri?.toString()
+                            }
                             val stepImageUrls = steps.map { step ->
-                                uploadRecipeImageToServer(
-                                    context = context,
-                                    api = appContainer.feedApi,
-                                    sourceUri = step.photoUri,
-                                    prefix = "recipe_draft_step_${step.number}"
-                                )
+                                if (canUploadDraftImages) {
+                                    uploadRecipeImageToServer(context, appContainer.feedApi, step.photoUri, "recipe_draft_step_${step.number}")
+                                } else {
+                                    step.photoUri?.toString()
+                                }
                             }
 
                             appContainer.feedRepository.createRecipe(
@@ -353,10 +348,6 @@ fun NavGraph(
         }
 
         composable(Screen.CreateArticle.route) {
-            if (!isAuthorized) {
-                LaunchedEffect(Unit) { requestAuthorization() }
-                return@composable
-            }
             var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
 
             LaunchedEffect(Unit) {
@@ -368,6 +359,9 @@ fun NavGraph(
                 onBackClick = { navController.popBackStack() },
                 availableTags = availableTags,
                 onPublish = { title, summary, content, tags, coverUri, blocks ->
+                    if (!isAuthorized) {
+                        requestAuthorization()
+                    } else {
                     scope.launch {
                         val publishResult = runCatching {
                             val coverImageUrl = uploadRecipeImageToServer(
@@ -412,23 +406,23 @@ fun NavGraph(
                             }
                         }
                     }
+                    }
                 },
                 onDraft = { title, summary, content, tags, coverUri, blocks ->
                     scope.launch {
                         val draftResult = runCatching {
-                            val coverImageUrl = uploadRecipeImageToServer(
-                                context = context,
-                                api = appContainer.feedApi,
-                                sourceUri = coverUri,
-                                prefix = "article_draft_cover"
-                            )
+                            val canUploadDraftImages = isAuthorized && appContainer.networkConnectionChecker.isNetworkAvailable()
+                            val coverImageUrl = if (canUploadDraftImages) {
+                                uploadRecipeImageToServer(context, appContainer.feedApi, coverUri, "article_draft_cover")
+                            } else {
+                                coverUri?.toString()
+                            }
                             val blockImageUrls = blocks.map { block ->
-                                uploadRecipeImageToServer(
-                                    context = context,
-                                    api = appContainer.feedApi,
-                                    sourceUri = block.photoUri,
-                                    prefix = "article_draft_block_${block.number}"
-                                )
+                                if (canUploadDraftImages) {
+                                    uploadRecipeImageToServer(context, appContainer.feedApi, block.photoUri, "article_draft_block_${block.number}")
+                                } else {
+                                    block.photoUri?.toString()
+                                }
                             }
                             val contentWithImages = blocks.mapIndexed { index, block ->
                                 buildString {

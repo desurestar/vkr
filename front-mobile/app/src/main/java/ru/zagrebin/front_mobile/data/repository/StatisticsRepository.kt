@@ -1,11 +1,15 @@
 package ru.zagrebin.front_mobile.data.repository
 
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import ru.zagrebin.front_mobile.data.local.dao.StatisticsDao
+import ru.zagrebin.front_mobile.data.local.dao.SyncDao
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsDayEntity
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsMealEntryEntity
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsSettingsEntity
+import ru.zagrebin.front_mobile.data.local.entities.PendingStatisticsOpEntity
 import ru.zagrebin.front_mobile.data.remote.api.AddMealRequest
 import ru.zagrebin.front_mobile.data.remote.api.AddRecipeMealRequest
 import ru.zagrebin.front_mobile.data.remote.api.AddWaterRequest
@@ -30,9 +34,16 @@ import kotlin.math.roundToInt
 
 class StatisticsRepository(
     private val dao: StatisticsDao,
+    private val syncDao: SyncDao,
     private val api: FeedApi,
     private val networkConnectionChecker: NetworkConnectionChecker
 ) {
+    private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+    private val waterAdapter = moshi.adapter(PendingWaterOp::class.java)
+    private val mealAdapter = moshi.adapter(PendingMealOp::class.java)
+    private val recipeMealAdapter = moshi.adapter(PendingRecipeMealOp::class.java)
+    private val settingsAdapter = moshi.adapter(PendingSettingsOp::class.java)
+
     fun observeMonth(month: YearMonth, selectedDate: LocalDate): Flow<StatisticsUiState> {
         val start = month.atDay(1).toString()
         val end = month.atEndOfMonth().toString()
@@ -74,6 +85,7 @@ class StatisticsRepository(
         val start = month.atDay(1).toString()
         val end = month.atEndOfMonth().toString()
         if (!networkConnectionChecker.isNetworkAvailable()) return false
+        syncPendingChanges()
         return runCatching {
             val response = api.getStatistics(month.format(DateTimeFormatter.ofPattern("yyyy-MM")))
             dao.replaceMonth(start, end, response.settings.toEntity(), response.days.map { it.toDayEntity() }, response.days.flatMap { it.toMealEntities() })
@@ -86,8 +98,9 @@ class StatisticsRepository(
         val dateIso = date.toString()
         val current = dao.getDay(dateIso)
         dao.upsertDay(StatisticsDayEntity(dateIso, (current?.waterConsumedMl ?: 0) + amountMl))
-        if (networkConnectionChecker.isNetworkAvailable()) {
-            runCatching { api.addStatisticsWater(AddWaterRequest(dateIso, amountMl)) }
+        val request = AddWaterRequest(dateIso, amountMl)
+        if (!networkConnectionChecker.isNetworkAvailable() || runCatching { api.addStatisticsWater(request) }.isFailure) {
+            enqueueStatisticsOp(STAT_OP_WATER, waterAdapter.toJson(PendingWaterOp(dateIso, amountMl)))
         }
     }
 
@@ -95,12 +108,14 @@ class StatisticsRepository(
         val dateIso = date.toString()
         val entry = buildMealEntry(dateIso, type, draft)
         dao.upsertMeal(entry)
-        if (networkConnectionChecker.isNetworkAvailable()) {
-            runCatching {
-                val saved = api.addStatisticsMeal(entry.toRequest(dateIso))
-                dao.deleteMeal(entry.id)
-                dao.upsertMeal(saved.toEntity(dateIso, type))
-            }
+        val request = entry.toRequest(dateIso)
+        val synced = networkConnectionChecker.isNetworkAvailable() && runCatching {
+            val saved = api.addStatisticsMeal(request)
+            dao.deleteMeal(entry.id)
+            dao.upsertMeal(saved.toEntity(dateIso, type))
+        }.isSuccess
+        if (!synced) {
+            enqueueStatisticsOp(STAT_OP_MEAL, mealAdapter.toJson(PendingMealOp(request)), entry.id)
         }
     }
 
@@ -108,30 +123,73 @@ class StatisticsRepository(
         val dateIso = date.toString()
         val entry = buildMealEntry(dateIso, type, draft.copy(recipeId = recipeId))
         dao.upsertMeal(entry)
-        if (networkConnectionChecker.isNetworkAvailable()) {
-            runCatching {
-                val saved = api.addRecipeStatisticsMeal(
-                    recipeId = recipeId,
-                    request = AddRecipeMealRequest(
-                        date = dateIso,
-                        type = type.name,
-                        portionGrams = draft.portionGrams.coerceAtLeast(0),
-                        liquid = draft.isLiquid,
-                        timeLabel = entry.timeLabel
-                    )
-                )
-                dao.deleteMeal(entry.id)
-                dao.upsertMeal(saved.toEntity(dateIso, type))
-            }
+        val request = AddRecipeMealRequest(
+            date = dateIso,
+            type = type.name,
+            portionGrams = draft.portionGrams.coerceAtLeast(0),
+            liquid = draft.isLiquid,
+            timeLabel = entry.timeLabel
+        )
+        val synced = networkConnectionChecker.isNetworkAvailable() && runCatching {
+            val saved = api.addRecipeStatisticsMeal(recipeId = recipeId, request = request)
+            dao.deleteMeal(entry.id)
+            dao.upsertMeal(saved.toEntity(dateIso, type))
+        }.isSuccess
+        if (!synced) {
+            enqueueStatisticsOp(STAT_OP_RECIPE_MEAL, recipeMealAdapter.toJson(PendingRecipeMealOp(recipeId, request)), entry.id)
         }
     }
 
     suspend fun updateSettings(settings: StatisticsSettings) {
         dao.upsertSettings(settings.toEntity())
         prune(settings.retentionMonths)
-        if (networkConnectionChecker.isNetworkAvailable()) {
-            runCatching { api.updateStatisticsSettings(settings.toRequest()) }
+        val request = settings.toRequest()
+        if (!networkConnectionChecker.isNetworkAvailable() || runCatching { api.updateStatisticsSettings(request) }.isFailure) {
+            enqueueStatisticsOp(STAT_OP_SETTINGS, settingsAdapter.toJson(PendingSettingsOp(request)))
         }
+    }
+
+
+    suspend fun syncPendingChanges(): Boolean {
+        if (!networkConnectionChecker.isNetworkAvailable()) return false
+        val ops = syncDao.getPendingStatisticsOps()
+        for (op in ops) {
+            val success = runCatching {
+                when (op.opType) {
+                    STAT_OP_WATER -> {
+                        val payload = waterAdapter.fromJson(op.payloadJson) ?: error("Invalid water sync payload")
+                        api.addStatisticsWater(AddWaterRequest(payload.date, payload.amountMl))
+                    }
+                    STAT_OP_MEAL -> {
+                        val payload = mealAdapter.fromJson(op.payloadJson) ?: error("Invalid meal sync payload")
+                        val saved = api.addStatisticsMeal(payload.request)
+                        op.localMealId?.let { dao.deleteMeal(it) }
+                        dao.upsertMeal(saved.toEntity(payload.request.date, MealType.valueOf(payload.request.type)))
+                    }
+                    STAT_OP_RECIPE_MEAL -> {
+                        val payload = recipeMealAdapter.fromJson(op.payloadJson) ?: error("Invalid recipe meal sync payload")
+                        val saved = api.addRecipeStatisticsMeal(payload.recipeId, payload.request)
+                        op.localMealId?.let { dao.deleteMeal(it) }
+                        dao.upsertMeal(saved.toEntity(payload.request.date, MealType.valueOf(payload.request.type)))
+                    }
+                    STAT_OP_SETTINGS -> {
+                        val payload = settingsAdapter.fromJson(op.payloadJson) ?: error("Invalid settings sync payload")
+                        api.updateStatisticsSettings(payload.request)
+                    }
+                }
+            }.isSuccess
+
+            if (success) {
+                syncDao.deleteStatisticsOp(op.id)
+            } else {
+                return false
+            }
+        }
+        return true
+    }
+
+    private suspend fun enqueueStatisticsOp(opType: String, payloadJson: String, localMealId: Long? = null) {
+        syncDao.enqueueStatisticsOp(PendingStatisticsOpEntity(opType = opType, payloadJson = payloadJson, localMealId = localMealId))
     }
 
     private suspend fun prune(retentionMonths: Int) {
@@ -157,7 +215,19 @@ class StatisticsRepository(
             carbs = draft.carbsPer100 * factor
         )
     }
+
+    private companion object {
+        const val STAT_OP_WATER = "WATER"
+        const val STAT_OP_MEAL = "MEAL"
+        const val STAT_OP_RECIPE_MEAL = "RECIPE_MEAL"
+        const val STAT_OP_SETTINGS = "SETTINGS"
+    }
 }
+
+private data class PendingWaterOp(val date: String, val amountMl: Int)
+private data class PendingMealOp(val request: AddMealRequest)
+private data class PendingRecipeMealOp(val recipeId: Int, val request: AddRecipeMealRequest)
+private data class PendingSettingsOp(val request: StatisticsSettingsRequest)
 
 private fun StatisticsSettingsEntity.toUi() = StatisticsSettings(retentionMonths, goalKcal, waterGoalMl, proteinGoalGrams, fatGoalGrams, carbsGoalGrams)
 private fun StatisticsSettings.toEntity() = StatisticsSettingsEntity(1, retentionMonths, goalKcal, waterGoalMl, proteinGoalGrams, fatGoalGrams, carbsGoalGrams)
