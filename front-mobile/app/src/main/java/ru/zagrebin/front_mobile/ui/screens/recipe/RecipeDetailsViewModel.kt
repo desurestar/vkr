@@ -3,6 +3,8 @@ package ru.zagrebin.front_mobile.ui.screens.recipe
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +38,7 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
     private val hasLoadError = MutableStateFlow(false)
     private val currentUserId = MutableStateFlow<Long?>(null)
     private var currentId: Int? = null
+    private var viewTrackingJob: Job? = null
 
     val state: StateFlow<RecipeDetailsUiState> = combine(
         details,
@@ -60,6 +63,9 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
             val result = runCatching { container.feedRepository.loadRecipeDetails(postId) }.getOrNull()
             details.value = result?.data
             hasLoadError.value = result == null || (result.isFromCache && result.data == null)
+            if (result?.data != null) {
+                scheduleViewTracking(postId)
+            }
             currentUserId.value = container.feedRepository.currentUserId()
             isRefreshing.value = false
         }
@@ -106,6 +112,22 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+
+    private fun scheduleViewTracking(postId: Int) {
+        viewTrackingJob?.cancel()
+        viewTrackingJob = viewModelScope.launch {
+            delay(VIEW_TRACKING_DELAY_MS)
+            if (currentId == postId && container.feedRepository.recordPostView(postId, TYPE_RECIPE, VIEW_TRACKING_DURATION_SECONDS)) {
+                details.value = container.feedRepository.loadRecipeDetails(postId).data
+            }
+        }
+    }
+
+    override fun onCleared() {
+        viewTrackingJob?.cancel()
+        super.onCleared()
+    }
+
     private fun String.splitShoppingText(): Pair<String, String> {
         val parts = trim().split(" - ", limit = 2)
         return parts.firstOrNull().orEmpty().trim() to parts.getOrNull(1).orEmpty().trim().ifEmpty { "1" }
@@ -135,4 +157,10 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
         steps = steps.map { RecipeStepState(it.id, it.title, it.description, it.imageUrl) },
         comments = comments
     )
+
+    private companion object {
+        const val TYPE_RECIPE = "recipe"
+        const val VIEW_TRACKING_DELAY_MS = 8_000L
+        const val VIEW_TRACKING_DURATION_SECONDS = 8
+    }
 }

@@ -1,5 +1,6 @@
 package ru.zagrebin.server.data;
 
+import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,7 +14,11 @@ import ru.zagrebin.server.data.entity.*;
 import ru.zagrebin.server.data.repo.*;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +28,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class DbService {
+    private static final int MIN_VIEW_DURATION_SECONDS = 8;
+    private static final Duration VIEW_REPEAT_COOLDOWN = Duration.ofMinutes(10);
 
     public record PostFilters(
             Integer minTime,
@@ -53,6 +60,7 @@ public class DbService {
     private final ShoppingListRepository shoppingLists;
     private final TagRepository tags;
     private final JdbcTemplate jdbc;
+    private final EntityManager entityManager;
     private final BCryptPasswordEncoder encoder;
 
     public DbService(UserRepository users,
@@ -62,6 +70,7 @@ public class DbService {
                      ShoppingListRepository shoppingLists,
                      TagRepository tags,
                      JdbcTemplate jdbc,
+                     EntityManager entityManager,
                      BCryptPasswordEncoder encoder) {
 
         this.users = users;
@@ -71,6 +80,7 @@ public class DbService {
         this.shoppingLists = shoppingLists;
         this.tags = tags;
         this.jdbc = jdbc;
+        this.entityManager = entityManager;
         this.encoder = encoder;
     }
 
@@ -130,6 +140,7 @@ public class DbService {
                 p.getContent(),
                 p.getImageUrl(),
                 p.getLikes(),
+                p.getViews(),
                 currentUserId != null && isPostLikedByUser(p.getId(), currentUserId),
                 p.getCreatedAt(),
                 p.getStatus(),
@@ -206,6 +217,68 @@ public class DbService {
                 postId,
                 userId
         ) > 0;
+    }
+
+
+    public ApiModels.Post recordPostView(Long postId, Long currentUserId, String viewerKey, Integer durationSeconds) {
+        var post = getPostEntity(postId);
+        if (!"PUBLISHED".equalsIgnoreCase(post.getStatus())) {
+            return toPost(post, currentUserId);
+        }
+        if (durationSeconds == null || durationSeconds < MIN_VIEW_DURATION_SECONDS) {
+            return toPost(post, currentUserId);
+        }
+        if (currentUserId != null && post.getAuthor().getId().equals(currentUserId)) {
+            return toPost(post, currentUserId);
+        }
+        var normalizedViewerKey = normalizeViewerKey(currentUserId, viewerKey);
+        if (normalizedViewerKey == null) {
+            return toPost(post, currentUserId);
+        }
+
+        var inserted = jdbc.update(
+                """
+                INSERT INTO post_view (post_id, viewer_key, view_bucket, duration_seconds)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (post_id, viewer_key, view_bucket) DO NOTHING
+                """,
+                postId,
+                normalizedViewerKey,
+                currentViewBucket(),
+                durationSeconds
+        );
+        if (inserted > 0) {
+            jdbc.update("UPDATE post SET views = views + 1 WHERE id = ?", postId);
+            entityManager.refresh(post);
+        }
+        return toPost(post, currentUserId);
+    }
+
+    private long currentViewBucket() {
+        return Instant.now().getEpochSecond() / VIEW_REPEAT_COOLDOWN.toSeconds();
+    }
+
+    private String normalizeViewerKey(Long currentUserId, String viewerKey) {
+        if (currentUserId != null) {
+            return "user:" + currentUserId;
+        }
+        if (viewerKey == null || viewerKey.isBlank()) {
+            return null;
+        }
+        return "guest:" + sha256(viewerKey.trim());
+    }
+
+    private String sha256(String value) {
+        try {
+            var digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            var result = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                result.append(String.format("%02x", b));
+            }
+            return result.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
     }
 
     public ApiModels.ShoppingItem toShopping(ShoppingItemEntity i) {
@@ -428,6 +501,7 @@ public class DbService {
         post.setStatus(normalizePostStatus(request.status()));
         post.setCreatedAt(Instant.now());
         post.setLikes(0);
+        post.setViews(0);
         if (request.tags() != null) {
             post.getTags().addAll(request.tags().stream()
                     .map(this::findOrCreateTag)
@@ -467,6 +541,7 @@ public class DbService {
         post.setStatus(normalizePostStatus(request.status()));
         post.setCreatedAt(Instant.now());
         post.setLikes(0);
+        post.setViews(0);
         if (request.tags() != null) {
             post.getTags().addAll(request.tags().stream()
                     .map(this::findOrCreateTag)

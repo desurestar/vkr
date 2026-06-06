@@ -25,6 +25,9 @@ interface FeedDao {
     @Query("DELETE FROM feed_items WHERE id = :id AND type = :type")
     suspend fun deleteByIdAndType(id: Int, type: String)
 
+    @Query("UPDATE feed_items SET views = :views WHERE id = :id AND type = :type")
+    suspend fun updateViews(id: Int, type: String, views: String)
+
     @Transaction
     suspend fun replaceByType(type: String, items: List<FeedItemEntity>) {
         deleteByType(type)

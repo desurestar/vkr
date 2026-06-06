@@ -16,5 +16,8 @@ interface ArticleDetailsDao {
     suspend fun getById(id: Int): ArticleDetailsEntity?
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ArticleDetailsEntity)
+
+    @Query("UPDATE article_details SET views = :views WHERE id = :id")
+    suspend fun updateViews(id: Int, views: String)
 }
 

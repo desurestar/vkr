@@ -23,6 +23,7 @@ public class PostEntity {
     @Column(length = 2048)
     private String imageUrl;
     private int likes;
+    private int views;
     private Integer cookTimeMinutes;
     @Column(name = "proteins_per_100")
     private BigDecimal proteinsPer100;
@@ -66,6 +67,8 @@ public class PostEntity {
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public int getLikes() { return likes; }
     public void setLikes(int likes) { this.likes = likes; }
+    public int getViews() { return views; }
+    public void setViews(int views) { this.views = views; }
     public Integer getCookTimeMinutes() { return cookTimeMinutes; }
     public void setCookTimeMinutes(Integer cookTimeMinutes) { this.cookTimeMinutes = cookTimeMinutes; }
     public BigDecimal getProteinsPer100() { return proteinsPer100; }

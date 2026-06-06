@@ -15,7 +15,7 @@ public class ApiModels {
     }
 
     public record Post(Long id, Long authorId, String authorName, String authorHandle, String authorAvatarUrl,
-                       String type, String title, String summary, String content, String imageUrl, int likes,
+                       String type, String title, String summary, String content, String imageUrl, int likes, int views,
                        boolean likedByMe, Instant createdAt, String status, Integer cookTimeMinutes, BigDecimal proteinsPer100, BigDecimal fatsPer100,
                        BigDecimal carbsPer100, BigDecimal kcalPer100, List<Tag> tags, List<Ingredient> ingredients,
                        List<RecipeStep> steps, List<Comment> comments) {
@@ -45,6 +45,9 @@ public class ApiModels {
     }
 
     public record CommentRequest(String text, Long parentId) {
+    }
+
+    public record PostViewRequest(Integer durationSeconds) {
     }
 
     public record ShoppingList(Long id, String name, List<ShoppingItem> items) {

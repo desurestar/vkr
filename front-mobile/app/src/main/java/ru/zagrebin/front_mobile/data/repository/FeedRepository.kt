@@ -19,6 +19,7 @@ import ru.zagrebin.front_mobile.data.remote.api.CommentRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateArticleRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
+import ru.zagrebin.front_mobile.data.remote.api.PostViewRequest
 import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
 import ru.zagrebin.front_mobile.data.remote.dto.CommentDto
 import ru.zagrebin.front_mobile.data.remote.dto.FeedItemDto
@@ -196,6 +197,22 @@ class FeedRepository(
         return runCatching {
             val updated = if (shouldLike) feedApi.like(postId) else feedApi.unlike(postId)
             upsertLikedPost(updated)
+            true
+        }.getOrDefault(false)
+    }
+
+    suspend fun recordPostView(postId: Int, type: String, durationSeconds: Int): Boolean {
+        if (!networkConnectionChecker.isNetworkAvailable()) return false
+        return runCatching {
+            val updated = feedApi.recordView(postId, PostViewRequest(durationSeconds))
+            val views = formatViews(updated.views)
+            val normalizedType = type.lowercase()
+            feedDao.updateViews(postId, normalizedType, views)
+            if (normalizedType == TYPE_RECIPE) {
+                recipeDetailsDao.updateViews(postId, views)
+            } else {
+                articleDetailsDao.updateViews(postId, views)
+            }
             true
         }.getOrDefault(false)
     }

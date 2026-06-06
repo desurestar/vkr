@@ -10,6 +10,7 @@ data class ServerPostDto(
     val content: String? = null,
     val likes: Int,
     val createdAt: String,
+    val views: Int = 0,
     val cookTimeMinutes: Int? = null,
     val tags: List<String> = emptyList()
 )
