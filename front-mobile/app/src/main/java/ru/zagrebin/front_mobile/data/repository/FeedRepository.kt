@@ -249,16 +249,26 @@ class FeedRepository(
         if (request.status.equals(STATUS_DRAFT, ignoreCase = true) && !networkConnectionChecker.isNetworkAvailable()) {
             return saveLocalArticleDraft(request)
         }
-        return runCatching {
-            if (!networkConnectionChecker.isNetworkAvailable()) error("Network is unavailable")
-            val createdArticle = feedApi.createArticle(request).toArticleDetailsEntity()
-            articleDetailsDao.upsert(createdArticle)
-            upsertSavedFeedItems(listOf(createdArticle.toFeedItemEntity()))
-            loadArticles()
-            CreateArticleResult.Success(createdArticle.id)
-        }.getOrElse {
-            if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) saveLocalArticleDraft(request) else CreateArticleResult.Fallback
-        }
+        return saveArticleOnServer(request) { feedApi.createArticle(it) }
+    }
+
+    suspend fun updateArticle(postId: Int, request: CreateArticleRequest): CreateArticleResult {
+        if (!networkConnectionChecker.isNetworkAvailable()) return CreateArticleResult.Fallback
+        return saveArticleOnServer(request) { feedApi.updateArticle(postId, it) }
+    }
+
+    private suspend fun saveArticleOnServer(
+        request: CreateArticleRequest,
+        save: suspend (CreateArticleRequest) -> ArticleDetailsDto
+    ): CreateArticleResult = runCatching {
+        if (!networkConnectionChecker.isNetworkAvailable()) error("Network is unavailable")
+        val savedArticle = save(request).toArticleDetailsEntity()
+        articleDetailsDao.upsert(savedArticle)
+        upsertSavedFeedItems(listOf(savedArticle.toFeedItemEntity()))
+        loadArticles()
+        CreateArticleResult.Success(savedArticle.id)
+    }.getOrElse {
+        if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) saveLocalArticleDraft(request) else CreateArticleResult.Fallback
     }
 
     suspend fun loadTags(query: String? = null): ServerFirstResult<List<RecipeTag>> {
@@ -309,16 +319,26 @@ class FeedRepository(
         if (request.status.equals(STATUS_DRAFT, ignoreCase = true) && !networkConnectionChecker.isNetworkAvailable()) {
             return saveLocalRecipeDraft(request)
         }
-        return runCatching {
-            if (!networkConnectionChecker.isNetworkAvailable()) error("Network is unavailable")
-            val createdRecipe = feedApi.createRecipe(request).toRecipeDetailsEntity()
-            recipeDetailsDao.upsert(createdRecipe)
-            upsertSavedFeedItems(listOf(createdRecipe.toFeedItemEntity()))
-            loadRecipes()
-            CreateRecipeResult.Success(createdRecipe.id)
-        }.getOrElse {
-            if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) saveLocalRecipeDraft(request) else CreateRecipeResult.Fallback
-        }
+        return saveRecipeOnServer(request) { feedApi.createRecipe(it) }
+    }
+
+    suspend fun updateRecipe(postId: Int, request: CreateRecipeRequest): CreateRecipeResult {
+        if (!networkConnectionChecker.isNetworkAvailable()) return CreateRecipeResult.Fallback
+        return saveRecipeOnServer(request) { feedApi.updateRecipe(postId, it) }
+    }
+
+    private suspend fun saveRecipeOnServer(
+        request: CreateRecipeRequest,
+        save: suspend (CreateRecipeRequest) -> RecipeDetailsDto
+    ): CreateRecipeResult = runCatching {
+        if (!networkConnectionChecker.isNetworkAvailable()) error("Network is unavailable")
+        val savedRecipe = save(request).toRecipeDetailsEntity()
+        recipeDetailsDao.upsert(savedRecipe)
+        upsertSavedFeedItems(listOf(savedRecipe.toFeedItemEntity()))
+        loadRecipes()
+        CreateRecipeResult.Success(savedRecipe.id)
+    }.getOrElse {
+        if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) saveLocalRecipeDraft(request) else CreateRecipeResult.Fallback
     }
 
     suspend fun syncLocalDrafts(): Boolean {

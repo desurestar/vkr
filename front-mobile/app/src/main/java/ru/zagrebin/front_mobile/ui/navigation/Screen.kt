@@ -30,4 +30,12 @@ sealed class Screen(val route: String){
 
     data object CreateRecipe : Screen("createRecipe")
     data object CreateArticle : Screen("createArticle")
+
+    data object EditRecipe : Screen("editRecipe/{postId}") {
+        fun createRoute(postId: Int): String = "editRecipe/$postId"
+    }
+
+    data object EditArticle : Screen("editArticle/{postId}") {
+        fun createRoute(postId: Int): String = "editArticle/$postId"
+    }
 }

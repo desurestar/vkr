@@ -542,6 +542,74 @@ public class DbService {
         return toPost(posts.save(post));
     }
 
+
+    public ApiModels.Post updateRecipe(Long postId, Long uid, ApiModels.CreateRecipeRequest request) {
+        var post = getPostEntity(postId);
+        requireAuthor(post, uid);
+        if (!"RECIPE".equalsIgnoreCase(post.getType())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Post is not a recipe");
+        }
+        applyCommonPostFields(post, request.title(), request.summary(), request.content(), request.imageUrl(), request.status(), request.tags());
+        post.setCookTimeMinutes(request.cookTimeMinutes());
+        post.setProteinsPer100(request.proteinsPer100());
+        post.setFatsPer100(request.fatsPer100());
+        post.setCarbsPer100(request.carbsPer100());
+        post.setKcalPer100(request.kcalPer100());
+
+        post.getIngredients().clear();
+        if (request.ingredients() != null) {
+            for (var i : request.ingredients()) {
+                var e = new RecipeIngredientEntity();
+                e.setPost(post);
+                e.setName(i.name());
+                e.setAmount(i.amount());
+                e.setUnit(i.unit());
+                post.getIngredients().add(e);
+            }
+        }
+
+        post.getSteps().clear();
+        if (request.steps() != null) {
+            for (var st : request.steps()) {
+                var e = new RecipeStepEntity();
+                e.setPost(post);
+                e.setStepNumber(st.number());
+                e.setDescription(st.description());
+                e.setImageUrl(cleanRemoteImageUrl(st.imageUrl()));
+                post.getSteps().add(e);
+            }
+        }
+        return toPost(posts.save(post), uid);
+    }
+
+    public ApiModels.Post updateArticle(Long postId, Long uid, ApiModels.CreateArticleRequest request) {
+        var post = getPostEntity(postId);
+        requireAuthor(post, uid);
+        if (!"ARTICLE".equalsIgnoreCase(post.getType())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Post is not an article");
+        }
+        applyCommonPostFields(post, request.title(), request.summary(), request.content(), request.imageUrl(), request.status(), request.tags());
+        return toPost(posts.save(post), uid);
+    }
+
+    private void requireAuthor(PostEntity post, Long uid) {
+        if (!post.getAuthor().getId().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can edit post");
+        }
+    }
+
+    private void applyCommonPostFields(PostEntity post, String title, String summary, String content, String imageUrl, String status, List<String> tags) {
+        post.setTitle(title);
+        post.setSummary(summary);
+        post.setContent(content);
+        post.setImageUrl(cleanRemoteImageUrl(imageUrl));
+        post.setStatus(normalizePostStatus(status));
+        post.getTags().clear();
+        if (tags != null) {
+            post.getTags().addAll(tags.stream().map(this::findOrCreateTag).toList());
+        }
+    }
+
     public ApiModels.Post createArticle(Long uid, ApiModels.CreateArticleRequest request) {
         var post = new PostEntity();
         post.setAuthor(getUserEntity(uid));
