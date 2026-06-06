@@ -1,5 +1,6 @@
 package ru.zagrebin.front_mobile.ui.screens.profile
 
+import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.data.local.dao.ProfileDao
 import ru.zagrebin.front_mobile.data.local.entities.ProfileEntity
 import ru.zagrebin.front_mobile.data.remote.api.*
@@ -88,7 +89,7 @@ class ProfileRepository(
                 name = profile.name,
                 email = profile.email,
                 bio = profile.bio,
-                avatarUrl = profile.avatarUrl ?: old?.avatarUrl,
+                avatarUrl = AppContainer.toRelativeMediaPath(profile.avatarUrl ?: old?.avatarUrl),
                 followingCount = profile.followingCount,
                 followersCount = profile.followersCount
             )
@@ -104,7 +105,7 @@ class ProfileRepository(
             name = name,
             email = email,
             bio = bio,
-            avatarUrl = avatarUrl,
+            avatarUrl = AppContainer.toRelativeMediaPath(avatarUrl),
             followingCount = followingCount,
             followersCount = followersCount
         )
@@ -119,7 +120,7 @@ class ProfileRepository(
             bio = user?.bio.orEmpty(),
 
             // 🔥 ONLY SERVER VALUE
-            avatarUrl = user?.avatarUrl,
+            avatarUrl = AppContainer.toRelativeMediaPath(user?.avatarUrl),
 
             followingCount = user?.following?.size ?: 0,
             followersCount = user?.followers?.size ?: 0

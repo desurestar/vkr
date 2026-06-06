@@ -10,7 +10,7 @@ import coil.request.ImageRequest
 @Composable
 fun rememberExplicitCacheImageRequest(url: String?): ImageRequest? {
     val context = LocalContext.current
-    val data = url?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    val data = url.asImageModelUrl()?.trim()?.takeIf { it.isNotBlank() } ?: return null
     return remember(context, data) {
         ImageRequest.Builder(context)
             .data(data.toImageRequestData())

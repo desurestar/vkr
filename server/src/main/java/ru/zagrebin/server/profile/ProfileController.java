@@ -39,7 +39,7 @@ public class ProfileController {
 
         u.setDisplayName(req.displayName());
         u.setBio(req.bio());
-        u.setAvatarUrl(req.avatarUrl());
+        u.setAvatarUrl(db.cleanRemoteImageUrl(req.avatarUrl()));
 
         db.saveUser(u);
 

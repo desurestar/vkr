@@ -9,7 +9,7 @@ data class ProfileEntity(
     val name: String,
     val email: String,
     val bio: String,
-    val avatarUrl: String?, // ONLY https://... from server
+    val avatarUrl: String?, // relative /media/... path from server
     val followingCount: Int,
     val followersCount: Int
 )

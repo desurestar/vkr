@@ -44,6 +44,7 @@ import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeCommentUi
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeCommentsBottomSheet
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeCommentsButton
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
+import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
 
 @Composable
 fun ArticleDetailsScreen(
@@ -182,7 +183,7 @@ private fun AuthorAvatar(
             .background(Color(0xFFD8C2A0)),
         contentAlignment = Alignment.Center
     ) {
-        val model = avatarUrl?.takeIf { it.isNotBlank() }
+        val model = avatarUrl.asImageModelUrl()
             ?: "https://ui-avatars.com/api/?background=D8C2A0&color=FFFFFF&name=${authorName.replace(" ", "+")}"
 
         AsyncImage(

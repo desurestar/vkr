@@ -160,14 +160,26 @@ public class DbService {
         return "DRAFT".equalsIgnoreCase(status) ? "DRAFT" : "PUBLISHED";
     }
 
-    private String cleanRemoteImageUrl(String value) {
+    public String cleanRemoteImageUrl(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
+
         var trimmed = value.trim();
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/media/")) {
+        if (trimmed.startsWith("/media/")) {
             return trimmed;
         }
+
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            try {
+                var uri = java.net.URI.create(trimmed);
+                var path = uri.getPath();
+                return path != null && path.startsWith("/media/") ? path : null;
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+
         return null;
     }
 

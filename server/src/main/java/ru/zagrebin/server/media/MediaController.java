@@ -1,6 +1,5 @@
 package ru.zagrebin.server.media;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -38,8 +37,7 @@ public class MediaController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public MediaUploadResponse upload(@RequestPart("file") MultipartFile file,
-                                      HttpSession session,
-                                      HttpServletRequest request) throws IOException {
+                                      HttpSession session) throws IOException {
         requireUid(session);
         if (file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
@@ -58,8 +56,7 @@ public class MediaController {
         }
         file.transferTo(target);
 
-        var url = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + "/media/" + filename;
-        return new MediaUploadResponse(url);
+        return new MediaUploadResponse("/media/" + filename);
     }
 
     private void requireUid(HttpSession session) {
