@@ -95,17 +95,19 @@ fun ArticleCardContent(
 
             Spacer(Modifier.height(10.dp))
 
-            AsyncImage(
-                model = rememberExplicitCacheImageRequest(state.imageUrl),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(18.dp)),
-                contentScale = ContentScale.Crop
-            )
+            if (state.imageUrl.isNotBlank()) {
+                AsyncImage(
+                    model = rememberExplicitCacheImageRequest(state.imageUrl),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop
+                )
 
-            Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(10.dp))
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

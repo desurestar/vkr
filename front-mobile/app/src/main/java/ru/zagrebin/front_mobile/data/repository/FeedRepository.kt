@@ -554,6 +554,7 @@ class FeedRepository(
         authorAvatarUrl = authorAvatarUrl,
         date = date,
         title = title,
+        description = description,
         imageUrl = imageUrl,
         likes = likes,
         isLiked = isLiked,
@@ -662,7 +663,8 @@ private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = Reci
     authorAvatarUrl = authorAvatarUrl.normalizeImageUrl(),
     date = formatDate(preferValue(date, createdAt)),
     title = title.orEmpty(),
-    imageUrl = imageUrl.normalizeImageUrl(steps),
+    description = summary.orEmpty(),
+    imageUrl = imageUrl.normalizeImageUrl(),
     likes = formatCount(likes),
     isLiked = likedByMe,
     time = formatMinutes(preferValue(time, cookTimeMinutes)),
@@ -792,15 +794,7 @@ private fun formatAmount(value: Double): String = if (value % 1.0 == 0.0) {
 }
 
 
-private fun String?.normalizeImageUrl(steps: List<RecipeStepDto> = emptyList()): String {
-    val primary = this.cleanImageUrl()
-    if (primary.isNotBlank()) return primary
-
-    return steps.asSequence()
-        .mapNotNull { it.imageUrl.cleanImageUrl().takeIf(String::isNotBlank) }
-        .firstOrNull()
-        .orEmpty()
-}
+private fun String?.normalizeImageUrl(): String = cleanImageUrl()
 
 private fun String?.cleanImageUrl(): String {
     val value = this?.trim().orEmpty()

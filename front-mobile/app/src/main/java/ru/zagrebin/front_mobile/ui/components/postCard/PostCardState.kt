@@ -12,6 +12,7 @@ data class PostCardState(
     val authorAvatarUrl: String? = null,
     val date: String = "",
     val title: String = "",
+    val description: String = "",
     val imageUrl: String = "",
     val likes: String = "",
     val isLiked: Boolean = false,

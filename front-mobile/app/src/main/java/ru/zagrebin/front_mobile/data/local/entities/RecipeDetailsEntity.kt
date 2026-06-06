@@ -16,6 +16,7 @@ data class RecipeDetailsEntity(
     val authorAvatarUrl: String?,
     val date: String,
     val title: String,
+    val description: String,
     val imageUrl: String,
     val likes: String,
     val isLiked: Boolean,
