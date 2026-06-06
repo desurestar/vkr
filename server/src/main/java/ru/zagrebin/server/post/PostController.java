@@ -1,5 +1,6 @@
 package ru.zagrebin.server.post;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -112,6 +113,19 @@ public class PostController {
         return Map.of("status", "deleted");
     }
 
+
+    @PostMapping("/posts/{id}/views")
+    public ApiModels.Post recordView(
+            @PathVariable Long id,
+            @RequestBody ApiModels.PostViewRequest req,
+            HttpSession s,
+            HttpServletRequest request
+    ) {
+        var currentUserId = currentUid(s);
+        requireVisiblePost(db.getPost(id, currentUserId), currentUserId);
+        return db.recordPostView(id, currentUserId, viewerKey(s, request), req.durationSeconds());
+    }
+
     @PostMapping("/posts/{id}/comments")
     public ApiModels.Comment addComment(@PathVariable Long id, @RequestBody ApiModels.CommentRequest req, HttpSession s) {
         return db.toComment(db.createComment(id, requireUid(s), req.text(), req.parentId()));
@@ -151,6 +165,26 @@ public class PostController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");
         }
         return post;
+    }
+
+
+    private String viewerKey(HttpSession session, HttpServletRequest request) {
+        if (currentUid(session) != null) {
+            return null;
+        }
+        return clientIp(request) + "|" + Optional.ofNullable(request.getHeader("User-Agent")).orElse("");
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        var forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        var realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+        return Optional.ofNullable(request.getRemoteAddr()).orElse("");
     }
 
     private Long currentUid(HttpSession session) {

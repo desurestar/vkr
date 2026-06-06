@@ -3,6 +3,8 @@ package ru.zagrebin.front_mobile.ui.screens.articles
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,6 +34,7 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
     private val isRefreshing = MutableStateFlow(false)
     private val hasLoadError = MutableStateFlow(false)
     private val currentUserId = MutableStateFlow<Long?>(null)
+    private var viewTrackingJob: Job? = null
 
     val state: StateFlow<ArticleDetailsUiState> = currentId
         .flatMapLatest { id ->
@@ -61,6 +64,9 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
             val result = runCatching { container.refreshArticleDetailsUseCase(postId) }
                 .getOrDefault(RefreshResult.Fallback)
             hasLoadError.value = result == RefreshResult.Fallback
+            if (result == RefreshResult.Success) {
+                scheduleViewTracking(postId)
+            }
             currentUserId.value = container.feedRepository.currentUserId()
             isRefreshing.value = false
         }
@@ -78,6 +84,22 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             container.feedRepository.deleteComment(postId, commentId)
         }
+    }
+
+
+    private fun scheduleViewTracking(postId: Int) {
+        viewTrackingJob?.cancel()
+        viewTrackingJob = viewModelScope.launch {
+            delay(VIEW_TRACKING_DELAY_MS)
+            if (currentId.value == postId) {
+                container.feedRepository.recordPostView(postId, TYPE_ARTICLE, VIEW_TRACKING_DURATION_SECONDS)
+            }
+        }
+    }
+
+    override fun onCleared() {
+        viewTrackingJob?.cancel()
+        super.onCleared()
     }
 
     private fun ArticleDetails.toUi(): PostCardState = PostCardState(
@@ -98,4 +120,10 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
         tags = tags.map { TagState(it.id, it.name) },
         comments = comments
     )
+
+    private companion object {
+        const val TYPE_ARTICLE = "article"
+        const val VIEW_TRACKING_DELAY_MS = 8_000L
+        const val VIEW_TRACKING_DURATION_SECONDS = 8
+    }
 }

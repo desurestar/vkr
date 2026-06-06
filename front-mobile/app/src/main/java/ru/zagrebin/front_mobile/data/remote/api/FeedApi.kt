@@ -65,6 +65,8 @@ interface FeedApi {
     @POST("api/v1/posts/{id}/likes") suspend fun like(@Path("id") postId: Int): FeedItemDto
     @DELETE("api/v1/posts/{id}/likes") suspend fun unlike(@Path("id") postId: Int): FeedItemDto
 
+    @POST("api/v1/posts/{id}/views") suspend fun recordView(@Path("id") postId: Int, @Body request: PostViewRequest): FeedItemDto
+
     @POST("api/v1/profile/{userId}/follow") suspend fun follow(@Path("userId") userId: Long)
     @DELETE("api/v1/profile/{userId}/follow") suspend fun unfollow(@Path("userId") userId: Long)
     @GET("api/v1/profile/{userId}") suspend fun getPublicProfile(@Path("userId") userId: Long, @Query("q") query: String? = null, @Query("page") page: Int? = null, @Query("size") size: Int? = null): PublicProfileDto
@@ -101,6 +103,7 @@ data class SessionUserDto(val id: Long, val username: String? = null, val displa
 data class UpdateProfileRequest(val displayName: String, val bio: String, val avatarUrl: String?)
 data class UpdatePasswordRequest(val oldPassword: String, val newPassword: String)
 data class CommentRequest(val text: String, val parentId: Long? = null)
+data class PostViewRequest(val durationSeconds: Int)
 data class SearchResponse(val posts: List<ServerPostDto> = emptyList(), val users: List<UserProfileDto> = emptyList())
 data class MediaUploadResponse(val url: String)
 

@@ -17,5 +17,8 @@ interface RecipeDetailsDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: RecipeDetailsEntity)
+
+    @Query("UPDATE recipe_details SET views = :views WHERE id = :id")
+    suspend fun updateViews(id: Int, views: String)
 }
 
