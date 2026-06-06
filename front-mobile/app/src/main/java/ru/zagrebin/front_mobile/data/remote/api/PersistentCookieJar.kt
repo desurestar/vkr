@@ -109,5 +109,12 @@ class PersistentCookieJar(context: Context) : CookieJar {
     companion object {
         private const val PREFS_NAME = "http_cookies"
         private const val KEY_COOKIES = "cookie_values"
+
+        fun clear(context: Context) {
+            context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_COOKIES)
+                .apply()
+        }
     }
 }

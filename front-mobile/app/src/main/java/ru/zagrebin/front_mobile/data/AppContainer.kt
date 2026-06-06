@@ -78,6 +78,12 @@ class AppContainer(context: Context) {
     val observeArticleDetailsUseCase = ObserveArticleDetailsUseCase(feedRepository)
     val refreshArticleDetailsUseCase = RefreshArticleDetailsUseCase(feedRepository)
 
+    suspend fun clearAuthorizedUserData() {
+        db.profileDao().clear()
+        statisticsRepository.clearLocalData()
+        PersistentCookieJar.clear(appContext)
+    }
+
     private companion object {
         // const val BASE_URL = "http://192.168.4.103:8080/"
         const val BASE_URL = "http://192.168.0.9:8080/"
