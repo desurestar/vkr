@@ -81,6 +81,11 @@ class StatisticsRepository(
         }
     }
 
+    suspend fun clearLocalData() {
+        dao.clearAll()
+        syncDao.clearPendingStatisticsOps()
+    }
+
     suspend fun refreshMonth(month: YearMonth): Boolean {
         val start = month.atDay(1).toString()
         val end = month.atEndOfMonth().toString()

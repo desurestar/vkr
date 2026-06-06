@@ -11,6 +11,7 @@ import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.domain.model.FeedItem
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
+import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
 
 data class DraftsState(
     val drafts: List<PostCardState> = emptyList(),
@@ -34,7 +35,11 @@ class DraftsViewModel(application: Application) : AndroidViewModel(application) 
             _state.value = DraftsState(
                 drafts = result.data.map { it.toUi() },
                 isLoading = false,
-                errorMessage = if (result.isFromCache) "Не удалось загрузить черновики с сервера." else null
+                errorMessage = if (result.isFromCache && AuthSessionState.isAuthorized.value) {
+                    "Не удалось загрузить черновики с сервера."
+                } else {
+                    null
+                }
             )
         }
     }

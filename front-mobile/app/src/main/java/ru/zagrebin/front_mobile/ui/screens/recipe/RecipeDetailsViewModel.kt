@@ -18,6 +18,8 @@ import ru.zagrebin.front_mobile.ui.components.postCard.RecipeStepState
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagState
 import ru.zagrebin.front_mobile.ui.screens.statistics.MealDraft
 import ru.zagrebin.front_mobile.ui.screens.statistics.MealType
+import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
+import ru.zagrebin.front_mobile.ui.screens.profile.GuestShoppingListStore
 import java.time.LocalDate
 
 data class RecipeDetailsUiState(
@@ -28,6 +30,7 @@ data class RecipeDetailsUiState(
 
 class RecipeDetailsViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
+    private val guestShoppingListStore = GuestShoppingListStore(application)
     private val details = MutableStateFlow<RecipeDetails?>(null)
     private val isRefreshing = MutableStateFlow(false)
     private val hasLoadError = MutableStateFlow(false)
@@ -89,6 +92,10 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
         val post = details.value ?: return
         if (ingredients.isEmpty()) return
         viewModelScope.launch {
+            if (!AuthSessionState.isAuthorized.value) {
+                guestShoppingListStore.createRecipeList(post.title, ingredients)
+                return@launch
+            }
             runCatching {
                 val list = container.feedApi.createShoppingList(mapOf("name" to post.title))
                 ingredients.forEach { ingredient ->

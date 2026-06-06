@@ -19,6 +19,9 @@ interface SyncDao {
     @Query("DELETE FROM pending_statistics_ops WHERE id = :id")
     suspend fun deleteStatisticsOp(id: Long)
 
+    @Query("DELETE FROM pending_statistics_ops")
+    suspend fun clearPendingStatisticsOps()
+
     @Query("SELECT * FROM local_drafts ORDER BY createdAt DESC")
     fun observeLocalDrafts(): Flow<List<LocalDraftEntity>>
 

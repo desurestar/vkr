@@ -57,6 +57,22 @@ interface StatisticsDao {
     @Query("DELETE FROM statistics_meals WHERE dateIso < :cutoff")
     suspend fun pruneMeals(cutoff: String)
 
+    @Query("DELETE FROM statistics_settings")
+    suspend fun clearSettings()
+
+    @Query("DELETE FROM statistics_days")
+    suspend fun clearAllDays()
+
+    @Query("DELETE FROM statistics_meals")
+    suspend fun clearAllMeals()
+
+    @Transaction
+    suspend fun clearAll() {
+        clearSettings()
+        clearAllDays()
+        clearAllMeals()
+    }
+
     @Transaction
     suspend fun replaceMonth(start: String, end: String, settings: StatisticsSettingsEntity, days: List<StatisticsDayEntity>, meals: List<StatisticsMealEntryEntity>) {
         upsertSettings(settings)

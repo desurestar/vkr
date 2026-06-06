@@ -136,7 +136,7 @@ fun NavGraph(
             ProfileScreen(
                 viewModel = profileViewModel,
                 isAuthorized = isAuthorized,
-                onOpenShoppingList = { requireAuthorization { navController.navigate(Screen.ShoppingList.route) } },
+                onOpenShoppingList = { navController.navigate(Screen.ShoppingList.route) },
                 onOpenMyPosts = { requireAuthorization { navController.navigate(Screen.MyPosts.route) } },
                 onOpenDrafts = { navController.navigate(Screen.Drafts.route) },
                 onOpenEditAccount = { requireAuthorization { navController.navigate(Screen.EditAccount.route) } },
@@ -149,7 +149,7 @@ fun NavGraph(
                     } else {
                         scope.launch {
                             runCatching { api.logout() }
-                            profileRepository.clearProfile()
+                            appContainer.clearAuthorizedUserData()
                             AuthSessionState.setAuthorized(context, false)
                             navController.navigate(Screen.EntryOptions.route) {
                                 popUpTo(navController.graph.id) { inclusive = true }
@@ -161,10 +161,6 @@ fun NavGraph(
         }
 
         composable(Screen.ShoppingList.route) {
-            if (!isAuthorized) {
-                LaunchedEffect(Unit) { requestAuthorization() }
-                return@composable
-            }
             ShoppingListScreen(onBackClick = { navController.popBackStack() })
         }
 

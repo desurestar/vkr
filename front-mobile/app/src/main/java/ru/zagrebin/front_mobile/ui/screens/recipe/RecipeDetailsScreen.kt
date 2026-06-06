@@ -141,7 +141,7 @@ fun RecipeDetailsScreen(
         item {
             IngredientsSection(
                 post = post,
-                onAddToListClick = { if (isAuthorized) showIngredientsPicker = true else onAuthRequired() }
+                onAddToListClick = { showIngredientsPicker = true }
             )
         }
 
