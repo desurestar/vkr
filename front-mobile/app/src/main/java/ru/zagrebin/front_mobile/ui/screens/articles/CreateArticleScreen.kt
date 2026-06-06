@@ -68,6 +68,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
+import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.LightPrimary
 import java.io.File
@@ -80,21 +81,23 @@ private const val TAG_SEARCH_DEBOUNCE_MS = 400L
 fun CreateArticleScreen(
     onBackClick: () -> Unit = {},
     availableTags: List<String> = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
-    onPublish: (title: String, summary: String, content: String, tags: List<String>, coverUri: Uri?, blocks: List<ArticleBlockDraft>) -> Unit = { _, _, _, _, _, _ -> },
-    onDraft: (title: String, summary: String, content: String, tags: List<String>, coverUri: Uri?, blocks: List<ArticleBlockDraft>) -> Unit = { _, _, _, _, _, _ -> }
+    initialDraft: ArticleEditDraft? = null,
+    isEditMode: Boolean = false,
+    onPublish: (title: String, summary: String, content: String, tags: List<String>, coverUri: Uri?, existingCoverUrl: String?, blocks: List<ArticleBlockDraft>) -> Unit = { _, _, _, _, _, _, _ -> },
+    onDraft: (title: String, summary: String, content: String, tags: List<String>, coverUri: Uri?, existingCoverUrl: String?, blocks: List<ArticleBlockDraft>) -> Unit = { _, _, _, _, _, _, _ -> }
 ) {
     val context = LocalContext.current
-    var title by rememberSaveable { mutableStateOf("") }
+    var title by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.title.orEmpty()) }
     var coverUri by remember { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var showErrors by rememberSaveable { mutableStateOf(false) }
 
-    val selectedTags = remember { mutableStateListOf<String>() }
-    val blocks = remember { mutableStateListOf<ArticleBlockDraft>() }
+    val selectedTags = remember(initialDraft?.id) { mutableStateListOf<String>().apply { addAll(initialDraft?.tags.orEmpty()) } }
+    val blocks = remember(initialDraft?.id) { mutableStateListOf<ArticleBlockDraft>().apply { addAll(initialDraft?.blocks.orEmpty()) } }
 
     var showTagSheet by rememberSaveable { mutableStateOf(false) }
     var showBlockSheet by rememberSaveable { mutableStateOf(false) }
-    var nextBlockNumber by rememberSaveable { mutableStateOf(1) }
+    var nextBlockNumber by rememberSaveable(initialDraft?.id) { mutableStateOf((initialDraft?.blocks?.maxOfOrNull { it.number } ?: 0) + 1) }
 
     val pickCoverLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -153,7 +156,7 @@ fun CreateArticleScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            CreateArticleTopBar(onBackClick = onBackClick)
+            CreateArticleTopBar(onBackClick = onBackClick, isEditMode = isEditMode)
 
             Column(
                 modifier = Modifier
@@ -187,6 +190,7 @@ fun CreateArticleScreen(
 
                 ArticleCoverBlock(
                     coverUri = coverUri,
+                    existingCoverUrl = initialDraft?.coverUrl,
                     onPickGallery = {
                         pickCoverLauncher.launch(
                             PickVisualMediaRequest(
@@ -263,13 +267,14 @@ fun CreateArticleScreen(
                                 content,
                                 selectedTags.toList(),
                                 coverUri,
+                                initialDraft?.coverUrl,
                                 normalizedBlocks
                             )
                         },
                         shape = RoundedCornerShape(18.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Черновик")
+                        Text(if (isEditMode) "Сохранить черновик" else "Черновик")
                     }
                     Button(
                         onClick = {
@@ -289,6 +294,7 @@ fun CreateArticleScreen(
                                 content,
                                 selectedTags.toList(),
                                 coverUri,
+                                initialDraft?.coverUrl,
                                 normalizedBlocks
                             )
                         },
@@ -297,7 +303,7 @@ fun CreateArticleScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF6C166)),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Опубликовать", color = Color(0xFF1E1C1F))
+                        Text(if (isEditMode) "Сохранить" else "Опубликовать", color = Color(0xFF1E1C1F))
                     }
                 }
 
@@ -308,7 +314,7 @@ fun CreateArticleScreen(
 }
 
 @Composable
-private fun CreateArticleTopBar(onBackClick: () -> Unit) {
+private fun CreateArticleTopBar(onBackClick: () -> Unit, isEditMode: Boolean) {
     Surface(color = AppPageBackgroundColor) {
         Row(
             modifier = Modifier
@@ -323,7 +329,7 @@ private fun CreateArticleTopBar(onBackClick: () -> Unit) {
                 )
             }
             Text(
-                text = "Создать статью",
+                text = if (isEditMode) "Редактировать статью" else "Создать статью",
                 style = MaterialTheme.typography.titleLarge
             )
         }
@@ -333,6 +339,7 @@ private fun CreateArticleTopBar(onBackClick: () -> Unit) {
 @Composable
 private fun ArticleCoverBlock(
     coverUri: Uri?,
+    existingCoverUrl: String?,
     onPickGallery: () -> Unit,
     onTakePhoto: () -> Unit
 ) {
@@ -344,9 +351,9 @@ private fun ArticleCoverBlock(
                 .background(Color(0xFFE3E3E3), RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center
         ) {
-            if (coverUri != null) {
+            if (coverUri != null || !existingCoverUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = coverUri,
+                    model = coverUri ?: existingCoverUrl.asImageModelUrl(),
                     contentDescription = "Обложка статьи",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -506,9 +513,9 @@ private fun ArticleBlocksBlock(
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF4A4A4A)
                     )
-                    if (block.photoUri != null) {
+                    if (block.photoUri != null || !block.existingImageUrl.isNullOrBlank()) {
                         AsyncImage(
-                            model = block.photoUri,
+                            model = block.photoUri ?: block.existingImageUrl.asImageModelUrl(),
                             contentDescription = "Фото блока",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
@@ -833,5 +840,14 @@ data class ArticleBlockDraft(
     val number: Int,
     val title: String,
     val content: String,
-    val photoUri: Uri?
+    val photoUri: Uri?,
+    val existingImageUrl: String? = null
+)
+
+data class ArticleEditDraft(
+    val id: Int,
+    val title: String,
+    val coverUrl: String?,
+    val tags: List<String>,
+    val blocks: List<ArticleBlockDraft>
 )

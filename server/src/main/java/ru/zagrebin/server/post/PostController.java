@@ -92,9 +92,19 @@ public class PostController {
         return db.createRecipe(requireUid(s), req);
     }
 
+    @PatchMapping("/recipes/{id}")
+    public ApiModels.Post updateRecipe(@PathVariable Long id, @RequestBody ApiModels.CreateRecipeRequest req, HttpSession s) {
+        return db.updateRecipe(id, requireUid(s), req);
+    }
+
     @PostMapping("/articles")
     public ApiModels.Post createArticle(@RequestBody ApiModels.CreateArticleRequest req, HttpSession s) {
         return db.createArticle(requireUid(s), req);
+    }
+
+    @PatchMapping("/articles/{id}")
+    public ApiModels.Post updateArticle(@PathVariable Long id, @RequestBody ApiModels.CreateArticleRequest req, HttpSession s) {
+        return db.updateArticle(id, requireUid(s), req);
     }
 
     @GetMapping("/articles/{id}")

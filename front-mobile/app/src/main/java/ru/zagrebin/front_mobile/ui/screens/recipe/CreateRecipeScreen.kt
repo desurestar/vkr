@@ -73,6 +73,7 @@ import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.LightPrimary
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
+import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
 import java.io.File
 import kotlinx.coroutines.delay
 
@@ -84,29 +85,31 @@ private const val TAG_SEARCH_DEBOUNCE_MS = 400L
 fun CreateRecipeScreen(
     onBackClick: () -> Unit = {},
     availableTags: List<String> = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
-    onPublish: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, recipePhotoUri: Uri?, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _ -> },
-    onDraft: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, recipePhotoUri: Uri?, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _ -> }
+    initialDraft: RecipeEditDraft? = null,
+    isEditMode: Boolean = false,
+    onPublish: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, recipePhotoUri: Uri?, existingRecipeImageUrl: String?, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _, _ -> },
+    onDraft: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, recipePhotoUri: Uri?, existingRecipeImageUrl: String?, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
 ) {
     val context = LocalContext.current
-    var postTitle by rememberSaveable { mutableStateOf("") }
-    var dishTitle by rememberSaveable { mutableStateOf("") }
+    var postTitle by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.title.orEmpty()) }
+    var dishTitle by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.summary.orEmpty()) }
     var recipePhotoUri by remember { mutableStateOf<Uri?>(null) }
     var pendingRecipeCameraUri by remember { mutableStateOf<Uri?>(null) }
-    var proteins by rememberSaveable { mutableStateOf("") }
-    var fats by rememberSaveable { mutableStateOf("") }
-    var carbs by rememberSaveable { mutableStateOf("") }
-    var calories by rememberSaveable { mutableStateOf("") }
-    var cookTimeMinutes by rememberSaveable { mutableStateOf("") }
+    var proteins by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.proteinsPer100?.toCleanString().orEmpty()) }
+    var fats by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.fatsPer100?.toCleanString().orEmpty()) }
+    var carbs by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.carbsPer100?.toCleanString().orEmpty()) }
+    var calories by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.kcalPer100?.toCleanString().orEmpty()) }
+    var cookTimeMinutes by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.cookTimeMinutes?.toString().orEmpty()) }
     var showErrors by rememberSaveable { mutableStateOf(false) }
 
-    val selectedTags = remember { mutableStateListOf<String>() }
-    val ingredients = remember { mutableStateListOf<IngredientDraft>() }
-    val steps = remember { mutableStateListOf<RecipeStepDraft>() }
+    val selectedTags = remember(initialDraft?.id) { mutableStateListOf<String>().apply { addAll(initialDraft?.tags.orEmpty()) } }
+    val ingredients = remember(initialDraft?.id) { mutableStateListOf<IngredientDraft>().apply { addAll(initialDraft?.ingredients.orEmpty()) } }
+    val steps = remember(initialDraft?.id) { mutableStateListOf<RecipeStepDraft>().apply { addAll(initialDraft?.steps.orEmpty()) } }
 
     var showTagSheet by rememberSaveable { mutableStateOf(false) }
     var showIngredientSheet by rememberSaveable { mutableStateOf(false) }
     var showStepSheet by rememberSaveable { mutableStateOf(false) }
-    var nextStepNumber by rememberSaveable { mutableStateOf(1) }
+    var nextStepNumber by rememberSaveable(initialDraft?.id) { mutableStateOf((initialDraft?.steps?.maxOfOrNull { it.number } ?: 0) + 1) }
 
     val pickRecipePhotoLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -179,7 +182,7 @@ fun CreateRecipeScreen(
                 .verticalScroll(rememberScrollState())
         ) {
 
-            CreateRecipeTopBar(onBackClick = onBackClick)
+            CreateRecipeTopBar(onBackClick = onBackClick, isEditMode = isEditMode)
 
             Column(
                 modifier = Modifier
@@ -213,6 +216,7 @@ fun CreateRecipeScreen(
 
                 RecipePhotoBlock(
                     photoUri = recipePhotoUri,
+                    existingPhotoUrl = initialDraft?.imageUrl,
                     onPickGallery = {
                         pickRecipePhotoLauncher.launch(
                             PickVisualMediaRequest(
@@ -363,6 +367,7 @@ fun CreateRecipeScreen(
                                 ingredients.toList(),
                                 steps.toList(),
                                 recipePhotoUri,
+                                initialDraft?.imageUrl,
                                 proteins.toDoubleOrNull() ?: 0.0,
                                 fats.toDoubleOrNull() ?: 0.0,
                                 carbs.toDoubleOrNull() ?: 0.0,
@@ -372,7 +377,7 @@ fun CreateRecipeScreen(
                         shape = RoundedCornerShape(18.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Черновик")
+                        Text(if (isEditMode) "Сохранить черновик" else "Черновик")
                     }
 
                     Button(
@@ -388,6 +393,7 @@ fun CreateRecipeScreen(
                                 ingredients.toList(),
                                 steps.toList(),
                                 recipePhotoUri,
+                                initialDraft?.imageUrl,
                                 proteins.toDouble(),
                                 fats.toDouble(),
                                 carbs.toDouble(),
@@ -402,7 +408,7 @@ fun CreateRecipeScreen(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "Опубликовать",
+                            text = if (isEditMode) "Сохранить" else "Опубликовать",
                             color = Color(0xFF1E1C1F)
                         )
                     }
@@ -416,7 +422,8 @@ fun CreateRecipeScreen(
 
 @Composable
 private fun CreateRecipeTopBar(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    isEditMode: Boolean
 ) {
     Surface(color = AppPageBackgroundColor) {
 
@@ -436,7 +443,7 @@ private fun CreateRecipeTopBar(
             }
 
             Text(
-                text = "Создать пост",
+                text = if (isEditMode) "Редактировать пост" else "Создать пост",
                 style = MaterialTheme.typography.titleLarge
             )
         }
@@ -446,6 +453,7 @@ private fun CreateRecipeTopBar(
 @Composable
 private fun RecipePhotoBlock(
     photoUri: Uri?,
+    existingPhotoUrl: String?,
     onPickGallery: () -> Unit,
     onTakePhoto: () -> Unit
 ) {
@@ -460,9 +468,9 @@ private fun RecipePhotoBlock(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            if (photoUri != null) {
+            if (photoUri != null || !existingPhotoUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = photoUri,
+                    model = photoUri ?: existingPhotoUrl.asImageModelUrl(),
                     contentDescription = "Фото рецепта",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -702,9 +710,9 @@ private fun StepsBlock(
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF4A4A4A)
                     )
-                    if (step.photoUri != null) {
+                    if (step.photoUri != null || !step.existingImageUrl.isNullOrBlank()) {
                         AsyncImage(
-                            model = step.photoUri,
+                            model = step.photoUri ?: step.existingImageUrl.asImageModelUrl(),
                             contentDescription = "Фото шага",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
@@ -1214,7 +1222,23 @@ data class IngredientDraft(
 data class RecipeStepDraft(
     val number: Int,
     val description: String,
-    val photoUri: Uri?
+    val photoUri: Uri?,
+    val existingImageUrl: String? = null
+)
+
+data class RecipeEditDraft(
+    val id: Int,
+    val title: String,
+    val summary: String,
+    val imageUrl: String?,
+    val cookTimeMinutes: Int?,
+    val proteinsPer100: Double?,
+    val fatsPer100: Double?,
+    val carbsPer100: Double?,
+    val kcalPer100: Double?,
+    val tags: List<String>,
+    val ingredients: List<IngredientDraft>,
+    val steps: List<RecipeStepDraft>
 )
 
 @Preview(showBackground = true, locale = "ru")
@@ -1317,3 +1341,5 @@ private fun String.toDecimalInput(): String {
         }
     }
 }
+
+private fun Double.toCleanString(): String = if (this % 1.0 == 0.0) toInt().toString() else toString()

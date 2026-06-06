@@ -62,6 +62,7 @@ fun RecipeDetailsScreen(
     isAuthorized: Boolean = true,
     onAuthRequired: () -> Unit = {},
     onBackClick: () -> Unit,
+    onEditClick: () -> Unit = {},
     onSendComment: (String, Long?) -> Unit,
     onDeleteComment: (Long) -> Unit,
     onAddToShoppingList: (List<String>) -> Unit,
@@ -105,7 +106,9 @@ fun RecipeDetailsScreen(
     ) {
         item {
             RecipeTopBar(
+                canEdit = currentUserId != null && post.authorId == currentUserId.toString(),
                 onBackClick = onBackClick,
+                onEditClick = onEditClick,
                 onEatClick = { if (isAuthorized) showAddMeal = true else onAuthRequired() }
             )
         }
@@ -276,7 +279,9 @@ private fun List<PostComment>.toCommentUi(currentUserId: Long?): List<RecipeComm
 
 @Composable
 private fun RecipeTopBar(
+    canEdit: Boolean,
     onBackClick: () -> Unit,
+    onEditClick: () -> Unit,
     onEatClick: () -> Unit
 ) {
     Row(
@@ -297,6 +302,20 @@ private fun RecipeTopBar(
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.weight(1f))
+        if (canEdit) {
+            Button(
+                onClick = onEditClick,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFF1E7DE),
+                    contentColor = Color(0xFF4A4A4A)
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(text = "Редактировать", style = MaterialTheme.typography.bodyMedium)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+        }
         Button(
             onClick = onEatClick,
             shape = RoundedCornerShape(12.dp),

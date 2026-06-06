@@ -17,6 +17,8 @@ import androidx.navigation.navArgument
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsScreen
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticlesFeedScreen
+import ru.zagrebin.front_mobile.ui.screens.articles.ArticleBlockDraft
+import ru.zagrebin.front_mobile.ui.screens.articles.ArticleEditDraft
 import ru.zagrebin.front_mobile.ui.screens.articles.CreateArticleScreen
 import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedScreen
@@ -31,6 +33,9 @@ import ru.zagrebin.front_mobile.ui.screens.profile.ShoppingListScreen
 import ru.zagrebin.front_mobile.ui.screens.publicProfile.PublicProfileScreen
 import ru.zagrebin.front_mobile.ui.screens.register.RegisterScreen
 import ru.zagrebin.front_mobile.ui.screens.recipe.CreateRecipeScreen
+import ru.zagrebin.front_mobile.ui.screens.recipe.IngredientDraft
+import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeEditDraft
+import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeStepDraft
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsScreen
 import ru.zagrebin.front_mobile.ui.screens.statistics.StatisticsScreen
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +55,7 @@ import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeStep
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.repository.CreateArticleResult
 import ru.zagrebin.front_mobile.data.repository.CreateRecipeResult
+import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.screens.profile.ProfileRepository
 import ru.zagrebin.front_mobile.ui.screens.articles.ArticleDetailsViewModel
 import ru.zagrebin.front_mobile.ui.screens.recipe.RecipeDetailsViewModel
@@ -227,7 +233,7 @@ fun NavGraph(
             CreateRecipeScreen(
                 onBackClick = { navController.popBackStack() },
                 availableTags = availableTags,
-                onPublish = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, proteins, fats, carbs, kcal ->
+                onPublish = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, existingRecipeImageUrl, proteins, fats, carbs, kcal ->
                     if (!isAuthorized) {
                         requestAuthorization()
                     } else {
@@ -238,14 +244,14 @@ fun NavGraph(
                                 api = appContainer.feedApi,
                                 sourceUri = recipePhotoUri,
                                 prefix = "recipe_main"
-                            )
+                            ) ?: existingRecipeImageUrl
                             val stepImageUrls = steps.map { step ->
                                 uploadRecipeImageToServer(
                                     context = context,
                                     api = appContainer.feedApi,
                                     sourceUri = step.photoUri,
                                     prefix = "recipe_step_${step.number}"
-                                )
+                                ) ?: step.existingImageUrl
                             }
 
                             appContainer.feedRepository.createRecipe(
@@ -286,20 +292,20 @@ fun NavGraph(
                     }
                     }
                 },
-                onDraft = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, proteins, fats, carbs, kcal ->
+                onDraft = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, existingRecipeImageUrl, proteins, fats, carbs, kcal ->
                     scope.launch {
                         val draftResult = runCatching {
                             val canUploadDraftImages = isAuthorized && appContainer.networkConnectionChecker.isNetworkAvailable()
                             val mainImageUrl = if (canUploadDraftImages) {
-                                uploadRecipeImageToServer(context, appContainer.feedApi, recipePhotoUri, "recipe_draft_main")
+                                uploadRecipeImageToServer(context, appContainer.feedApi, recipePhotoUri, "recipe_draft_main") ?: existingRecipeImageUrl
                             } else {
-                                recipePhotoUri?.toString()
+                                recipePhotoUri?.toString() ?: existingRecipeImageUrl
                             }
                             val stepImageUrls = steps.map { step ->
                                 if (canUploadDraftImages) {
-                                    uploadRecipeImageToServer(context, appContainer.feedApi, step.photoUri, "recipe_draft_step_${step.number}")
+                                    uploadRecipeImageToServer(context, appContainer.feedApi, step.photoUri, "recipe_draft_step_${step.number}") ?: step.existingImageUrl
                                 } else {
-                                    step.photoUri?.toString()
+                                    step.photoUri?.toString() ?: step.existingImageUrl
                                 }
                             }
 
@@ -354,7 +360,7 @@ fun NavGraph(
             CreateArticleScreen(
                 onBackClick = { navController.popBackStack() },
                 availableTags = availableTags,
-                onPublish = { title, summary, content, tags, coverUri, blocks ->
+                onPublish = { title, summary, content, tags, coverUri, existingCoverUrl, blocks ->
                     if (!isAuthorized) {
                         requestAuthorization()
                     } else {
@@ -365,14 +371,14 @@ fun NavGraph(
                                 api = appContainer.feedApi,
                                 sourceUri = coverUri,
                                 prefix = "article_cover"
-                            )
+                            ) ?: existingCoverUrl
                             val blockImageUrls = blocks.map { block ->
                                 uploadRecipeImageToServer(
                                     context = context,
                                     api = appContainer.feedApi,
                                     sourceUri = block.photoUri,
                                     prefix = "article_block_${block.number}"
-                                )
+                                ) ?: block.existingImageUrl
                             }
                             val contentWithImages = blocks.mapIndexed { index, block ->
                                 buildString {
@@ -404,20 +410,20 @@ fun NavGraph(
                     }
                     }
                 },
-                onDraft = { title, summary, content, tags, coverUri, blocks ->
+                onDraft = { title, summary, content, tags, coverUri, existingCoverUrl, blocks ->
                     scope.launch {
                         val draftResult = runCatching {
                             val canUploadDraftImages = isAuthorized && appContainer.networkConnectionChecker.isNetworkAvailable()
                             val coverImageUrl = if (canUploadDraftImages) {
-                                uploadRecipeImageToServer(context, appContainer.feedApi, coverUri, "article_draft_cover")
+                                uploadRecipeImageToServer(context, appContainer.feedApi, coverUri, "article_draft_cover") ?: existingCoverUrl
                             } else {
-                                coverUri?.toString()
+                                coverUri?.toString() ?: existingCoverUrl
                             }
                             val blockImageUrls = blocks.map { block ->
                                 if (canUploadDraftImages) {
-                                    uploadRecipeImageToServer(context, appContainer.feedApi, block.photoUri, "article_draft_block_${block.number}")
+                                    uploadRecipeImageToServer(context, appContainer.feedApi, block.photoUri, "article_draft_block_${block.number}") ?: block.existingImageUrl
                                 } else {
-                                    block.photoUri?.toString()
+                                    block.photoUri?.toString() ?: block.existingImageUrl
                                 }
                             }
                             val contentWithImages = blocks.mapIndexed { index, block ->
@@ -473,6 +479,7 @@ fun NavGraph(
                         isAuthorized = isAuthorized,
                         onAuthRequired = requestAuthorization,
                         onBackClick = { navController.popBackStack() },
+                        onEditClick = { navController.navigate(Screen.EditArticle.createRoute(postId)) },
                         onSendComment = detailsViewModel::addComment,
                         onDeleteComment = detailsViewModel::deleteComment
                     )
@@ -520,6 +527,7 @@ fun NavGraph(
                         isAuthorized = isAuthorized,
                         onAuthRequired = requestAuthorization,
                         onBackClick = { navController.popBackStack() },
+                        onEditClick = { navController.navigate(Screen.EditRecipe.createRoute(postId)) },
                         onSendComment = detailsViewModel::addComment,
                         onDeleteComment = detailsViewModel::deleteComment,
                         onAddToShoppingList = detailsViewModel::addIngredientsToShoppingList,
@@ -549,6 +557,158 @@ fun NavGraph(
             }
         }
 
+
+        composable(
+            route = Screen.EditRecipe.route,
+            arguments = listOf(navArgument("postId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            if (!isAuthorized) {
+                LaunchedEffect(Unit) { requestAuthorization() }
+                return@composable
+            }
+            val postId = backStackEntry.arguments?.getInt("postId") ?: return@composable
+            val detailsViewModel: RecipeDetailsViewModel = viewModel()
+            val state = detailsViewModel.state.collectAsState().value
+            var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
+
+            LaunchedEffect(postId) { detailsViewModel.load(postId) }
+            LaunchedEffect(Unit) {
+                runCatching { appContainer.feedRepository.loadTagLabels() }
+                    .onSuccess { result -> availableTags = result.data }
+            }
+
+            val post = state.post
+            when {
+                post != null && state.currentUserId != null && post.authorId == state.currentUserId.toString() -> {
+                    CreateRecipeScreen(
+                        onBackClick = { navController.popBackStack() },
+                        availableTags = availableTags,
+                        initialDraft = post.toRecipeEditDraft(),
+                        isEditMode = true,
+                        onPublish = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, existingRecipeImageUrl, proteins, fats, carbs, kcal ->
+                            scope.launch {
+                                val saveResult = runCatching {
+                                    val mainImageUrl = uploadRecipeImageToServer(context, appContainer.feedApi, recipePhotoUri, "recipe_edit_main") ?: existingRecipeImageUrl
+                                    val stepImageUrls = steps.map { step ->
+                                        uploadRecipeImageToServer(context, appContainer.feedApi, step.photoUri, "recipe_edit_step_${step.number}") ?: step.existingImageUrl
+                                    }
+                                    appContainer.feedRepository.updateRecipe(
+                                        postId,
+                                        CreateRecipeRequest(
+                                            title = title,
+                                            summary = summary,
+                                            content = content,
+                                            imageUrl = mainImageUrl ?: stepImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                            cookTimeMinutes = cookTime,
+                                            proteinsPer100 = proteins,
+                                            fatsPer100 = fats,
+                                            carbsPer100 = carbs,
+                                            kcalPer100 = kcal,
+                                            status = "PUBLISHED",
+                                            tags = tags,
+                                            ingredients = ingredients.map { CreateRecipeIngredient(it.name, it.amount.toDouble(), it.unit) },
+                                            steps = steps.mapIndexed { index, step -> CreateRecipeStep(step.number, step.description, stepImageUrls[index]) }
+                                        )
+                                    )
+                                }.getOrDefault(CreateRecipeResult.Fallback)
+                                if (saveResult is CreateRecipeResult.Success) {
+                                    navController.navigate(Screen.RecipeDetails.createRoute(saveResult.postId)) {
+                                        popUpTo(Screen.EditRecipe.route) { inclusive = true }
+                                    }
+                                }
+                            }
+                        },
+                        onDraft = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, existingRecipeImageUrl, proteins, fats, carbs, kcal ->
+                            scope.launch {
+                                val saveResult = runCatching {
+                                    val mainImageUrl = uploadRecipeImageToServer(context, appContainer.feedApi, recipePhotoUri, "recipe_edit_draft_main") ?: existingRecipeImageUrl
+                                    val stepImageUrls = steps.map { step ->
+                                        uploadRecipeImageToServer(context, appContainer.feedApi, step.photoUri, "recipe_edit_draft_step_${step.number}") ?: step.existingImageUrl
+                                    }
+                                    appContainer.feedRepository.updateRecipe(
+                                        postId,
+                                        CreateRecipeRequest(title, summary, content, mainImageUrl ?: stepImageUrls.firstOrNull { !it.isNullOrBlank() }, cookTime, proteins, fats, carbs, kcal, "DRAFT", tags, ingredients.map { CreateRecipeIngredient(it.name, it.amount.toDouble(), it.unit) }, steps.mapIndexed { index, step -> CreateRecipeStep(step.number, step.description, stepImageUrls[index]) })
+                                    )
+                                }.getOrDefault(CreateRecipeResult.Fallback)
+                                if (saveResult is CreateRecipeResult.Success) {
+                                    navController.navigate(Screen.Drafts.route) { popUpTo(Screen.EditRecipe.route) { inclusive = true } }
+                                }
+                            }
+                        }
+                    )
+                }
+                state.isLoading -> EditLoadingText("Загрузка рецепта...")
+                else -> EditLoadingText("Редактирование доступно только автору рецепта")
+            }
+        }
+
+        composable(
+            route = Screen.EditArticle.route,
+            arguments = listOf(navArgument("postId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            if (!isAuthorized) {
+                LaunchedEffect(Unit) { requestAuthorization() }
+                return@composable
+            }
+            val postId = backStackEntry.arguments?.getInt("postId") ?: return@composable
+            val detailsViewModel: ArticleDetailsViewModel = viewModel()
+            val state = detailsViewModel.state.collectAsState().value
+            var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
+
+            LaunchedEffect(postId) { detailsViewModel.load(postId) }
+            LaunchedEffect(Unit) {
+                runCatching { appContainer.feedRepository.loadTagLabels() }
+                    .onSuccess { result -> availableTags = result.data }
+            }
+
+            val post = state.post
+            when {
+                post != null && state.currentUserId != null && post.authorId == state.currentUserId.toString() -> {
+                    CreateArticleScreen(
+                        onBackClick = { navController.popBackStack() },
+                        availableTags = availableTags,
+                        initialDraft = post.toArticleEditDraft(state.content),
+                        isEditMode = true,
+                        onPublish = { title, summary, content, tags, coverUri, existingCoverUrl, blocks ->
+                            scope.launch {
+                                val saveResult = runCatching {
+                                    val coverImageUrl = uploadRecipeImageToServer(context, appContainer.feedApi, coverUri, "article_edit_cover") ?: existingCoverUrl
+                                    val blockImageUrls = blocks.map { block ->
+                                        uploadRecipeImageToServer(context, appContainer.feedApi, block.photoUri, "article_edit_block_${block.number}") ?: block.existingImageUrl
+                                    }
+                                    val contentWithImages = blocks.toContentWithImages(blockImageUrls, content)
+                                    appContainer.feedRepository.updateArticle(
+                                        postId,
+                                        CreateArticleRequest(title, summary, contentWithImages, coverImageUrl ?: blockImageUrls.firstOrNull { !it.isNullOrBlank() }, "PUBLISHED", tags)
+                                    )
+                                }.getOrDefault(CreateArticleResult.Fallback)
+                                if (saveResult is CreateArticleResult.Success) {
+                                    navController.navigate(Screen.ArticleDetails.createRoute(saveResult.postId)) { popUpTo(Screen.EditArticle.route) { inclusive = true } }
+                                }
+                            }
+                        },
+                        onDraft = { title, summary, content, tags, coverUri, existingCoverUrl, blocks ->
+                            scope.launch {
+                                val saveResult = runCatching {
+                                    val coverImageUrl = uploadRecipeImageToServer(context, appContainer.feedApi, coverUri, "article_edit_draft_cover") ?: existingCoverUrl
+                                    val blockImageUrls = blocks.map { block ->
+                                        uploadRecipeImageToServer(context, appContainer.feedApi, block.photoUri, "article_edit_draft_block_${block.number}") ?: block.existingImageUrl
+                                    }
+                                    val contentWithImages = blocks.toContentWithImages(blockImageUrls, content)
+                                    appContainer.feedRepository.updateArticle(postId, CreateArticleRequest(title, summary, contentWithImages, coverImageUrl ?: blockImageUrls.firstOrNull { !it.isNullOrBlank() }, "DRAFT", tags))
+                                }.getOrDefault(CreateArticleResult.Fallback)
+                                if (saveResult is CreateArticleResult.Success) {
+                                    navController.navigate(Screen.Drafts.route) { popUpTo(Screen.EditArticle.route) { inclusive = true } }
+                                }
+                            }
+                        }
+                    )
+                }
+                state.isLoading -> EditLoadingText("Загрузка статьи...")
+                else -> EditLoadingText("Редактирование доступно только автору статьи")
+            }
+        }
+
         composable(
             route = Screen.PublicProfile.route,
             arguments = listOf(navArgument("userId") { type = NavType.StringType })
@@ -568,6 +728,84 @@ fun NavGraph(
         }
     }
 }
+
+
+@Composable
+private fun EditLoadingText(text: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text)
+    }
+}
+
+private fun PostCardState.toRecipeEditDraft(): RecipeEditDraft = RecipeEditDraft(
+    id = id,
+    title = title,
+    summary = description,
+    imageUrl = imageUrl.takeIf { it.isNotBlank() },
+    cookTimeMinutes = time.filter { it.isDigit() }.toIntOrNull(),
+    proteinsPer100 = proteinsPer100.toDouble(),
+    fatsPer100 = fatsPer100.toDouble(),
+    carbsPer100 = carbsPer100.toDouble(),
+    kcalPer100 = kcalPer100.toDouble(),
+    tags = tags.map { it.title },
+    ingredients = ingredients.map { it.text.toIngredientDraft() },
+    steps = steps.mapIndexed { index, step ->
+        RecipeStepDraft(
+            number = step.title.filter { it.isDigit() }.toIntOrNull() ?: index + 1,
+            description = step.description,
+            photoUri = null,
+            existingImageUrl = step.imageUrl
+        )
+    }
+)
+
+private fun String.toIngredientDraft(): IngredientDraft {
+    val parts = split(" - ", limit = 2)
+    val name = parts.firstOrNull()?.trim().orEmpty().ifBlank { "Ингредиент" }
+    val amountParts = parts.getOrNull(1)?.trim()?.split(" ", limit = 2).orEmpty()
+    val amount = amountParts.firstOrNull()?.replace(',', '.')?.toFloatOrNull() ?: 1f
+    val unit = amountParts.getOrNull(1)?.trim().orEmpty().ifBlank { "шт" }
+    return IngredientDraft(name, amount, unit)
+}
+
+private fun PostCardState.toArticleEditDraft(content: String): ArticleEditDraft = ArticleEditDraft(
+    id = id,
+    title = title,
+    coverUrl = imageUrl.takeIf { it.isNotBlank() },
+    tags = tags.map { it.title },
+    blocks = content.toArticleBlocks()
+)
+
+private fun String.toArticleBlocks(): List<ArticleBlockDraft> {
+    val chunks = split(Regex("(?m)(?=^##\\s+)"))
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+    val parsed = chunks.mapIndexed { index, chunk ->
+        val lines = chunk.lines()
+        val title = lines.firstOrNull()?.removePrefix("##")?.trim().orEmpty().ifBlank { "Блок ${index + 1}" }
+        val bodyLines = lines.drop(1)
+        val imageLine = bodyLines.lastOrNull { it.trim().startsWith("[image:") && it.trim().endsWith("]") }
+        val imageUrl = imageLine?.trim()?.removePrefix("[image:")?.removeSuffix("]")?.trim()
+        val content = bodyLines.filterNot { it == imageLine }.joinToString("\n").trim()
+        ArticleBlockDraft(index + 1, title, content, null, imageUrl)
+    }
+    return parsed.ifEmpty { listOf(ArticleBlockDraft(1, "Основной текст", trim(), null)) }
+}
+
+private fun List<ArticleBlockDraft>.toContentWithImages(imageUrls: List<String?>, fallbackContent: String): String =
+    mapIndexed { index, block ->
+        buildString {
+            append("## ").append(block.title).append("\n")
+            append(block.content)
+            val imageUrl = imageUrls.getOrNull(index)
+            if (!imageUrl.isNullOrBlank()) {
+                append("\n[image:").append(imageUrl).append(']')
+            }
+        }
+    }.joinToString("\n\n").ifBlank { fallbackContent }
 
 private fun persistAvatarToAppStorage(context: android.content.Context, sourceUri: Uri): String? {
     return runCatching {

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -54,6 +55,7 @@ fun ArticleDetailsScreen(
     isAuthorized: Boolean = true,
     onAuthRequired: () -> Unit = {},
     onBackClick: () -> Unit,
+    onEditClick: () -> Unit = {},
     onSendComment: (String, Long?) -> Unit,
     onDeleteComment: (Long) -> Unit
 ) {
@@ -65,7 +67,7 @@ fun ArticleDetailsScreen(
             .fillMaxSize()
             .background(AppPageBackgroundColor)
     ) {
-        ArticleTopBar(onBackClick = onBackClick)
+        ArticleTopBar(canEdit = currentUserId != null && article.authorId == currentUserId.toString(), onBackClick = onBackClick, onEditClick = onEditClick)
 
         Column(
             modifier = Modifier
@@ -230,7 +232,7 @@ private fun ArticleContent(content: String) {
 }
 
 @Composable
-private fun ArticleTopBar(onBackClick: () -> Unit) {
+private fun ArticleTopBar(canEdit: Boolean, onBackClick: () -> Unit, onEditClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -248,5 +250,15 @@ private fun ArticleTopBar(onBackClick: () -> Unit) {
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold
         )
+        Spacer(modifier = Modifier.weight(1f))
+        if (canEdit) {
+            androidx.compose.material3.Button(
+                onClick = onEditClick,
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(text = "Редактировать", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
     }
 }

@@ -74,7 +74,9 @@ interface FeedApi {
     @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null, @Query("page") page: Int? = null, @Query("size") size: Int? = null): SearchResponse
     @GET("api/v1/search/users") suspend fun searchUsers(@Query("query") query: String, @Query("page") page: Int? = null, @Query("size") size: Int? = null): List<UserProfileDto>
     @POST("api/v1/recipes") suspend fun createRecipe(@Body request: CreateRecipeRequest): RecipeDetailsDto
+    @PATCH("api/v1/recipes/{id}") suspend fun updateRecipe(@Path("id") id: Int, @Body request: CreateRecipeRequest): RecipeDetailsDto
     @POST("api/v1/articles") suspend fun createArticle(@Body request: CreateArticleRequest): ArticleDetailsDto
+    @PATCH("api/v1/articles/{id}") suspend fun updateArticle(@Path("id") id: Int, @Body request: CreateArticleRequest): ArticleDetailsDto
     @GET("api/v1/drafts") suspend fun getDrafts(): List<FeedItemDto>
     @DELETE("api/v1/drafts/{id}") suspend fun deleteDraft(@Path("id") id: Int)
 
