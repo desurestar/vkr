@@ -14,6 +14,7 @@ import ru.zagrebin.front_mobile.data.remote.api.PersistentCookieJar
 import ru.zagrebin.front_mobile.data.repository.FeedRepository
 import ru.zagrebin.front_mobile.data.repository.StatisticsRepository
 import ru.zagrebin.front_mobile.data.sync.NetworkConnectionChecker
+import ru.zagrebin.front_mobile.data.sync.OfflineSyncManager
 import ru.zagrebin.front_mobile.domain.usecase.ObserveArticleDetailsUseCase
 import ru.zagrebin.front_mobile.domain.usecase.ObserveArticlesFeedUseCase
 import ru.zagrebin.front_mobile.domain.usecase.ObserveRecipeDetailsUseCase
@@ -56,6 +57,7 @@ class AppContainer(context: Context) {
 
     val feedRepository = FeedRepository(
         db.feedDao(),
+        db.syncDao(),
         feedApi,
         db.recipeDetailsDao(),
         db.articleDetailsDao(),
@@ -63,7 +65,9 @@ class AppContainer(context: Context) {
         networkConnectionChecker
     )
 
-    val statisticsRepository = StatisticsRepository(db.statisticsDao(), feedApi, networkConnectionChecker)
+    val statisticsRepository = StatisticsRepository(db.statisticsDao(), db.syncDao(), feedApi, networkConnectionChecker)
+
+    val offlineSyncManager = OfflineSyncManager(networkConnectionChecker, statisticsRepository, feedRepository)
 
     val observeRecipesFeedUseCase = ObserveRecipesFeedUseCase(feedRepository)
     val refreshRecipesFeedUseCase = RefreshRecipesFeedUseCase(feedRepository)

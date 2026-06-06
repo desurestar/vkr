@@ -159,6 +159,7 @@ fun RegisterScreen(navController: NavController) {
                                             .also { user -> profileRepository.cacheAuthenticatedProfile(user) }
                                     }.onSuccess {
                                         AuthSessionState.setAuthorized(context, true)
+                                        appContainer.offlineSyncManager.syncIfPossible()
                                         navController.navigate(BottomNavItem.Profile.route) {
                                             popUpTo(Screen.EntryOptions.route) { inclusive = true }
                                         }

@@ -4,11 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import ru.zagrebin.front_mobile.data.AppContainer
+import ru.zagrebin.front_mobile.data.sync.NetworkSyncMonitor
 import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
 import ru.zagrebin.front_mobile.ui.navigation.Screen
 import ru.zagrebin.front_mobile.ui.screens.entryOptions.EntryOptionsScreen
@@ -16,14 +19,21 @@ import ru.zagrebin.front_mobile.ui.screens.login.LoginScreen
 import ru.zagrebin.front_mobile.ui.screens.register.RegisterScreen
 
 class MainActivity : ComponentActivity() {
+    private var networkSyncMonitor: NetworkSyncMonitor? = null
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
         AuthSessionState.init(applicationContext)
+        networkSyncMonitor = NetworkSyncMonitor(applicationContext, lifecycleScope, AppContainer(applicationContext).offlineSyncManager).also { it.start() }
         enableEdgeToEdge()
         setContent {
             MainScreen()
         }
+    }
+
+    override fun onDestroy() {
+        networkSyncMonitor?.stop()
+        super.onDestroy()
     }
 }
 

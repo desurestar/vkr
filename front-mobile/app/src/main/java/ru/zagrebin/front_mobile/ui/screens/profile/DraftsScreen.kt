@@ -73,7 +73,9 @@ fun DraftsScreen(
                     DraftCard(
                         draft = draft,
                         onOpen = {
-                            if (draft.type == "ARTICLE") onOpenArticle(draft.id) else onOpenRecipe(draft.id)
+                            if (draft.id > 0) {
+                                if (draft.type == "ARTICLE") onOpenArticle(draft.id) else onOpenRecipe(draft.id)
+                            }
                         },
                         onDelete = { viewModel.deleteDraft(draft.id) }
                     )
@@ -112,7 +114,11 @@ private fun DraftCard(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = if (draft.type == "ARTICLE") "Статья" else "Рецепт",
+                    text = when {
+                        draft.id < 0 -> if (draft.type == "ARTICLE") "Статья · локально" else "Рецепт · локально"
+                        draft.type == "ARTICLE" -> "Статья"
+                        else -> "Рецепт"
+                    },
                     style = MaterialTheme.typography.labelMedium,
                     color = Color(0xFF7C3AED)
                 )

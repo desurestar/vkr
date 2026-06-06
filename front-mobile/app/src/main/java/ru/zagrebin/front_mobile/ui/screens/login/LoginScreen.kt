@@ -42,6 +42,7 @@ import compose.icons.FeatherIcons
 import compose.icons.feathericons.Lock
 import compose.icons.feathericons.User
 import ru.zagrebin.front_mobile.R
+import ru.zagrebin.front_mobile.data.AppContainer
 import ru.zagrebin.front_mobile.ui.components.AnimatedLabelTextField
 import ru.zagrebin.front_mobile.ui.navigation.Screen
 import ru.zagrebin.front_mobile.ui.navigation.AuthSessionState
@@ -133,6 +134,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = viewMo
                             if (state.isSuccess) {
                                 LaunchedEffect(Unit) {
                                     AuthSessionState.setAuthorized(context, true)
+                                    AppContainer(context).offlineSyncManager.syncIfPossible()
                                     navController.navigate(BottomNavItem.Profile.route) {
                                         popUpTo(Screen.EntryOptions.route) { inclusive = true }
                                     }
