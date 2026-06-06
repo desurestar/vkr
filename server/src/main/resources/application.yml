@@ -8,6 +8,11 @@ server:
       timeout: 7d
 
 spring:
+  session:
+    store-type: jdbc
+    timeout: 7d
+    jdbc:
+      initialize-schema: never
   servlet:
     multipart:
       max-file-size: 20MB

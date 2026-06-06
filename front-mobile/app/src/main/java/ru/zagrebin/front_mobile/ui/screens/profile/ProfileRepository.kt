@@ -27,9 +27,11 @@ class ProfileRepository(
     suspend fun getMyProfile(): ProfileLoadResult {
 
         if (networkConnectionChecker.isNetworkAvailable()) {
-            val profile = fetchRemoteProfile()
-            cacheProfile(profile)
-            return ProfileLoadResult(profile, isFromCache = false)
+            runCatching { fetchRemoteProfile() }
+                .onSuccess { profile ->
+                    cacheProfile(profile)
+                    return ProfileLoadResult(profile, isFromCache = false)
+                }
         }
 
         val cached = profileDao.getProfile()?.toModel()
