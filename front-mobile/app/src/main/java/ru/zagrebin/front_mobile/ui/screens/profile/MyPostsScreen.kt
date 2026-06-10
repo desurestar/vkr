@@ -76,7 +76,9 @@ private enum class MyPostsTab {
 
 @Composable
 fun MyPostsScreen(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onOpenRecipe: (Int) -> Unit,
+    onOpenArticle: (Int) -> Unit
 ) {
     val myPostsViewModel: MyPostsViewModel = viewModel()
     val state by myPostsViewModel.state.collectAsState()
@@ -158,7 +160,9 @@ fun MyPostsScreen(
                     MyPostCard(
                         post = post,
                         onTagClick = { tagId -> myPostsViewModel.onTagClick(post.id, tagId) },
-                        onLikeClick = { myPostsViewModel.onLikeClick(post.id) }
+                        onLikeClick = { myPostsViewModel.onLikeClick(post.id) },
+                        onOpenRecipe = onOpenRecipe,
+                        onOpenArticle = onOpenArticle
                     )
                 }
             }
@@ -229,13 +233,15 @@ fun MyPostsScreen(
 private fun MyPostCard(
     post: PostCardState,
     onTagClick: (Int) -> Unit,
-    onLikeClick: () -> Unit
+    onLikeClick: () -> Unit,
+    onOpenRecipe: (Int) -> Unit,
+    onOpenArticle: (Int) -> Unit
 ) {
     if (post.type == "ARTICLE") {
         ArticleCardContent(
             state = post,
             onTagClick = onTagClick,
-            onOpenArticle = {},
+            onOpenArticle = onOpenArticle,
             onLikeClick = onLikeClick,
             onAuthorClick = {}
         )
@@ -243,7 +249,7 @@ private fun MyPostCard(
         PostCardContent(
             state = post,
             onTagClick = onTagClick,
-            onOpenRecipe = {},
+            onOpenRecipe = onOpenRecipe,
             onLikeClick = onLikeClick,
             onAuthorClick = {}
         )
@@ -388,5 +394,9 @@ private fun EmptyPostsState() {
 @Preview(showBackground = true, locale = "ru")
 @Composable
 private fun MyPostsScreenPreview() {
-    MyPostsScreen(onBackClick = {})
+    MyPostsScreen(
+        onBackClick = {},
+        onOpenRecipe = {},
+        onOpenArticle = {}
+    )
 }
