@@ -259,7 +259,7 @@ fun NavGraph(
                                     title = title,
                                     summary = summary,
                                     content = content,
-                                    imageUrl = mainImageUrl ?: stepImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                    imageUrl = mainImageUrl,
                                     cookTimeMinutes = cookTime,
                                     proteinsPer100 = proteins,
                                     fatsPer100 = fats,
@@ -314,7 +314,7 @@ fun NavGraph(
                                     title = title,
                                     summary = summary,
                                     content = content,
-                                    imageUrl = mainImageUrl ?: stepImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                    imageUrl = mainImageUrl,
                                     cookTimeMinutes = cookTime,
                                     proteinsPer100 = proteins,
                                     fatsPer100 = fats,
@@ -396,7 +396,7 @@ fun NavGraph(
                                     title = title,
                                     summary = summary,
                                     content = contentWithImages,
-                                    imageUrl = coverImageUrl ?: blockImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                    imageUrl = coverImageUrl,
                                     status = "PUBLISHED",
                                     tags = tags
                                 )
@@ -442,7 +442,7 @@ fun NavGraph(
                                     title = title,
                                     summary = summary,
                                     content = contentWithImages,
-                                    imageUrl = coverImageUrl ?: blockImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                    imageUrl = coverImageUrl,
                                     status = "DRAFT",
                                     tags = tags
                                 )
@@ -598,7 +598,7 @@ fun NavGraph(
                                             title = title,
                                             summary = summary,
                                             content = content,
-                                            imageUrl = mainImageUrl ?: stepImageUrls.firstOrNull { !it.isNullOrBlank() },
+                                            imageUrl = mainImageUrl,
                                             cookTimeMinutes = cookTime,
                                             proteinsPer100 = proteins,
                                             fatsPer100 = fats,
@@ -627,7 +627,7 @@ fun NavGraph(
                                     }
                                     appContainer.feedRepository.updateRecipe(
                                         postId,
-                                        CreateRecipeRequest(title, summary, content, mainImageUrl ?: stepImageUrls.firstOrNull { !it.isNullOrBlank() }, cookTime, proteins, fats, carbs, kcal, "DRAFT", tags, ingredients.map { CreateRecipeIngredient(it.name, it.amount.toDouble(), it.unit) }, steps.mapIndexed { index, step -> CreateRecipeStep(step.number, step.description, stepImageUrls[index]) })
+                                        CreateRecipeRequest(title, summary, content, mainImageUrl, cookTime, proteins, fats, carbs, kcal, "DRAFT", tags, ingredients.map { CreateRecipeIngredient(it.name, it.amount.toDouble(), it.unit) }, steps.mapIndexed { index, step -> CreateRecipeStep(step.number, step.description, stepImageUrls[index]) })
                                     )
                                 }.getOrDefault(CreateRecipeResult.Fallback)
                                 if (saveResult is CreateRecipeResult.Success) {
@@ -679,7 +679,7 @@ fun NavGraph(
                                     val contentWithImages = blocks.toContentWithImages(blockImageUrls, content)
                                     appContainer.feedRepository.updateArticle(
                                         postId,
-                                        CreateArticleRequest(title, summary, contentWithImages, coverImageUrl ?: blockImageUrls.firstOrNull { !it.isNullOrBlank() }, "PUBLISHED", tags)
+                                        CreateArticleRequest(title, summary, contentWithImages, coverImageUrl, "PUBLISHED", tags)
                                     )
                                 }.getOrDefault(CreateArticleResult.Fallback)
                                 if (saveResult is CreateArticleResult.Success) {
@@ -695,7 +695,7 @@ fun NavGraph(
                                         uploadRecipeImageToServer(context, appContainer.feedApi, block.photoUri, "article_edit_draft_block_${block.number}") ?: block.existingImageUrl
                                     }
                                     val contentWithImages = blocks.toContentWithImages(blockImageUrls, content)
-                                    appContainer.feedRepository.updateArticle(postId, CreateArticleRequest(title, summary, contentWithImages, coverImageUrl ?: blockImageUrls.firstOrNull { !it.isNullOrBlank() }, "DRAFT", tags))
+                                    appContainer.feedRepository.updateArticle(postId, CreateArticleRequest(title, summary, contentWithImages, coverImageUrl, "DRAFT", tags))
                                 }.getOrDefault(CreateArticleResult.Fallback)
                                 if (saveResult is CreateArticleResult.Success) {
                                     navController.navigate(Screen.Drafts.route) { popUpTo(Screen.EditArticle.route) { inclusive = true } }
