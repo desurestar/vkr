@@ -66,6 +66,26 @@ class FeedRepository(
         feedApi.getRecipesFeed()
     }
 
+    suspend fun getCachedRecipesPage(
+        query: String,
+        page: Int,
+        pageSize: Int,
+        filters: FeedFilters = FeedFilters()
+    ): List<FeedItem> = getCachedFeedItemsPage(TYPE_RECIPE, query, page, pageSize, filters)
+
+    suspend fun getCachedArticlesPage(
+        query: String,
+        page: Int,
+        pageSize: Int,
+        filters: FeedFilters = FeedFilters()
+    ): List<FeedItem> = getCachedFeedItemsPage(TYPE_ARTICLE, query, page, pageSize, filters)
+
+    suspend fun getCachedRecipeDetails(id: Int): RecipeDetails? = recipeDetailsDao.getById(id)?.toDomain()
+
+    suspend fun getCachedArticleDetails(id: Int): ArticleDetails? = articleDetailsDao.getById(id)?.toDomain()
+
+    suspend fun getCachedDrafts(): List<FeedItem> = syncDao.observeLocalDrafts().first().map { it.toFeedItem() }
+
     suspend fun refreshRecipes(): RefreshResult = loadRecipes().toRefreshResult()
 
     suspend fun loadRecipesPage(
@@ -271,6 +291,11 @@ class FeedRepository(
         if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) saveLocalArticleDraft(request) else CreateArticleResult.Fallback
     }
 
+
+    suspend fun getCachedTags(query: String? = null): List<RecipeTag> = tagDao.getAll()
+        .filter { query.isNullOrBlank() || it.name.contains(query, ignoreCase = true) || it.label?.contains(query, ignoreCase = true) == true }
+        .map { RecipeTag(it.id.toInt(), it.label?.takeIf(String::isNotBlank) ?: it.name) }
+
     suspend fun loadTags(query: String? = null): ServerFirstResult<List<RecipeTag>> {
         if (!networkConnectionChecker.isNetworkAvailable()) {
             return ServerFirstResult(
@@ -394,6 +419,50 @@ class FeedRepository(
     }
 
     private fun nextLocalDraftId(): Int = -(System.currentTimeMillis() % Int.MAX_VALUE).toInt().coerceAtLeast(1)
+
+
+    private suspend fun getCachedFeedItemsPage(
+        type: String,
+        query: String,
+        page: Int,
+        pageSize: Int,
+        filters: FeedFilters
+    ): List<FeedItem> {
+        val normalizedQuery = query.trim()
+        return feedDao.getByType(type)
+            .asSequence()
+            .map { it.toDomainItem() }
+            .filter { item ->
+                normalizedQuery.isBlank() ||
+                    item.title.contains(normalizedQuery, ignoreCase = true) ||
+                    item.authorName.contains(normalizedQuery, ignoreCase = true) ||
+                    item.tags.any { tag -> tag.name.contains(normalizedQuery, ignoreCase = true) }
+            }
+            .filter { item -> item.matchesFilters(filters) }
+            .drop((page * pageSize).coerceAtLeast(0))
+            .take(pageSize)
+            .toList()
+    }
+
+    private fun FeedItem.matchesFilters(filters: FeedFilters): Boolean {
+        fun String.asNumberOrNull(): Double? = replace(',', '.').filter { it.isDigit() || it == '.' || it == '-' }.toDoubleOrNull()
+        fun String.filterNumberOrNull(): Double? = replace(',', '.').toDoubleOrNull()
+        fun matchesRange(value: Double?, min: String, max: String): Boolean {
+            val minValue = min.filterNumberOrNull()
+            val maxValue = max.filterNumberOrNull()
+            return (minValue == null || (value != null && value >= minValue)) &&
+                (maxValue == null || (value != null && value <= maxValue))
+        }
+
+        if (filters.selectedTags.isNotEmpty() && filters.selectedTags.any { selected -> tags.none { it.name == selected.title } }) {
+            return false
+        }
+        return matchesRange(time.asNumberOrNull(), filters.minTime, filters.maxTime) &&
+            matchesRange(calories.asNumberOrNull(), filters.minCalories, filters.maxCalories) &&
+            matchesRange(proteinsPer100.toDouble(), filters.minProteins, filters.maxProteins) &&
+            matchesRange(fatsPer100.toDouble(), filters.minFats, filters.maxFats) &&
+            matchesRange(carbsPer100.toDouble(), filters.minCarbs, filters.maxCarbs)
+    }
 
     private suspend fun loadFeedItems(type: String, remoteRequest: suspend () -> List<FeedItemDto>): ServerFirstResult<List<FeedItem>> {
         val cachedItems = feedDao.getByType(type)

@@ -206,6 +206,12 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
             if (debounce) delay(SEARCH_DEBOUNCE_MS)
             pagingState.value = PagingState()
             nextPage = 0
+            val cached = container.feedRepository.getCachedArticlesPage(searchQuery, nextPage, INITIAL_PAGE_SIZE, filters.value)
+            if (cached.isNotEmpty()) {
+                posts.value = cached
+                pagingState.value = pagingState.value.copy(isUsingFallback = true, hasMorePages = false)
+                errorMessage.value = "Показан офлайн-кеш. Обновление выполняется в фоне."
+            }
             val result = container.feedRepository.loadArticlesPage(searchQuery, nextPage, INITIAL_PAGE_SIZE, filters.value)
             posts.value = result.data
             nextPage = 1
@@ -222,6 +228,13 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadTagSuggestions(searchQuery: String) {
         viewModelScope.launch {
+            val cached = container.feedRepository.getCachedTags(searchQuery)
+            if (cached.isNotEmpty()) {
+                tagSuggestions.value = cached
+                    .filterNot { tag -> filters.value.selectedTags.any { it.id == tag.id } }
+                    .take(TAG_SUGGESTIONS_LIMIT)
+                    .map { TagState(it.id, it.name) }
+            }
             val result = container.feedRepository.loadTags(searchQuery)
             tagSuggestions.value = result.data
                 .filterNot { tag -> filters.value.selectedTags.any { it.id == tag.id } }

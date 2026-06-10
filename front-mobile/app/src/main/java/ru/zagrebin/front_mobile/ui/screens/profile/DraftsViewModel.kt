@@ -31,6 +31,14 @@ class DraftsViewModel(application: Application) : AndroidViewModel(application) 
     fun loadDrafts() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, errorMessage = null)
+            val cachedDrafts = container.feedRepository.getCachedDrafts()
+            if (cachedDrafts.isNotEmpty()) {
+                _state.value = DraftsState(
+                    drafts = cachedDrafts.map { it.toUi() },
+                    isLoading = false,
+                    errorMessage = "Показаны локальные черновики. Обновление выполняется в фоне."
+                )
+            }
             val result = container.feedRepository.loadDrafts()
             _state.value = DraftsState(
                 drafts = result.data.map { it.toUi() },

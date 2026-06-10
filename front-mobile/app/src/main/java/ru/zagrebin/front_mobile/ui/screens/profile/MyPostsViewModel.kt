@@ -94,10 +94,19 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             if (debounce) delay(SEARCH_DEBOUNCE_MS)
-            currentUserId.value = container.feedRepository.currentUserId()
+            currentUserId.value = container.db.profileDao().getProfile()?.id
             nextRecipesPage = 0
             nextArticlesPage = 0
             pagingState.value = MyPostsPagingState()
+            val cachedRecipes = container.feedRepository.getCachedRecipesPage(searchQuery, nextRecipesPage, INITIAL_PAGE_SIZE)
+            val cachedArticles = container.feedRepository.getCachedArticlesPage(searchQuery, nextArticlesPage, INITIAL_PAGE_SIZE)
+            if (cachedRecipes.isNotEmpty() || cachedArticles.isNotEmpty()) {
+                recipes.value = cachedRecipes
+                articles.value = cachedArticles
+                pagingState.value = pagingState.value.copy(isUsingFallback = true, hasMoreRecipes = false, hasMoreArticles = false)
+                errorMessage.value = "Показан офлайн-кеш. Обновление выполняется в фоне."
+            }
+            currentUserId.value = container.feedRepository.currentUserId()
             val recipesResult = container.feedRepository.loadRecipesPage(searchQuery, nextRecipesPage, INITIAL_PAGE_SIZE)
             val articlesResult = container.feedRepository.loadArticlesPage(searchQuery, nextArticlesPage, INITIAL_PAGE_SIZE)
             recipes.value = recipesResult.data
