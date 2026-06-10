@@ -60,8 +60,12 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
         isRefreshing.value = true
         hasLoadError.value = false
         viewModelScope.launch {
+            container.feedRepository.getCachedRecipeDetails(postId)?.let { cached ->
+                details.value = cached
+                hasLoadError.value = false
+            }
             val result = runCatching { container.feedRepository.loadRecipeDetails(postId) }.getOrNull()
-            details.value = result?.data
+            details.value = result?.data ?: details.value
             hasLoadError.value = result == null || (result.isFromCache && result.data == null)
             if (result?.data != null) {
                 scheduleViewTracking(postId)

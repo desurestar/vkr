@@ -70,6 +70,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             isRefreshing.value = true
             errorMessage.value = null
+            repository.getCachedProfile()?.let { cached ->
+                profile.value = cached
+                errorMessage.value = "Показан офлайн-кеш. Обновление выполняется в фоне."
+            }
             runCatching { repository.getMyProfile() }
                 .onSuccess { result ->
                     profile.value = result.profile

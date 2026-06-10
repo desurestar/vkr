@@ -27,6 +27,8 @@ class ProfileRepository(
         return profile
     }
 
+    suspend fun getCachedProfile(): ProfileData? = profileDao.getProfile()?.toModel()
+
     suspend fun getMyProfile(): ProfileLoadResult {
 
         if (networkConnectionChecker.isNetworkAvailable()) {
