@@ -24,24 +24,26 @@ class DraftsViewModel(application: Application) : AndroidViewModel(application) 
     private val _state = MutableStateFlow(DraftsState(isLoading = true))
     val state: StateFlow<DraftsState> = _state.asStateFlow()
 
+    private var localDrafts: List<PostCardState> = emptyList()
+    private var remoteDrafts: List<PostCardState> = emptyList()
+
     init {
+        observeLocalDrafts()
         loadDrafts()
     }
 
     fun loadDrafts() {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, errorMessage = null)
-            val cachedDrafts = container.feedRepository.getCachedDrafts()
-            if (cachedDrafts.isNotEmpty()) {
-                _state.value = DraftsState(
-                    drafts = cachedDrafts.map { it.toUi() },
-                    isLoading = false,
-                    errorMessage = "Показаны локальные черновики. Обновление выполняется в фоне."
-                )
+            _state.value = _state.value.copy(
+                isLoading = _state.value.drafts.isEmpty(),
+                errorMessage = null
+            )
+            val result = container.feedRepository.loadRemoteDrafts()
+            if (!result.isFromCache) {
+                remoteDrafts = result.data.map { it.toUi() }
             }
-            val result = container.feedRepository.loadDrafts()
             _state.value = DraftsState(
-                drafts = result.data.map { it.toUi() },
+                drafts = mergeDrafts(),
                 isLoading = false,
                 errorMessage = if (result.isFromCache && AuthSessionState.isAuthorized.value) {
                     "Не удалось загрузить черновики с сервера."
@@ -56,14 +58,32 @@ class DraftsViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val success = container.feedRepository.deleteDraft(postId)
             if (success) {
+                remoteDrafts = remoteDrafts.filterNot { it.id == postId }
                 _state.value = _state.value.copy(
-                    drafts = _state.value.drafts.filterNot { it.id == postId },
+                    drafts = mergeDrafts(),
                     errorMessage = null
                 )
             } else {
                 _state.value = _state.value.copy(errorMessage = "Не удалось удалить черновик.")
             }
         }
+    }
+
+    private fun observeLocalDrafts() {
+        viewModelScope.launch {
+            container.feedRepository.observeCachedDrafts().collect { drafts ->
+                localDrafts = drafts.map { it.toUi() }
+                _state.value = _state.value.copy(
+                    drafts = mergeDrafts(),
+                    isLoading = false
+                )
+            }
+        }
+    }
+
+    private fun mergeDrafts(): List<PostCardState> {
+        val localIds = localDrafts.map { it.id }.toSet()
+        return localDrafts + remoteDrafts.filterNot { it.id in localIds }
     }
 
     private fun FeedItem.toUi(): PostCardState = PostCardState(

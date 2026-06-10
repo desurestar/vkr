@@ -84,6 +84,8 @@ class FeedRepository(
 
     suspend fun getCachedArticleDetails(id: Int): ArticleDetails? = articleDetailsDao.getById(id)?.toDomain()
 
+    fun observeCachedDrafts(): Flow<List<FeedItem>> = syncDao.observeLocalDrafts().map { drafts -> drafts.map { it.toFeedItem() } }
+
     suspend fun getCachedDrafts(): List<FeedItem> = syncDao.observeLocalDrafts().first().map { it.toFeedItem() }
 
     suspend fun refreshRecipes(): RefreshResult = loadRecipes().toRefreshResult()
@@ -152,11 +154,22 @@ class FeedRepository(
             return ServerFirstResult(localDrafts, isFromCache = true)
         }
         return runCatching {
-            val remoteDrafts = feedApi.getDrafts().map { dto -> dto.toEntity(dto.type?.lowercase().orEmpty()).toDomainItem() }
-            localDrafts + remoteDrafts
+            val remoteResult = loadRemoteDrafts()
+            ServerFirstResult(localDrafts + remoteResult.data, isFromCache = remoteResult.isFromCache)
+        }.getOrElse {
+            ServerFirstResult(localDrafts, isFromCache = true)
+        }
+    }
+
+    suspend fun loadRemoteDrafts(): ServerFirstResult<List<FeedItem>> {
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            return ServerFirstResult(emptyList(), isFromCache = true)
+        }
+        return runCatching {
+            feedApi.getDrafts().map { dto -> dto.toEntity(dto.type?.lowercase().orEmpty()).toDomainItem() }
         }.fold(
             onSuccess = { ServerFirstResult(it, isFromCache = false) },
-            onFailure = { ServerFirstResult(localDrafts, isFromCache = true) }
+            onFailure = { ServerFirstResult(emptyList(), isFromCache = true) }
         )
     }
 
@@ -273,7 +286,13 @@ class FeedRepository(
     }
 
     suspend fun updateArticle(postId: Int, request: CreateArticleRequest): CreateArticleResult {
-        if (!networkConnectionChecker.isNetworkAvailable()) return CreateArticleResult.Fallback
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            return if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) {
+                saveLocalArticleDraft(request)
+            } else {
+                CreateArticleResult.Fallback
+            }
+        }
         return saveArticleOnServer(request) { feedApi.updateArticle(postId, it) }
     }
 
@@ -348,7 +367,13 @@ class FeedRepository(
     }
 
     suspend fun updateRecipe(postId: Int, request: CreateRecipeRequest): CreateRecipeResult {
-        if (!networkConnectionChecker.isNetworkAvailable()) return CreateRecipeResult.Fallback
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            return if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) {
+                saveLocalRecipeDraft(request)
+            } else {
+                CreateRecipeResult.Fallback
+            }
+        }
         return saveRecipeOnServer(request) { feedApi.updateRecipe(postId, it) }
     }
 

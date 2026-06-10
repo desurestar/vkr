@@ -627,9 +627,18 @@ fun NavGraph(
                         onDraft = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, existingRecipeImageUrl, proteins, fats, carbs, kcal ->
                             scope.launch {
                                 val saveResult = runCatching {
-                                    val mainImageUrl = uploadRecipeImageToServer(context, appContainer.feedApi, recipePhotoUri, "recipe_edit_draft_main") ?: existingRecipeImageUrl
+                                    val canUploadDraftImages = appContainer.networkConnectionChecker.isNetworkAvailable()
+                                    val mainImageUrl = if (canUploadDraftImages) {
+                                        uploadRecipeImageToServer(context, appContainer.feedApi, recipePhotoUri, "recipe_edit_draft_main") ?: existingRecipeImageUrl
+                                    } else {
+                                        recipePhotoUri?.toString() ?: existingRecipeImageUrl
+                                    }
                                     val stepImageUrls = steps.map { step ->
-                                        uploadRecipeImageToServer(context, appContainer.feedApi, step.photoUri, "recipe_edit_draft_step_${step.number}") ?: step.existingImageUrl
+                                        if (canUploadDraftImages) {
+                                            uploadRecipeImageToServer(context, appContainer.feedApi, step.photoUri, "recipe_edit_draft_step_${step.number}") ?: step.existingImageUrl
+                                        } else {
+                                            step.photoUri?.toString() ?: step.existingImageUrl
+                                        }
                                     }
                                     appContainer.feedRepository.updateRecipe(
                                         postId,
@@ -697,9 +706,18 @@ fun NavGraph(
                         onDraft = { title, summary, content, tags, coverUri, existingCoverUrl, blocks ->
                             scope.launch {
                                 val saveResult = runCatching {
-                                    val coverImageUrl = uploadRecipeImageToServer(context, appContainer.feedApi, coverUri, "article_edit_draft_cover") ?: existingCoverUrl
+                                    val canUploadDraftImages = appContainer.networkConnectionChecker.isNetworkAvailable()
+                                    val coverImageUrl = if (canUploadDraftImages) {
+                                        uploadRecipeImageToServer(context, appContainer.feedApi, coverUri, "article_edit_draft_cover") ?: existingCoverUrl
+                                    } else {
+                                        coverUri?.toString() ?: existingCoverUrl
+                                    }
                                     val blockImageUrls = blocks.map { block ->
-                                        uploadRecipeImageToServer(context, appContainer.feedApi, block.photoUri, "article_edit_draft_block_${block.number}") ?: block.existingImageUrl
+                                        if (canUploadDraftImages) {
+                                            uploadRecipeImageToServer(context, appContainer.feedApi, block.photoUri, "article_edit_draft_block_${block.number}") ?: block.existingImageUrl
+                                        } else {
+                                            block.photoUri?.toString() ?: block.existingImageUrl
+                                        }
                                     }
                                     val contentWithImages = blocks.toContentWithImages(blockImageUrls, content)
                                     appContainer.feedRepository.updateArticle(postId, CreateArticleRequest(title, summary, contentWithImages, coverImageUrl, "DRAFT", tags))
