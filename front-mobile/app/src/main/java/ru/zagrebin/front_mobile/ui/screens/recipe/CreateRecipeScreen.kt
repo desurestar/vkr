@@ -539,7 +539,11 @@ private fun RecipePhotoBlock(
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             OutlinedButton(
                 onClick = onPickGallery,
                 shape = RoundedCornerShape(12.dp)
@@ -564,11 +568,18 @@ private fun RecipePhotoBlock(
             if (photoUri != null || !existingPhotoUrl.isNullOrBlank()) {
                 OutlinedButton(
                     onClick = onRemovePhoto,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
                 ) {
-                    Icon(imageVector = Icons.Outlined.Close, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Удалить фото")
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Удалить фото",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Удалить")
                 }
             }
         }
@@ -1120,7 +1131,11 @@ private fun StepAddBottomSheet(
                         .background(Color(0xFFEDEDED), RoundedCornerShape(10.dp))
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 OutlinedButton(
                     onClick = {
                         pickMediaLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -1150,11 +1165,18 @@ private fun StepAddBottomSheet(
                             photoUri = null
                             existingImageUrl = null
                         },
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
                     ) {
-                        Icon(imageVector = Icons.Outlined.Close, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Удалить фото")
+                        Icon(
+                            imageVector = Icons.Outlined.Close,
+                            contentDescription = "Удалить фото",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Удалить")
                     }
                 }
             }
