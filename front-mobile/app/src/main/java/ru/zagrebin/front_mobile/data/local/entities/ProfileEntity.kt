@@ -11,5 +11,6 @@ data class ProfileEntity(
     val bio: String,
     val avatarUrl: String?, // relative /media/... path from server
     val followingCount: Int,
-    val followersCount: Int
+    val followersCount: Int,
+    val totalLikes: Int
 )

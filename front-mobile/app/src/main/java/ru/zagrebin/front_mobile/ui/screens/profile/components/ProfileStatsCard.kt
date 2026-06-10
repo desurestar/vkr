@@ -1,6 +1,7 @@
 package ru.zagrebin.front_mobile.ui.screens.profile.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +28,9 @@ fun ProfileStatsCard(
     following: String,
     followers: String,
     likes: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onFollowingClick: (() -> Unit)? = null,
+    onFollowersClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier
@@ -41,14 +44,16 @@ fun ProfileStatsCard(
 
         StatItem(
             value = following,
-            label = "Подписки"
+            label = "Подписки",
+            onClick = onFollowingClick
         )
 
         VerticalDivider()
 
         StatItem(
             value = followers,
-            label = "Подписчики"
+            label = "Подписчики",
+            onClick = onFollowersClick
         )
 
         VerticalDivider()
@@ -63,9 +68,12 @@ fun ProfileStatsCard(
 @Composable
 private fun StatItem(
     value: String,
-    label: String
+    label: String,
+    onClick: (() -> Unit)? = null
 ) {
+    val itemModifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
     Column(
+        modifier = itemModifier.padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(

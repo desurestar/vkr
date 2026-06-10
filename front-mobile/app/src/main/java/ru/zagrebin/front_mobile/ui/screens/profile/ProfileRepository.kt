@@ -7,6 +7,8 @@ import ru.zagrebin.front_mobile.data.remote.api.*
 import ru.zagrebin.front_mobile.data.sync.NetworkConnectionChecker
 import ru.zagrebin.front_mobile.domain.model.ProfileData
 
+private const val PROFILE_USERS_PAGE_SIZE = 50
+
 class ProfileRepository(
     private val api: FeedApi,
     private val profileDao: ProfileDao,
@@ -66,6 +68,20 @@ class ProfileRepository(
         return profile
     }
 
+    suspend fun getFollowingUsers(userId: Long, query: String): List<UserProfileDto> = api.getProfileFollowing(
+        userId = userId,
+        query = query.normalizeUserQuery(),
+        page = 0,
+        size = PROFILE_USERS_PAGE_SIZE
+    )
+
+    suspend fun getFollowerUsers(userId: Long, query: String): List<UserProfileDto> = api.getProfileFollowers(
+        userId = userId,
+        query = query.normalizeUserQuery(),
+        page = 0,
+        size = PROFILE_USERS_PAGE_SIZE
+    )
+
     suspend fun clearProfile() {
         profileDao.clear()
     }
@@ -91,7 +107,8 @@ class ProfileRepository(
                 bio = profile.bio,
                 avatarUrl = AppContainer.toRelativeMediaPath(profile.avatarUrl ?: old?.avatarUrl),
                 followingCount = profile.followingCount,
-                followersCount = profile.followersCount
+                followersCount = profile.followersCount,
+                totalLikes = profile.totalLikes
             )
         )
     }
@@ -107,7 +124,8 @@ class ProfileRepository(
             bio = bio,
             avatarUrl = AppContainer.toRelativeMediaPath(avatarUrl),
             followingCount = followingCount,
-            followersCount = followersCount
+            followersCount = followersCount,
+            totalLikes = totalLikes
         )
     }
 
@@ -123,7 +141,16 @@ class ProfileRepository(
             avatarUrl = AppContainer.toRelativeMediaPath(user?.avatarUrl),
 
             followingCount = user?.following?.size ?: 0,
-            followersCount = user?.followers?.size ?: 0
+            followersCount = user?.followers?.size ?: 0,
+            totalLikes = user?.totalLikes ?: public?.posts?.sumOf { post -> post.likes.toIntCount() } ?: 0
         )
     }
+}
+
+private fun String.normalizeUserQuery(): String = trim().removePrefix("@").trim()
+
+private fun Any?.toIntCount(): Int = when (this) {
+    is Number -> toInt()
+    is String -> toIntOrNull() ?: 0
+    else -> 0
 }

@@ -77,6 +77,26 @@ public class ProfileController {
         return new ApiModels.PublicProfile(user, isFollowing, db.postsByAuthor(userId, viewerId, q, page, size));
     }
 
+    @GetMapping("/{userId}/following")
+    public List<ApiModels.User> following(
+            @PathVariable Long userId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        return db.followingUsers(userId, q, page, size);
+    }
+
+    @GetMapping("/{userId}/followers")
+    public List<ApiModels.User> followers(
+            @PathVariable Long userId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        return db.followerUsers(userId, q, page, size);
+    }
+
     @PostMapping("/{userId}/follow")
     public ApiModels.PublicProfile follow(@PathVariable Long userId,
                                            HttpSession session) {
