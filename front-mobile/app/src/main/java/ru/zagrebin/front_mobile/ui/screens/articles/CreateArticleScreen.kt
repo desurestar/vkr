@@ -84,6 +84,7 @@ fun CreateArticleScreen(
     availableTags: List<String> = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
     initialDraft: ArticleEditDraft? = null,
     isEditMode: Boolean = false,
+    isDraftEditMode: Boolean = false,
     onPublish: (title: String, summary: String, content: String, tags: List<String>, coverUri: Uri?, existingCoverUrl: String?, blocks: List<ArticleBlockDraft>) -> Unit = { _, _, _, _, _, _, _ -> },
     onDraft: (title: String, summary: String, content: String, tags: List<String>, coverUri: Uri?, existingCoverUrl: String?, blocks: List<ArticleBlockDraft>) -> Unit = { _, _, _, _, _, _, _ -> }
 ) {
@@ -178,7 +179,7 @@ fun CreateArticleScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            CreateArticleTopBar(onBackClick = onBackClick, isEditMode = isEditMode)
+            CreateArticleTopBar(onBackClick = onBackClick, isEditMode = isEditMode, isDraftEditMode = isDraftEditMode)
 
             Column(
                 modifier = Modifier
@@ -336,7 +337,7 @@ fun CreateArticleScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF6C166)),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(if (isEditMode) "Сохранить" else "Опубликовать", color = Color(0xFF1E1C1F))
+                        Text(if (isDraftEditMode) "Опубликовать" else if (isEditMode) "Сохранить" else "Опубликовать", color = Color(0xFF1E1C1F))
                     }
                 }
 
@@ -347,7 +348,7 @@ fun CreateArticleScreen(
 }
 
 @Composable
-private fun CreateArticleTopBar(onBackClick: () -> Unit, isEditMode: Boolean) {
+private fun CreateArticleTopBar(onBackClick: () -> Unit, isEditMode: Boolean, isDraftEditMode: Boolean) {
     Surface(color = AppPageBackgroundColor) {
         Row(
             modifier = Modifier
@@ -362,7 +363,7 @@ private fun CreateArticleTopBar(onBackClick: () -> Unit, isEditMode: Boolean) {
                 )
             }
             Text(
-                text = if (isEditMode) "Редактировать статью" else "Создать статью",
+                text = if (isDraftEditMode) "Редактировать черновик" else if (isEditMode) "Редактировать статью" else "Создать статью",
                 style = MaterialTheme.typography.titleLarge
             )
         }

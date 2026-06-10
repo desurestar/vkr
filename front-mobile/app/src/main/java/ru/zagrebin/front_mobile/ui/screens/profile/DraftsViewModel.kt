@@ -61,6 +61,7 @@ class DraftsViewModel(application: Application) : AndroidViewModel(application) 
     private fun FeedItem.toUi(): PostCardState = PostCardState(
         id = id,
         type = if (time.isBlank() && calories.isBlank()) "ARTICLE" else "RECIPE",
+        status = status,
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,

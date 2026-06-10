@@ -203,6 +203,7 @@ class MyPostsViewModel(application: Application) : AndroidViewModel(application)
     private fun FeedItem.toUi(type: String): PostCardState = PostCardState(
         id = id,
         type = type,
+        status = status,
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,

@@ -186,8 +186,8 @@ fun NavGraph(
         composable(Screen.Drafts.route) {
             DraftsScreen(
                 onBackClick = { navController.popBackStack() },
-                onOpenRecipe = { postId -> navController.navigate(Screen.RecipeDetails.createRoute(postId)) },
-                onOpenArticle = { postId -> navController.navigate(Screen.ArticleDetails.createRoute(postId)) }
+                onOpenRecipe = { postId -> navController.navigate(Screen.EditRecipe.createRoute(postId)) },
+                onOpenArticle = { postId -> navController.navigate(Screen.EditArticle.createRoute(postId)) }
             )
         }
 
@@ -590,6 +590,7 @@ fun NavGraph(
                         availableTags = availableTags,
                         initialDraft = post.toRecipeEditDraft(),
                         isEditMode = true,
+                        isDraftEditMode = post.status.equals("DRAFT", ignoreCase = true),
                         onPublish = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, existingRecipeImageUrl, proteins, fats, carbs, kcal ->
                             scope.launch {
                                 val saveResult = runCatching {
@@ -674,6 +675,7 @@ fun NavGraph(
                         availableTags = availableTags,
                         initialDraft = post.toArticleEditDraft(state.content),
                         isEditMode = true,
+                        isDraftEditMode = post.status.equals("DRAFT", ignoreCase = true),
                         onPublish = { title, summary, content, tags, coverUri, existingCoverUrl, blocks ->
                             scope.launch {
                                 val saveResult = runCatching {

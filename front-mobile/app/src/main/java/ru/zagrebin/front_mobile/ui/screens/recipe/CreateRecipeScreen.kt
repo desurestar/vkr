@@ -88,6 +88,7 @@ fun CreateRecipeScreen(
     availableTags: List<String> = listOf("Завтрак", "Обед", "Ужин", "ПП", "Веган"),
     initialDraft: RecipeEditDraft? = null,
     isEditMode: Boolean = false,
+    isDraftEditMode: Boolean = false,
     onPublish: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, recipePhotoUri: Uri?, existingRecipeImageUrl: String?, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _, _ -> },
     onDraft: (title: String, summary: String, content: String, cookTimeMinutes: Int, tags: List<String>, ingredients: List<IngredientDraft>, steps: List<RecipeStepDraft>, recipePhotoUri: Uri?, existingRecipeImageUrl: String?, proteinsPer100: Double, fatsPer100: Double, carbsPer100: Double, kcalPer100: Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
 ) {
@@ -214,7 +215,7 @@ fun CreateRecipeScreen(
                 .verticalScroll(rememberScrollState())
         ) {
 
-            CreateRecipeTopBar(onBackClick = onBackClick, isEditMode = isEditMode)
+            CreateRecipeTopBar(onBackClick = onBackClick, isEditMode = isEditMode, isDraftEditMode = isDraftEditMode)
 
             Column(
                 modifier = Modifier
@@ -458,7 +459,7 @@ fun CreateRecipeScreen(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = if (isEditMode) "Сохранить" else "Опубликовать",
+                            text = if (isDraftEditMode) "Опубликовать" else if (isEditMode) "Сохранить" else "Опубликовать",
                             color = Color(0xFF1E1C1F)
                         )
                     }
@@ -473,7 +474,8 @@ fun CreateRecipeScreen(
 @Composable
 private fun CreateRecipeTopBar(
     onBackClick: () -> Unit,
-    isEditMode: Boolean
+    isEditMode: Boolean,
+    isDraftEditMode: Boolean
 ) {
     Surface(color = AppPageBackgroundColor) {
 
@@ -493,7 +495,7 @@ private fun CreateRecipeTopBar(
             }
 
             Text(
-                text = if (isEditMode) "Редактировать пост" else "Создать пост",
+                text = if (isDraftEditMode) "Редактировать черновик" else if (isEditMode) "Редактировать пост" else "Создать пост",
                 style = MaterialTheme.typography.titleLarge
             )
         }

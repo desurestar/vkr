@@ -104,6 +104,7 @@ class ArticleDetailsViewModel(application: Application) : AndroidViewModel(appli
 
     private fun ArticleDetails.toUi(): PostCardState = PostCardState(
         id = id,
+        status = status,
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
