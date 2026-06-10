@@ -52,11 +52,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardContent
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardState
 import ru.zagrebin.front_mobile.ui.theme.SearchFieldContainerColor
 import ru.zagrebin.front_mobile.ui.theme.SearchFieldCornerRadius
-import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
 
 @Composable
 fun PublicProfileScreen(
@@ -258,7 +258,7 @@ private fun PublicProfileHeader(
                         )
                     } else {
                         AsyncImage(
-                            model = state.avatarUrl.asImageModelUrl(),
+                            model = rememberExplicitCacheImageRequest(state.avatarUrl),
                             contentDescription = "Аватар пользователя",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop

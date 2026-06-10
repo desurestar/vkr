@@ -49,9 +49,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.User
-import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
 
 @Composable
 fun ProfileHeader(
@@ -211,7 +211,7 @@ fun ProfileHeader(
         ) {
             if (!avatarUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = avatarUrl.asImageModelUrl(),
+                    model = rememberExplicitCacheImageRequest(avatarUrl),
                     contentDescription = "Аватар профиля",
                     modifier = Modifier
                         .fillMaxSize()

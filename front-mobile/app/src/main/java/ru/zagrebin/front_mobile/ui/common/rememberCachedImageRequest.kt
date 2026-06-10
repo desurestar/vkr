@@ -14,6 +14,8 @@ fun rememberExplicitCacheImageRequest(url: String?): ImageRequest? {
     return remember(context, data) {
         ImageRequest.Builder(context)
             .data(data.toImageRequestData())
+            .memoryCacheKey(data)
+            .diskCacheKey(data)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
             .networkCachePolicy(CachePolicy.ENABLED)

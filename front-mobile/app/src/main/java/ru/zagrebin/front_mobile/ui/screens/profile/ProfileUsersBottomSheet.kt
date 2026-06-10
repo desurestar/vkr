@@ -38,7 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
+import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -164,7 +164,7 @@ private fun ProfileUserRow(
                 )
             } else {
                 AsyncImage(
-                    model = user.avatarUrl.asImageModelUrl(),
+                    model = rememberExplicitCacheImageRequest(user.avatarUrl),
                     contentDescription = "Аватар пользователя",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop

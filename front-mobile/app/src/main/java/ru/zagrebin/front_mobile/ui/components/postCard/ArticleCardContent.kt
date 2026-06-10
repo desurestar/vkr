@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 import ru.zagrebin.front_mobile.ui.components.recipeTag.TagScreen
-import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
 
 @Composable
 fun ArticleCardContent(
@@ -202,12 +201,12 @@ private fun AuthorAvatar(
             .background(Color(0xFFD8C2A0)),
         contentAlignment = Alignment.Center
     ) {
-        val model = avatarUrl.asImageModelUrl() ?: "https://ui-avatars.com/api/?background=D8C2A0&color=FFFFFF&name=${
+        val model = avatarUrl ?: "https://ui-avatars.com/api/?background=D8C2A0&color=FFFFFF&name=${
             authorName.replace(" ", "+")
         }"
 
         AsyncImage(
-            model = model,
+            model = rememberExplicitCacheImageRequest(model),
             contentDescription = "Аватар автора",
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop
