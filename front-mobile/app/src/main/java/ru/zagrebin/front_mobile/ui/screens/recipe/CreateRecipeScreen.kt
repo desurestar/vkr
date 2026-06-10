@@ -34,6 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -94,6 +95,7 @@ fun CreateRecipeScreen(
     var postTitle by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.title.orEmpty()) }
     var dishTitle by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.summary.orEmpty()) }
     var recipePhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var existingRecipeImageUrl by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.imageUrl) }
     var pendingRecipeCameraUri by remember { mutableStateOf<Uri?>(null) }
     var proteins by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.proteinsPer100?.toCleanString().orEmpty()) }
     var fats by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.fatsPer100?.toCleanString().orEmpty()) }
@@ -108,7 +110,9 @@ fun CreateRecipeScreen(
 
     var showTagSheet by rememberSaveable { mutableStateOf(false) }
     var showIngredientSheet by rememberSaveable { mutableStateOf(false) }
+    var editingIngredientIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var showStepSheet by rememberSaveable { mutableStateOf(false) }
+    var editingStepIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var nextStepNumber by rememberSaveable(initialDraft?.id) { mutableStateOf((initialDraft?.steps?.maxOfOrNull { it.number } ?: 0) + 1) }
 
     val pickRecipePhotoLauncher = rememberLauncherForActivityResult(
@@ -116,6 +120,7 @@ fun CreateRecipeScreen(
     ) { uri ->
         if (uri != null) {
             recipePhotoUri = uri
+            existingRecipeImageUrl = null
         }
     }
 
@@ -124,6 +129,7 @@ fun CreateRecipeScreen(
     ) { success ->
         if (success) {
             recipePhotoUri = pendingRecipeCameraUri
+            existingRecipeImageUrl = null
         }
     }
 
@@ -146,28 +152,54 @@ fun CreateRecipeScreen(
     }
 
     if (showIngredientSheet) {
+        val editingIndex = editingIngredientIndex
         IngredientAddBottomSheet(
-            onDismiss = { showIngredientSheet = false },
-            onAddClick = { draft ->
-                ingredients.add(draft)
+            initialDraft = editingIndex?.let { ingredients.getOrNull(it) },
+            onDismiss = {
                 showIngredientSheet = false
+                editingIngredientIndex = null
+            },
+            onSaveClick = { draft ->
+                if (editingIndex != null && editingIndex in ingredients.indices) {
+                    ingredients[editingIndex] = draft
+                } else {
+                    ingredients.add(draft)
+                }
+                showIngredientSheet = false
+                editingIngredientIndex = null
             }
         )
     }
 
     if (showStepSheet) {
+        val editingIndex = editingStepIndex
         StepAddBottomSheet(
-            onDismiss = { showStepSheet = false },
-            onAddClick = { description, photoUri ->
-                steps.add(
-                    RecipeStepDraft(
-                        number = nextStepNumber,
-                        description = description,
-                        photoUri = photoUri
-                    )
-                )
-                nextStepNumber += 1
+            initialDraft = editingIndex?.let { steps.getOrNull(it) },
+            onDismiss = {
                 showStepSheet = false
+                editingStepIndex = null
+            },
+            onSaveClick = { description, photoUri, existingImageUrl ->
+                if (editingIndex != null && editingIndex in steps.indices) {
+                    val current = steps[editingIndex]
+                    steps[editingIndex] = current.copy(
+                        description = description,
+                        photoUri = photoUri,
+                        existingImageUrl = existingImageUrl
+                    )
+                } else {
+                    steps.add(
+                        RecipeStepDraft(
+                            number = nextStepNumber,
+                            description = description,
+                            photoUri = photoUri,
+                            existingImageUrl = existingImageUrl
+                        )
+                    )
+                    nextStepNumber += 1
+                }
+                showStepSheet = false
+                editingStepIndex = null
             }
         )
     }
@@ -216,7 +248,7 @@ fun CreateRecipeScreen(
 
                 RecipePhotoBlock(
                     photoUri = recipePhotoUri,
-                    existingPhotoUrl = initialDraft?.imageUrl,
+                    existingPhotoUrl = existingRecipeImageUrl,
                     onPickGallery = {
                         pickRecipePhotoLauncher.launch(
                             PickVisualMediaRequest(
@@ -228,6 +260,10 @@ fun CreateRecipeScreen(
                         val uri = createTempImageUri(context, "recipe_")
                         pendingRecipeCameraUri = uri
                         takeRecipePhotoLauncher.launch(uri)
+                    },
+                    onRemovePhoto = {
+                        recipePhotoUri = null
+                        existingRecipeImageUrl = null
                     }
                 )
 
@@ -295,7 +331,14 @@ fun CreateRecipeScreen(
 
                 IngredientsBlock(
                     ingredients = ingredients,
-                    onAddClick = { showIngredientSheet = true },
+                    onAddClick = {
+                        editingIngredientIndex = null
+                        showIngredientSheet = true
+                    },
+                    onEditIngredient = { ingredient ->
+                        editingIngredientIndex = ingredients.indexOf(ingredient).takeIf { it >= 0 }
+                        showIngredientSheet = editingIngredientIndex != null
+                    },
                     onRemoveIngredient = {
                         ingredients.remove(it)
                     }
@@ -311,7 +354,14 @@ fun CreateRecipeScreen(
 
                 StepsBlock(
                     steps = steps,
-                    onAddClick = { showStepSheet = true },
+                    onAddClick = {
+                        editingStepIndex = null
+                        showStepSheet = true
+                    },
+                    onEditStep = { step ->
+                        editingStepIndex = steps.indexOf(step).takeIf { it >= 0 }
+                        showStepSheet = editingStepIndex != null
+                    },
                     onRemoveStep = { step ->
                         steps.remove(step)
                     }
@@ -367,7 +417,7 @@ fun CreateRecipeScreen(
                                 ingredients.toList(),
                                 steps.toList(),
                                 recipePhotoUri,
-                                initialDraft?.imageUrl,
+                                existingRecipeImageUrl,
                                 proteins.toDoubleOrNull() ?: 0.0,
                                 fats.toDoubleOrNull() ?: 0.0,
                                 carbs.toDoubleOrNull() ?: 0.0,
@@ -393,7 +443,7 @@ fun CreateRecipeScreen(
                                 ingredients.toList(),
                                 steps.toList(),
                                 recipePhotoUri,
-                                initialDraft?.imageUrl,
+                                existingRecipeImageUrl,
                                 proteins.toDouble(),
                                 fats.toDouble(),
                                 carbs.toDouble(),
@@ -455,7 +505,8 @@ private fun RecipePhotoBlock(
     photoUri: Uri?,
     existingPhotoUrl: String?,
     onPickGallery: () -> Unit,
-    onTakePhoto: () -> Unit
+    onTakePhoto: () -> Unit,
+    onRemovePhoto: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
@@ -509,6 +560,16 @@ private fun RecipePhotoBlock(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text("Сделать фото", color = Color.White)
+            }
+            if (photoUri != null || !existingPhotoUrl.isNullOrBlank()) {
+                OutlinedButton(
+                    onClick = onRemovePhoto,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(imageVector = Icons.Outlined.Close, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Удалить фото")
+                }
             }
         }
     }
@@ -567,85 +628,63 @@ private fun TagRow(
 private fun IngredientsBlock(
     ingredients: List<IngredientDraft>,
     onAddClick: () -> Unit,
+    onEditIngredient: (IngredientDraft) -> Unit,
     onRemoveIngredient: (IngredientDraft) -> Unit
 ) {
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Text(
                 text = "Ингредиенты",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
-
-            OutlinedButton(
-                onClick = onAddClick,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = null
-                )
-
+            OutlinedButton(onClick = onAddClick, shape = RoundedCornerShape(12.dp)) {
+                Icon(imageVector = Icons.Outlined.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(6.dp))
-
                 Text("Добавить")
             }
         }
 
         ingredients.forEach { ingredient ->
+            val amountText = if (ingredient.amount % 1f == 0f) {
+                ingredient.amount.toInt().toString()
+            } else {
+                ingredient.amount.toString()
+            }
 
-            val amountText =
-                if (ingredient.amount % 1f == 0f) {
-                    ingredient.amount.toInt().toString()
-                } else {
-                    ingredient.amount.toString()
-                }
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color.White
-            ) {
-
+            Surface(shape = RoundedCornerShape(12.dp), color = Color.White) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
-                    Text(
-                        text = ingredient.name,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
+                    Text(text = ingredient.name, style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.weight(1f))
-
                     Text(
                         text = "$amountText ${ingredient.unit}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF7A7A7A)
                     )
-
                     Spacer(modifier = Modifier.width(8.dp))
-
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = "Редактировать ингредиент",
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable { onEditIngredient(ingredient) }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         imageVector = Icons.Outlined.Close,
                         contentDescription = "Удалить ингредиент",
                         modifier = Modifier
                             .size(18.dp)
-                            .clickable {
-                                onRemoveIngredient(ingredient)
-                            }
+                            .clickable { onRemoveIngredient(ingredient) }
                     )
                 }
             }
@@ -657,6 +696,7 @@ private fun IngredientsBlock(
 private fun StepsBlock(
     steps: List<RecipeStepDraft>,
     onAddClick: () -> Unit,
+    onEditStep: (RecipeStepDraft) -> Unit,
     onRemoveStep: (RecipeStepDraft) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -670,20 +710,14 @@ private fun StepsBlock(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
-            OutlinedButton(
-                onClick = onAddClick,
-                shape = RoundedCornerShape(12.dp)
-            ) {
+            OutlinedButton(onClick = onAddClick, shape = RoundedCornerShape(12.dp)) {
                 Icon(imageVector = Icons.Outlined.Add, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
                 Text("Добавить шаг")
             }
         }
-        steps.forEach { step ->
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color.White
-            ) {
+        steps.forEachIndexed { index, step ->
+            Surface(shape = RoundedCornerShape(12.dp), color = Color.White) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -692,11 +726,19 @@ private fun StepsBlock(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Шаг ${step.number}",
+                            text = "Шаг ${index + 1}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f)
                         )
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "Редактировать шаг",
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable { onEditStep(step) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Icon(
                             imageVector = Icons.Outlined.Close,
                             contentDescription = "Удалить шаг",
@@ -917,42 +959,18 @@ private fun TagPickBottomSheet(
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun IngredientAddBottomSheet(
+    initialDraft: IngredientDraft? = null,
     onDismiss: () -> Unit,
-    onAddClick: (IngredientDraft) -> Unit
+    onSaveClick: (IngredientDraft) -> Unit
 ) {
-
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
-    )
-
-    var name by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var amount by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var unit by rememberSaveable {
-        mutableStateOf("г")
-    }
-
-    var expanded by remember {
-        mutableStateOf(false)
-    }
-
-    val units = listOf(
-        "г",
-        "мл",
-        "шт",
-        "ст. л."
-    )
-
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var name by rememberSaveable(initialDraft?.name) { mutableStateOf(initialDraft?.name.orEmpty()) }
+    var amount by rememberSaveable(initialDraft?.amount) { mutableStateOf(initialDraft?.amount?.toCleanString().orEmpty()) }
+    var unit by rememberSaveable(initialDraft?.unit) { mutableStateOf(initialDraft?.unit ?: "г") }
+    var expanded by remember { mutableStateOf(false) }
+    val units = listOf("г", "мл", "шт", "ст. л.")
     val amountValue = amount.toFloatOrNull() ?: 0f
-
-    val canSubmit =
-        name.trim().isNotEmpty() &&
-                amountValue > 0f
+    val canSubmit = name.trim().isNotEmpty() && amountValue > 0f
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -960,19 +978,16 @@ private fun IngredientAddBottomSheet(
         containerColor = Color(0xFFF7F5F2),
         scrimColor = Color.Black.copy(alpha = 0.32f)
     ) {
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
             Text(
-                text = "Добавить ингредиент",
+                text = if (initialDraft == null) "Добавить ингредиент" else "Редактировать ингредиент",
                 style = MaterialTheme.typography.titleMedium
             )
-
             TextField(
                 value = name,
                 onValueChange = { name = it },
@@ -982,67 +997,40 @@ private fun IngredientAddBottomSheet(
                 singleLine = true,
                 colors = inputColors()
             )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextField(
                     value = amount,
-                    onValueChange = {
-                        amount = it
-                            .replace(',', '.')
-                            .filter { ch ->
-                                ch.isDigit() || ch == '.'
-                            }
-                    },
+                    onValueChange = { amount = it.replace(',', '.').filter { ch -> ch.isDigit() || ch == '.' } },
                     placeholder = { Text("Количество") },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     colors = inputColors()
                 )
-
                 ExposedDropdownMenuBox(
                     expanded = expanded,
-                    onExpandedChange = {
-                        expanded = !expanded
-                    },
+                    onExpandedChange = { expanded = !expanded },
                     modifier = Modifier.weight(1f)
                 ) {
-
                     TextField(
                         value = unit,
                         onValueChange = {},
                         readOnly = true,
                         shape = RoundedCornerShape(12.dp),
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(
-                                expanded = expanded
-                            )
-                        },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(),
                         colors = inputColors()
                     )
-
                     ExposedDropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = {
-                            expanded = false
-                        }
+                        onDismissRequest = { expanded = false }
                     ) {
-
                         units.forEach { option ->
-
                             DropdownMenuItem(
-                                text = {
-                                    Text(option)
-                                },
+                                text = { Text(option) },
                                 onClick = {
                                     unit = option
                                     expanded = false
@@ -1052,36 +1040,18 @@ private fun IngredientAddBottomSheet(
                     }
                 }
             }
-
             Button(
                 onClick = {
-
-                    if (!canSubmit) {
-                        return@Button
-                    }
-
-                    onAddClick(
-                        IngredientDraft(
-                            name = name.trim(),
-                            amount = amountValue,
-                            unit = unit
-                        )
-                    )
+                    if (!canSubmit) return@Button
+                    onSaveClick(IngredientDraft(name.trim(), amountValue, unit))
                 },
                 enabled = canSubmit,
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = LightPrimary
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = LightPrimary),
                 modifier = Modifier.fillMaxWidth()
             ) {
-
-                Text(
-                    text = "Добавить",
-                    color = Color.White
-                )
+                Text(text = if (initialDraft == null) "Добавить" else "Сохранить", color = Color.White)
             }
-
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
@@ -1090,31 +1060,29 @@ private fun IngredientAddBottomSheet(
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun StepAddBottomSheet(
+    initialDraft: RecipeStepDraft? = null,
     onDismiss: () -> Unit,
-    onAddClick: (String, Uri?) -> Unit
+    onSaveClick: (String, Uri?, String?) -> Unit
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var description by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable(initialDraft?.number, initialDraft?.description) { mutableStateOf(initialDraft?.description.orEmpty()) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
+    var existingImageUrl by rememberSaveable(initialDraft?.number, initialDraft?.existingImageUrl) { mutableStateOf(initialDraft?.existingImageUrl) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
 
-    val pickMediaLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
+    val pickMediaLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
             photoUri = uri
+            existingImageUrl = null
         }
     }
-
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { success ->
+    val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
             photoUri = pendingCameraUri
+            existingImageUrl = null
         }
     }
-
     val canSubmit = description.trim().isNotEmpty()
 
     ModalBottomSheet(
@@ -1130,7 +1098,7 @@ private fun StepAddBottomSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Добавить шаг",
+                text = if (initialDraft == null) "Добавить шаг" else "Редактировать шаг",
                 style = MaterialTheme.typography.titleMedium
             )
             TextField(
@@ -1141,9 +1109,9 @@ private fun StepAddBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 colors = inputColors()
             )
-            if (photoUri != null) {
+            if (photoUri != null || !existingImageUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = photoUri,
+                    model = photoUri ?: existingImageUrl.asImageModelUrl(),
                     contentDescription = "Фото шага",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -1155,11 +1123,7 @@ private fun StepAddBottomSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = {
-                        pickMediaLauncher.launch(
-                            PickVisualMediaRequest(
-                                ActivityResultContracts.PickVisualMedia.ImageOnly
-                            )
-                        )
+                        pickMediaLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     },
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -1176,29 +1140,35 @@ private fun StepAddBottomSheet(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1C1F))
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.CameraAlt,
-                        contentDescription = null,
-                        tint = Color.White
-                    )
+                    Icon(imageVector = Icons.Outlined.CameraAlt, contentDescription = null, tint = Color.White)
                     Spacer(Modifier.width(6.dp))
                     Text("Сделать фото", color = Color.White)
+                }
+                if (photoUri != null || !existingImageUrl.isNullOrBlank()) {
+                    OutlinedButton(
+                        onClick = {
+                            photoUri = null
+                            existingImageUrl = null
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(imageVector = Icons.Outlined.Close, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Удалить фото")
+                    }
                 }
             }
             Button(
                 onClick = {
                     if (!canSubmit) return@Button
-                    onAddClick(description.trim(), photoUri)
+                    onSaveClick(description.trim(), photoUri, existingImageUrl)
                 },
                 enabled = canSubmit,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = LightPrimary),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "Добавить",
-                    color = Color.White
-                )
+                Text(text = if (initialDraft == null) "Добавить" else "Сохранить", color = Color.White)
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -1343,3 +1313,5 @@ private fun String.toDecimalInput(): String {
 }
 
 private fun Double.toCleanString(): String = if (this % 1.0 == 0.0) toInt().toString() else toString()
+
+private fun Float.toCleanString(): String = if (this % 1f == 0f) toInt().toString() else toString()

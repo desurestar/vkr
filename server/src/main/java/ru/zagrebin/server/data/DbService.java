@@ -515,9 +515,7 @@ public class DbService {
         post.setLikes(0);
         post.setViews(0);
         if (request.tags() != null) {
-            post.getTags().addAll(request.tags().stream()
-                    .map(this::findOrCreateTag)
-                    .toList());
+            post.getTags().addAll(tagEntitiesFromNames(request.tags()));
         }
         if (request.ingredients() != null) {
             for (var i : request.ingredients()) {
@@ -530,10 +528,11 @@ public class DbService {
             }
         }
         if (request.steps() != null) {
-            for (var st : request.steps()) {
+            for (int index = 0; index < request.steps().size(); index++) {
+                var st = request.steps().get(index);
                 var e = new RecipeStepEntity();
                 e.setPost(post);
-                e.setStepNumber(st.number());
+                e.setStepNumber(index + 1);
                 e.setDescription(st.description());
                 e.setImageUrl(cleanRemoteImageUrl(st.imageUrl()));
                 post.getSteps().add(e);
@@ -557,6 +556,9 @@ public class DbService {
         post.setKcalPer100(request.kcalPer100());
 
         post.getIngredients().clear();
+        post.getSteps().clear();
+        entityManager.flush();
+
         if (request.ingredients() != null) {
             for (var i : request.ingredients()) {
                 var e = new RecipeIngredientEntity();
@@ -568,12 +570,12 @@ public class DbService {
             }
         }
 
-        post.getSteps().clear();
         if (request.steps() != null) {
-            for (var st : request.steps()) {
+            for (int index = 0; index < request.steps().size(); index++) {
+                var st = request.steps().get(index);
                 var e = new RecipeStepEntity();
                 e.setPost(post);
-                e.setStepNumber(st.number());
+                e.setStepNumber(index + 1);
                 e.setDescription(st.description());
                 e.setImageUrl(cleanRemoteImageUrl(st.imageUrl()));
                 post.getSteps().add(e);
@@ -605,8 +607,9 @@ public class DbService {
         post.setImageUrl(cleanRemoteImageUrl(imageUrl));
         post.setStatus(normalizePostStatus(status));
         post.getTags().clear();
+        entityManager.flush();
         if (tags != null) {
-            post.getTags().addAll(tags.stream().map(this::findOrCreateTag).toList());
+            post.getTags().addAll(tagEntitiesFromNames(tags));
         }
     }
 
@@ -623,9 +626,7 @@ public class DbService {
         post.setLikes(0);
         post.setViews(0);
         if (request.tags() != null) {
-            post.getTags().addAll(request.tags().stream()
-                    .map(this::findOrCreateTag)
-                    .toList());
+            post.getTags().addAll(tagEntitiesFromNames(request.tags()));
         }
         return toPost(posts.save(post));
     }
@@ -825,6 +826,18 @@ public class DbService {
 
     private ApiModels.Tag toTag(TagEntity t) {
         return new ApiModels.Tag(t.getId(), t.getName(), t.getLabel(), t.getColor());
+    }
+
+
+    private List<TagEntity> tagEntitiesFromNames(List<String> names) {
+        var seen = new java.util.LinkedHashSet<String>();
+        return names.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(String::trim)
+                .filter(name -> !name.isBlank())
+                .filter(name -> seen.add(name.toLowerCase(java.util.Locale.ROOT)))
+                .map(this::findOrCreateTag)
+                .toList();
     }
 
     private TagEntity findOrCreateTag(String name) {

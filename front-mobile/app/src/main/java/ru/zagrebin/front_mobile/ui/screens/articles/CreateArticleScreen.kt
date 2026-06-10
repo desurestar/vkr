@@ -34,6 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -89,6 +90,7 @@ fun CreateArticleScreen(
     val context = LocalContext.current
     var title by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.title.orEmpty()) }
     var coverUri by remember { mutableStateOf<Uri?>(null) }
+    var existingCoverUrl by rememberSaveable(initialDraft?.id) { mutableStateOf(initialDraft?.coverUrl) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var showErrors by rememberSaveable { mutableStateOf(false) }
 
@@ -97,6 +99,7 @@ fun CreateArticleScreen(
 
     var showTagSheet by rememberSaveable { mutableStateOf(false) }
     var showBlockSheet by rememberSaveable { mutableStateOf(false) }
+    var editingBlockIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var nextBlockNumber by rememberSaveable(initialDraft?.id) { mutableStateOf((initialDraft?.blocks?.maxOfOrNull { it.number } ?: 0) + 1) }
 
     val pickCoverLauncher = rememberLauncherForActivityResult(
@@ -104,6 +107,7 @@ fun CreateArticleScreen(
     ) { uri ->
         if (uri != null) {
             coverUri = uri
+            existingCoverUrl = null
         }
     }
 
@@ -112,6 +116,7 @@ fun CreateArticleScreen(
     ) { success ->
         if (success) {
             coverUri = pendingCameraUri
+            existingCoverUrl = null
         }
     }
 
@@ -130,19 +135,36 @@ fun CreateArticleScreen(
     }
 
     if (showBlockSheet) {
+        val editingIndex = editingBlockIndex
         ArticleBlockAddBottomSheet(
-            onDismiss = { showBlockSheet = false },
-            onAddClick = { blockTitle, blockContent, photoUri ->
-                blocks.add(
-                    ArticleBlockDraft(
-                        number = nextBlockNumber,
+            initialDraft = editingIndex?.let { blocks.getOrNull(it) },
+            onDismiss = {
+                showBlockSheet = false
+                editingBlockIndex = null
+            },
+            onSaveClick = { blockTitle, blockContent, photoUri, existingImageUrl ->
+                if (editingIndex != null && editingIndex in blocks.indices) {
+                    val current = blocks[editingIndex]
+                    blocks[editingIndex] = current.copy(
                         title = blockTitle,
                         content = blockContent,
-                        photoUri = photoUri
+                        photoUri = photoUri,
+                        existingImageUrl = existingImageUrl
                     )
-                )
-                nextBlockNumber += 1
+                } else {
+                    blocks.add(
+                        ArticleBlockDraft(
+                            number = nextBlockNumber,
+                            title = blockTitle,
+                            content = blockContent,
+                            photoUri = photoUri,
+                            existingImageUrl = existingImageUrl
+                        )
+                    )
+                    nextBlockNumber += 1
+                }
                 showBlockSheet = false
+                editingBlockIndex = null
             }
         )
     }
@@ -190,7 +212,7 @@ fun CreateArticleScreen(
 
                 ArticleCoverBlock(
                     coverUri = coverUri,
-                    existingCoverUrl = initialDraft?.coverUrl,
+                    existingCoverUrl = existingCoverUrl,
                     onPickGallery = {
                         pickCoverLauncher.launch(
                             PickVisualMediaRequest(
@@ -202,6 +224,10 @@ fun CreateArticleScreen(
                         val uri = createTempImageUri(context, "article_")
                         pendingCameraUri = uri
                         takeCoverLauncher.launch(uri)
+                    },
+                    onRemoveCover = {
+                        coverUri = null
+                        existingCoverUrl = null
                     }
                 )
 
@@ -235,7 +261,14 @@ fun CreateArticleScreen(
 
                 ArticleBlocksBlock(
                     blocks = blocks,
-                    onAddClick = { showBlockSheet = true },
+                    onAddClick = {
+                        editingBlockIndex = null
+                        showBlockSheet = true
+                    },
+                    onEditBlock = { block ->
+                        editingBlockIndex = blocks.indexOf(block).takeIf { it >= 0 }
+                        showBlockSheet = editingBlockIndex != null
+                    },
                     onRemoveBlock = { blocks.remove(it) }
                 )
 
@@ -267,7 +300,7 @@ fun CreateArticleScreen(
                                 content,
                                 selectedTags.toList(),
                                 coverUri,
-                                initialDraft?.coverUrl,
+                                existingCoverUrl,
                                 normalizedBlocks
                             )
                         },
@@ -294,7 +327,7 @@ fun CreateArticleScreen(
                                 content,
                                 selectedTags.toList(),
                                 coverUri,
-                                initialDraft?.coverUrl,
+                                existingCoverUrl,
                                 normalizedBlocks
                             )
                         },
@@ -341,7 +374,8 @@ private fun ArticleCoverBlock(
     coverUri: Uri?,
     existingCoverUrl: String?,
     onPickGallery: () -> Unit,
-    onTakePhoto: () -> Unit
+    onTakePhoto: () -> Unit,
+    onRemoveCover: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
@@ -459,6 +493,7 @@ private fun TagRow(
 private fun ArticleBlocksBlock(
     blocks: List<ArticleBlockDraft>,
     onAddClick: () -> Unit,
+    onEditBlock: (ArticleBlockDraft) -> Unit,
     onRemoveBlock: (ArticleBlockDraft) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -472,20 +507,14 @@ private fun ArticleBlocksBlock(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
-            OutlinedButton(
-                onClick = onAddClick,
-                shape = RoundedCornerShape(12.dp)
-            ) {
+            OutlinedButton(onClick = onAddClick, shape = RoundedCornerShape(12.dp)) {
                 Icon(imageVector = Icons.Outlined.Add, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
                 Text("Добавить блок")
             }
         }
-        blocks.forEach { block ->
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color.White
-            ) {
+        blocks.forEachIndexed { index, block ->
+            Surface(shape = RoundedCornerShape(12.dp), color = Color.White) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -494,11 +523,19 @@ private fun ArticleBlocksBlock(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Блок ${block.number}",
+                            text = "Блок ${index + 1}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f)
                         )
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "Редактировать блок",
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable { onEditBlock(block) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Icon(
                             imageVector = Icons.Outlined.Close,
                             contentDescription = "Удалить блок",
@@ -707,35 +744,31 @@ private fun TagPickBottomSheet(
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun ArticleBlockAddBottomSheet(
+    initialDraft: ArticleBlockDraft? = null,
     onDismiss: () -> Unit,
-    onAddClick: (String, String, Uri?) -> Unit
+    onSaveClick: (String, String, Uri?, String?) -> Unit
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var blockTitle by rememberSaveable { mutableStateOf("") }
-    var blockContent by rememberSaveable { mutableStateOf("") }
+    var blockTitle by rememberSaveable(initialDraft?.number, initialDraft?.title) { mutableStateOf(initialDraft?.title.orEmpty()) }
+    var blockContent by rememberSaveable(initialDraft?.number, initialDraft?.content) { mutableStateOf(initialDraft?.content.orEmpty()) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
+    var existingImageUrl by rememberSaveable(initialDraft?.number, initialDraft?.existingImageUrl) { mutableStateOf(initialDraft?.existingImageUrl) }
     var pendingBlockCameraUri by remember { mutableStateOf<Uri?>(null) }
 
-    val pickMediaLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
+    val pickMediaLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
             photoUri = uri
+            existingImageUrl = null
         }
     }
-
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { success ->
+    val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
             photoUri = pendingBlockCameraUri
+            existingImageUrl = null
         }
     }
-
-    val titleValid = blockTitle.trim().isNotEmpty()
-    val contentValid = blockContent.trim().isNotEmpty()
-    val canSubmit = titleValid && contentValid
+    val canSubmit = blockTitle.trim().isNotEmpty() && blockContent.trim().isNotEmpty()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -750,7 +783,7 @@ private fun ArticleBlockAddBottomSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Добавить блок",
+                text = if (initialDraft == null) "Добавить блок" else "Редактировать блок",
                 style = MaterialTheme.typography.titleMedium
             )
             TextField(
@@ -775,9 +808,9 @@ private fun ArticleBlockAddBottomSheet(
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 colors = inputColors()
             )
-            if (photoUri != null) {
+            if (photoUri != null || !existingImageUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = photoUri,
+                    model = photoUri ?: existingImageUrl.asImageModelUrl(),
                     contentDescription = "Фото блока",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -788,13 +821,7 @@ private fun ArticleBlockAddBottomSheet(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
-                    onClick = {
-                        pickMediaLauncher.launch(
-                            PickVisualMediaRequest(
-                                ActivityResultContracts.PickVisualMedia.ImageOnly
-                            )
-                        )
-                    },
+                    onClick = { pickMediaLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(imageVector = Icons.Outlined.Image, contentDescription = null)
@@ -810,26 +837,35 @@ private fun ArticleBlockAddBottomSheet(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1C1F))
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.CameraAlt,
-                        contentDescription = null,
-                        tint = Color.White
-                    )
+                    Icon(imageVector = Icons.Outlined.CameraAlt, contentDescription = null, tint = Color.White)
                     Spacer(Modifier.width(6.dp))
                     Text("Сделать фото", color = Color.White)
+                }
+                if (photoUri != null || !existingImageUrl.isNullOrBlank()) {
+                    OutlinedButton(
+                        onClick = {
+                            photoUri = null
+                            existingImageUrl = null
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(imageVector = Icons.Outlined.Close, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Удалить фото")
+                    }
                 }
             }
             Button(
                 onClick = {
                     if (!canSubmit) return@Button
-                    onAddClick(blockTitle.trim(), blockContent.trim(), photoUri)
+                    onSaveClick(blockTitle.trim(), blockContent.trim(), photoUri, existingImageUrl)
                 },
                 enabled = canSubmit,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = LightPrimary),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Добавить", color = Color.White)
+                Text(text = if (initialDraft == null) "Добавить" else "Сохранить", color = Color.White)
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
