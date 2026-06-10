@@ -21,8 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Whatshot
@@ -87,8 +85,6 @@ fun PostCardContent(
                 }
 
                 Text(state.date, color = Color.Gray)
-                Spacer(Modifier.width(6.dp))
-                Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color.Gray)
             }
 
             Spacer(Modifier.height(10.dp))
