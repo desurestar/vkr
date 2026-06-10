@@ -175,7 +175,11 @@ fun NavGraph(
                 LaunchedEffect(Unit) { requestAuthorization() }
                 return@composable
             }
-            MyPostsScreen(onBackClick = { navController.popBackStack() })
+            MyPostsScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenRecipe = { postId -> navController.navigate(Screen.RecipeDetails.createRoute(postId)) },
+                onOpenArticle = { postId -> navController.navigate(Screen.ArticleDetails.createRoute(postId)) }
+            )
         }
 
         composable(Screen.Drafts.route) {
