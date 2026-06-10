@@ -41,11 +41,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 
 @Composable
 fun RecipeCommentsButton(
@@ -101,6 +105,7 @@ fun RecipeCommentsBottomSheet(
 ) {
     var inputText by remember { mutableStateOf("") }
     var replyTo by remember { mutableStateOf<RecipeCommentUi?>(null) }
+    val threadedComments = remember(comments) { comments.asThreadedItems() }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -152,11 +157,12 @@ fun RecipeCommentsBottomSheet(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item { Spacer(modifier = Modifier.height(4.dp)) }
-                    items(comments, key = { it.id }) { comment ->
+                    items(threadedComments, key = { it.comment.id }) { threadItem ->
                         RecipeCommentItem(
-                            comment = comment,
-                            onReplyClick = { replyTo = comment },
-                            onDeleteClick = { onDeleteClick(comment) }
+                            comment = threadItem.comment,
+                            nestingLevel = threadItem.nestingLevel,
+                            onReplyClick = { replyTo = threadItem.comment },
+                            onDeleteClick = { onDeleteClick(threadItem.comment) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -241,20 +247,21 @@ fun RecipeCommentsBottomSheet(
 }
 
 @Composable
-private fun RecipeCommentItem(comment: RecipeCommentUi, onReplyClick: () -> Unit, onDeleteClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(comment.avatarColor, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = comment.authorName.take(1),
-                color = Color.White,
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
+private fun RecipeCommentItem(
+    comment: RecipeCommentUi,
+    nestingLevel: Int,
+    onReplyClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    val startPadding = (nestingLevel.coerceAtMost(MaxCommentNestingLevel) * ReplyIndentDp).dp
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = startPadding),
+        verticalAlignment = Alignment.Top
+    ) {
+        CommentAvatar(comment = comment)
 
         Spacer(modifier = Modifier.width(10.dp))
 
@@ -329,6 +336,34 @@ private fun RecipeCommentItem(comment: RecipeCommentUi, onReplyClick: () -> Unit
     }
 }
 
+@Composable
+private fun CommentAvatar(comment: RecipeCommentUi) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(comment.avatarColor),
+        contentAlignment = Alignment.Center
+    ) {
+        val imageRequest = rememberExplicitCacheImageRequest(comment.authorAvatarUrl)
+
+        Text(
+            text = comment.authorName.take(1),
+            color = Color.White,
+            style = MaterialTheme.typography.labelLarge
+        )
+
+        if (imageRequest != null) {
+            AsyncImage(
+                model = imageRequest,
+                contentDescription = "Аватар пользователя ${comment.authorName}",
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+    }
+}
+
 data class RecipeCommentUi(
     val id: String,
     val serverId: Long,
@@ -337,10 +372,49 @@ data class RecipeCommentUi(
     val authorHandle: String,
     val date: String,
     val text: String,
+    val authorAvatarUrl: String? = null,
+    val parentId: Long? = null,
     val replyToName: String? = null,
     val canDelete: Boolean = false,
     val avatarColor: Color = Color(0xFFD2B091)
 )
+
+private const val ReplyIndentDp = 28
+private const val MaxCommentNestingLevel = 2
+
+private data class RecipeCommentThreadItem(
+    val comment: RecipeCommentUi,
+    val nestingLevel: Int
+)
+
+private fun List<RecipeCommentUi>.asThreadedItems(): List<RecipeCommentThreadItem> {
+    if (isEmpty()) return emptyList()
+
+    val commentsById = associateBy { it.serverId }
+    val commentsByParent = groupBy { it.parentId }
+    val visited = mutableSetOf<Long>()
+    val threadedItems = mutableListOf<RecipeCommentThreadItem>()
+
+    fun append(comment: RecipeCommentUi, nestingLevel: Int) {
+        if (!visited.add(comment.serverId)) return
+
+        threadedItems += RecipeCommentThreadItem(
+            comment = comment,
+            nestingLevel = nestingLevel.coerceAtMost(MaxCommentNestingLevel)
+        )
+
+        commentsByParent[comment.serverId].orEmpty().forEach { child ->
+            append(child, nestingLevel + 1)
+        }
+    }
+
+    filter { comment -> comment.parentId == null || commentsById[comment.parentId] == null }
+        .forEach { rootComment -> append(rootComment, nestingLevel = 0) }
+
+    forEach { comment -> append(comment, nestingLevel = 0) }
+
+    return threadedItems
+}
 
 @Preview(showBackground = true, locale = "ru")
 @Composable
