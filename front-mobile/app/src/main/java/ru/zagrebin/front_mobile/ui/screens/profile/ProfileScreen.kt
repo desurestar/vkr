@@ -43,7 +43,8 @@ fun ProfileScreen(
     onOpenPasswordSecurity: () -> Unit,
     onOpenCreateRecipe: () -> Unit,
     onOpenCreateArticle: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onOpenPublicProfile: (String) -> Unit = {}
 ) {
     val state = viewModel.state.collectAsState().value
 
@@ -91,7 +92,9 @@ fun ProfileScreen(
                 ProfileStatsCard(
                     following = if (isAuthorized) state.following else "0",
                     followers = if (isAuthorized) state.followers else "0",
-                    likes = if (isAuthorized) state.likes else "0"
+                    likes = if (isAuthorized) state.likes else "0",
+                    onFollowingClick = if (isAuthorized) viewModel::openFollowingSheet else null,
+                    onFollowersClick = if (isAuthorized) viewModel::openFollowersSheet else null
                 )
             }
 
@@ -172,6 +175,22 @@ fun ProfileScreen(
 
             item { Spacer(Modifier.height(24.dp)) }
         }
+    }
+
+    state.usersSheetType?.let { sheetType ->
+        ProfileUsersBottomSheet(
+            type = sheetType,
+            query = state.usersSearchQuery,
+            users = state.users,
+            isLoading = state.isUsersLoading,
+            error = state.usersError,
+            onQueryChange = viewModel::onUsersSearchChange,
+            onOpenUser = { userId ->
+                viewModel.closeUsersSheet()
+                onOpenPublicProfile(userId.toString())
+            },
+            onDismiss = viewModel::closeUsersSheet
+        )
     }
 }
 

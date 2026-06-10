@@ -8,7 +8,7 @@ import java.util.Set;
 
 public class ApiModels {
     public record User(Long id, String username, String email, String displayName, String bio, String avatarUrl,
-                       Set<Long> following, Set<Long> followers, List<ShoppingList> shoppingList) {
+                       Set<Long> following, Set<Long> followers, List<ShoppingList> shoppingList, int totalLikes) {
     }
 
     public record PublicProfile(User user, boolean following, List<Post> posts) {

@@ -70,6 +70,8 @@ interface FeedApi {
     @POST("api/v1/profile/{userId}/follow") suspend fun follow(@Path("userId") userId: Long)
     @DELETE("api/v1/profile/{userId}/follow") suspend fun unfollow(@Path("userId") userId: Long)
     @GET("api/v1/profile/{userId}") suspend fun getPublicProfile(@Path("userId") userId: Long, @Query("q") query: String? = null, @Query("page") page: Int? = null, @Query("size") size: Int? = null): PublicProfileDto
+    @GET("api/v1/profile/{userId}/following") suspend fun getProfileFollowing(@Path("userId") userId: Long, @Query("q") query: String? = null, @Query("page") page: Int? = null, @Query("size") size: Int? = null): List<UserProfileDto>
+    @GET("api/v1/profile/{userId}/followers") suspend fun getProfileFollowers(@Path("userId") userId: Long, @Query("q") query: String? = null, @Query("page") page: Int? = null, @Query("size") size: Int? = null): List<UserProfileDto>
 
     @GET("api/v1/search") suspend fun search(@Query("query") query: String, @Query("type") type: String? = null, @Query("tag") tag: String? = null, @Query("page") page: Int? = null, @Query("size") size: Int? = null): SearchResponse
     @GET("api/v1/search/users") suspend fun searchUsers(@Query("query") query: String, @Query("page") page: Int? = null, @Query("size") size: Int? = null): List<UserProfileDto>
@@ -124,7 +126,8 @@ data class UserProfileDto(
     val bio: String? = null,
     val avatarUrl: String? = null,
     val following: Set<Long> = emptySet(),
-    val followers: Set<Long> = emptySet()
+    val followers: Set<Long> = emptySet(),
+    val totalLikes: Int = 0
 )
 
 data class CreateRecipeRequest(

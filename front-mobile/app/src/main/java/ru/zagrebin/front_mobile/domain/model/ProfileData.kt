@@ -7,5 +7,6 @@ data class ProfileData(
     val bio: String,
     val avatarUrl: String?,
     val followingCount: Int,
-    val followersCount: Int
+    val followersCount: Int,
+    val totalLikes: Int
 )

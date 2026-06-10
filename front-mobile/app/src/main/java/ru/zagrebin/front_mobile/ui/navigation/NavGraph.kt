@@ -149,6 +149,7 @@ fun NavGraph(
                 onOpenPasswordSecurity = { requireAuthorization { navController.navigate(Screen.PasswordSecurity.route) } },
                 onOpenCreateRecipe = { navController.navigate(Screen.CreateRecipe.route) },
                 onOpenCreateArticle = { navController.navigate(Screen.CreateArticle.route) },
+                onOpenPublicProfile = { userId -> navController.navigate(Screen.PublicProfile.createRoute(userId)) },
                 onLogout = {
                     if (!isAuthorized) {
                         requestAuthorization()

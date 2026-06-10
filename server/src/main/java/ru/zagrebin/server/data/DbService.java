@@ -119,7 +119,8 @@ public class DbService {
                 u.getAvatarUrl(),
                 u.getFollowing().stream().map(UserEntity::getId).collect(Collectors.toSet()),
                 u.getFollowers().stream().map(UserEntity::getId).collect(Collectors.toSet()),
-                shoppingLists(u.getId())
+                shoppingLists(u.getId()),
+                (int) Math.min(posts.sumLikesByAuthorId(u.getId()), Integer.MAX_VALUE)
         );
     }
 
@@ -427,6 +428,42 @@ public class DbService {
                         : posts.findByAuthorIdAndStatusIgnoreCaseAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(authorId, "PUBLISHED", normalizedQuery, pageable));
 
         return list.stream().map(post -> toPost(post, currentUserId)).toList();
+    }
+
+
+    @Transactional(readOnly = true)
+    public List<ApiModels.User> followingUsers(Long userId, String q, Integer page, Integer size) {
+        var user = getUserEntity(userId);
+        return filterProfileUsers(user.getFollowing(), q, page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApiModels.User> followerUsers(Long userId, String q, Integer page, Integer size) {
+        var user = getUserEntity(userId);
+        return filterProfileUsers(user.getFollowers(), q, page, size);
+    }
+
+    private List<ApiModels.User> filterProfileUsers(Set<UserEntity> source, String q, Integer page, Integer size) {
+        var normalizedQuery = normalizeSearchQuery(q).toLowerCase();
+        var pageNumber = Math.max(page == null ? 0 : page, 0);
+        var pageSize = Math.min(Math.max(size == null ? 50 : size, 1), 100);
+
+        return source.stream()
+                .filter(user -> normalizedQuery.isBlank()
+                        || containsIgnoreCase(user.getUsername(), normalizedQuery)
+                        || containsIgnoreCase(user.getDisplayName(), normalizedQuery))
+                .sorted(Comparator.comparing(user -> {
+                    var username = user.getUsername();
+                    return username == null ? "" : username.toLowerCase();
+                }))
+                .skip((long) pageNumber * pageSize)
+                .limit(pageSize)
+                .map(this::toUser)
+                .toList();
+    }
+
+    private boolean containsIgnoreCase(String value, String normalizedQuery) {
+        return value != null && value.toLowerCase().contains(normalizedQuery);
     }
 
     @Transactional(readOnly = true)

@@ -34,7 +34,7 @@ import ru.zagrebin.front_mobile.data.local.entities.PendingStatisticsOpEntity
         PendingStatisticsOpEntity::class,
         LocalDraftEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
