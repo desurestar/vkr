@@ -54,7 +54,7 @@ import coil.compose.AsyncImage
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.LightPrimary
 import java.io.File
-import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
+import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 
 @Composable
 fun EditAccountScreen(
@@ -121,7 +121,8 @@ fun EditAccountScreen(
                             .background(Color(0xFFE2E2E2)),
                         contentAlignment = Alignment.Center
                     ) {
-                        val displayModel = avatarUri ?: initialAvatarUrl.asImageModelUrl()
+                        val remoteAvatarRequest = rememberExplicitCacheImageRequest(initialAvatarUrl)
+                        val displayModel = avatarUri ?: remoteAvatarRequest
                         if (displayModel != null) {
                             AsyncImage(
                                 model = displayModel,
