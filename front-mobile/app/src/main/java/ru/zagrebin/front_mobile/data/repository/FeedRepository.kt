@@ -476,6 +476,7 @@ class FeedRepository(
 
     private fun LocalDraftEntity.toFeedItem(): FeedItem = FeedItem(
         id = id,
+        status = STATUS_DRAFT,
         authorId = "",
         authorName = "Локальный черновик",
         authorHandle = "",
@@ -505,6 +506,7 @@ class FeedRepository(
 
     private fun FeedItemEntity.toDomainItem(): FeedItem = FeedItem(
         id = id,
+        status = status,
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
@@ -528,6 +530,7 @@ class FeedRepository(
     private fun RecipeDetailsEntity.toFeedItemEntity(): FeedItemEntity = FeedItemEntity(
         id = id,
         type = TYPE_RECIPE,
+        status = status,
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
@@ -551,6 +554,7 @@ class FeedRepository(
     private fun ArticleDetailsEntity.toFeedItemEntity(): FeedItemEntity = FeedItemEntity(
         id = id,
         type = TYPE_ARTICLE,
+        status = status,
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
@@ -568,6 +572,7 @@ class FeedRepository(
 
     private fun RecipeDetailsEntity.toDomain(): RecipeDetails = RecipeDetails(
         id = id,
+        status = status,
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
@@ -594,6 +599,7 @@ class FeedRepository(
 
     private fun ArticleDetailsEntity.toDomain(): ArticleDetails = ArticleDetails(
         id = id,
+        status = status,
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
@@ -655,6 +661,7 @@ private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
     FeedItemEntity(
         id = id,
         type = type,
+        status = status ?: "PUBLISHED",
         authorId = authorId.asString(),
         authorName = authorName.orEmpty(),
         authorHandle = authorHandle.orEmpty(),
@@ -677,6 +684,7 @@ private fun FeedItemDto.toEntity(type: String): FeedItemEntity =
 
 private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = RecipeDetailsEntity(
     id = id,
+    status = status ?: "PUBLISHED",
     authorId = authorId.asString(),
     authorName = authorName.orEmpty(),
     authorHandle = authorHandle.orEmpty(),
@@ -705,6 +713,7 @@ private fun RecipeDetailsDto.toRecipeDetailsEntity(): RecipeDetailsEntity = Reci
 
 private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = ArticleDetailsEntity(
     id = id,
+    status = status ?: "PUBLISHED",
     authorId = authorId.asString(),
     authorName = authorName.orEmpty(),
     authorHandle = authorHandle.orEmpty(),

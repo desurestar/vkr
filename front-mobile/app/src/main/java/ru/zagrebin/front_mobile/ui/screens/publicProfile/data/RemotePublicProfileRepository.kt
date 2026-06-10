@@ -41,6 +41,7 @@ class RemotePublicProfileRepository(private val api: FeedApi) : PublicProfileRep
 private fun FeedItemDto.toPostCardState(): PostCardState = PostCardState(
     id = id,
     type = type.orEmpty().ifBlank { "RECIPE" },
+    status = status ?: "PUBLISHED",
     authorId = authorId.asUserIdString(),
     authorName = authorName.orEmpty(),
     authorHandle = authorHandle.toHandle(),

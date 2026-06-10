@@ -239,6 +239,7 @@ class ArticlesViewModel(application: Application) : AndroidViewModel(application
 
     private fun FeedItem.toUi(): PostCardState = PostCardState(
         id = id,
+        status = status,
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,

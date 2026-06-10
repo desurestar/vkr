@@ -8,6 +8,7 @@ import ru.zagrebin.front_mobile.domain.model.RecipeTag
 @Entity(tableName = "article_details")
 data class ArticleDetailsEntity(
     @PrimaryKey val id: Int,
+    val status: String = "PUBLISHED",
     val authorId: String,
     val authorName: String,
     val authorHandle: String,

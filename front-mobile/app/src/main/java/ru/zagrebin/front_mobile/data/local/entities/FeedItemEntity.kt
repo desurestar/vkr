@@ -6,6 +6,7 @@ import androidx.room.Entity
 data class FeedItemEntity(
     val id: Int,
     val type: String,
+    val status: String = "PUBLISHED",
     val authorId: String,
     val authorName: String,
     val authorHandle: String,

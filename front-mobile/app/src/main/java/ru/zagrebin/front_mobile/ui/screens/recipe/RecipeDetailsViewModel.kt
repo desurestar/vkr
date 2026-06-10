@@ -135,6 +135,7 @@ class RecipeDetailsViewModel(application: Application) : AndroidViewModel(applic
 
     private fun RecipeDetails.toUi(): PostCardState = PostCardState(
         id = id,
+        status = status,
         authorId = authorId,
         authorName = authorName,
         authorHandle = authorHandle,
