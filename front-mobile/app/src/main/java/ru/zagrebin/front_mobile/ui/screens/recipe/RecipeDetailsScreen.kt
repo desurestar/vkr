@@ -272,6 +272,8 @@ private fun List<PostComment>.toCommentUi(currentUserId: Long?): List<RecipeComm
         authorHandle = comment.authorHandle,
         date = comment.createdAt.ifBlank { "сейчас" },
         text = comment.text,
+        authorAvatarUrl = comment.authorAvatarUrl,
+        parentId = comment.parentId,
         replyToName = comment.parentAuthorName,
         canDelete = currentUserId != null && currentUserId == comment.authorId
     )
