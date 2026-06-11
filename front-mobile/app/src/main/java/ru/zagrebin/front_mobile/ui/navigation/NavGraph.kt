@@ -282,7 +282,7 @@ fun NavGraph(
                                     },
                                     steps = steps.mapIndexed { index, step ->
                                         CreateRecipeStep(
-                                            number = step.number,
+                                            number = index + 1,
                                             description = step.description,
                                             imageUrl = stepImageUrls[index]
                                         )
@@ -337,7 +337,7 @@ fun NavGraph(
                                     },
                                     steps = steps.mapIndexed { index, step ->
                                         CreateRecipeStep(
-                                            number = step.number,
+                                            number = index + 1,
                                             description = step.description,
                                             imageUrl = stepImageUrls[index]
                                         )
@@ -623,7 +623,7 @@ fun NavGraph(
                                             status = "PUBLISHED",
                                             tags = tags,
                                             ingredients = ingredients.map { CreateRecipeIngredient(it.name, it.amount.toDouble(), it.unit) },
-                                            steps = steps.mapIndexed { index, step -> CreateRecipeStep(step.number, step.description, stepImageUrls[index]) }
+                                            steps = steps.mapIndexed { index, step -> CreateRecipeStep(index + 1, step.description, stepImageUrls[index]) }
                                         )
                                     )
                                 }.getOrDefault(CreateRecipeResult.Fallback)
@@ -652,7 +652,7 @@ fun NavGraph(
                                     }
                                     appContainer.feedRepository.updateRecipe(
                                         postId,
-                                        CreateRecipeRequest(title, summary, content, mainImageUrl, cookTime, proteins, fats, carbs, kcal, "DRAFT", tags, ingredients.map { CreateRecipeIngredient(it.name, it.amount.toDouble(), it.unit) }, steps.mapIndexed { index, step -> CreateRecipeStep(step.number, step.description, stepImageUrls[index]) })
+                                        CreateRecipeRequest(title, summary, content, mainImageUrl, cookTime, proteins, fats, carbs, kcal, "DRAFT", tags, ingredients.map { CreateRecipeIngredient(it.name, it.amount.toDouble(), it.unit) }, steps.mapIndexed { index, step -> CreateRecipeStep(index + 1, step.description, stepImageUrls[index]) })
                                     )
                                 }.getOrDefault(CreateRecipeResult.Fallback)
                                 if (saveResult is CreateRecipeResult.Success) {
