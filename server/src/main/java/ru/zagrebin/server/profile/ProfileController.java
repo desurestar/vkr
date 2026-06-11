@@ -6,6 +6,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import ru.zagrebin.server.common.ApiModels;
+import ru.zagrebin.server.common.ServerValidation;
 import ru.zagrebin.server.data.DbService;
 
 import java.util.List;
@@ -35,10 +36,12 @@ public class ProfileController {
             @RequestBody UpdateProfileRequest req,
             HttpSession session) {
 
+        req = ServerValidation.requireBody(req);
         var u = db.getUserEntity(requireUid(session));
 
-        u.setDisplayName(req.displayName());
-        u.setBio(req.bio());
+        var displayName = ServerValidation.optionalText(req.displayName(), ServerValidation.MAX_PROFILE_NAME_LENGTH);
+        u.setDisplayName(displayName == null ? u.getUsername() : displayName);
+        u.setBio(ServerValidation.optionalText(req.bio(), ServerValidation.MAX_BIO_LENGTH));
         u.setAvatarUrl(db.cleanRemoteImageUrl(req.avatarUrl()));
 
         db.saveUser(u);
@@ -50,13 +53,16 @@ public class ProfileController {
     public Map<String, String> updatePassword(@RequestBody UpdatePasswordRequest req,
                                               HttpSession session) {
 
+        req = ServerValidation.requireBody(req);
         var u = db.getUserEntity(requireUid(session));
+        var oldPassword = ServerValidation.password(req.oldPassword(), "Old password");
+        var newPassword = ServerValidation.password(req.newPassword(), "New password");
 
-        if (!encoder.matches(req.oldPassword(), u.getPasswordHash())) {
-            throw new IllegalArgumentException("wrong old password");
+        if (!encoder.matches(oldPassword, u.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong old password");
         }
 
-        u.setPasswordHash(encoder.encode(req.newPassword()));
+        u.setPasswordHash(encoder.encode(newPassword));
         db.saveUser(u);
 
         return Map.of("status", "ok");
@@ -123,6 +129,7 @@ public class ProfileController {
     @PostMapping("/shopping-list")
     public ApiModels.ShoppingList createShoppingList(@RequestBody Map<String, String> req,
                                                      HttpSession session) {
+        req = ServerValidation.requireBody(req);
         return db.toShoppingList(db.createShoppingList(requireUid(session), req.get("name")));
     }
 
@@ -130,6 +137,7 @@ public class ProfileController {
     public ApiModels.ShoppingList updateShoppingList(@PathVariable Long listId,
                                                      @RequestBody Map<String, String> req,
                                                      HttpSession session) {
+        req = ServerValidation.requireBody(req);
         return db.toShoppingList(db.updateShoppingList(requireUid(session), listId, req.get("name")));
     }
 
@@ -144,6 +152,7 @@ public class ProfileController {
     public ApiModels.ShoppingItem addShoppingItem(@PathVariable Long listId,
                                                   @RequestBody ApiModels.ShoppingItemRequest req,
                                                   HttpSession session) {
+        req = ServerValidation.requireBody(req);
         return db.toShopping(db.addShopping(requireUid(session), listId, req.name(), req.amount()));
     }
 
@@ -151,6 +160,7 @@ public class ProfileController {
     public ApiModels.ShoppingItem updateShoppingItem(@PathVariable Long itemId,
                                                      @RequestBody ApiModels.ShoppingItemRequest req,
                                                      HttpSession session) {
+        req = ServerValidation.requireBody(req);
         return db.toShopping(db.updateShoppingItem(requireUid(session), itemId, req.name(), req.amount(), req.checked()));
     }
 

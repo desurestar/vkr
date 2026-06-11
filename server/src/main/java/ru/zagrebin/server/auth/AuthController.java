@@ -1,14 +1,12 @@
 package ru.zagrebin.server.auth;
 
 import jakarta.servlet.http.HttpSession;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import ru.zagrebin.server.common.ApiModels;
+import ru.zagrebin.server.common.ServerValidation;
 import ru.zagrebin.server.data.DbService;
 import ru.zagrebin.server.data.entity.UserEntity;
 
@@ -27,32 +25,30 @@ public class AuthController {
         this.encoder = encoder;
     }
 
-    public record RegisterRequest(@NotBlank String username,
-                                  @Email String email,
-                                  @NotBlank String password) {}
+    public record RegisterRequest(String username, String email, String password) {}
 
-    public record LoginRequest(@NotBlank String email,
-                               @NotBlank String password) {}
+    public record LoginRequest(String email, String password) {}
 
     @PostMapping("/register")
-    public Map<String, Object> register(@Valid @RequestBody RegisterRequest req,
+    public Map<String, Object> register(@RequestBody RegisterRequest req,
                                         HttpSession session) {
 
-        if (db.emailExists(req.email())) {
+        req = ServerValidation.requireBody(req);
+        var username = ServerValidation.username(req.username());
+        var email = ServerValidation.email(req.email());
+        var password = ServerValidation.password(req.password(), "Password");
+
+        if (db.emailExists(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
         }
-        if (db.usernameExists(req.username())) {
+        if (db.usernameExists(username)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already registered");
         }
-        if (req.password().length() < 6) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 6 characters");
-        }
-
         var u = new UserEntity();
-        u.setUsername(req.username());
-        u.setEmail(req.email());
-        u.setPasswordHash(encoder.encode(req.password()));
-        u.setDisplayName(req.username());
+        u.setUsername(username);
+        u.setEmail(email);
+        u.setPasswordHash(encoder.encode(password));
+        u.setDisplayName(username);
         u.setBio("");
 
         u = db.saveUser(u);
@@ -65,12 +61,15 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public Map<String, Object> login(@Valid @RequestBody LoginRequest req,
+    public Map<String, Object> login(@RequestBody LoginRequest req,
                                      HttpSession session) {
 
-        var user = db.findByEmailOrUsername(req.email());
+        req = ServerValidation.requireBody(req);
+        var login = ServerValidation.requiredText(req.email(), "Login", 254).toLowerCase();
+        var password = ServerValidation.password(req.password(), "Password");
+        var user = db.findByEmailOrUsername(login);
 
-        if (!encoder.matches(req.password(), user.getPasswordHash())) {
+        if (!encoder.matches(password, user.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 

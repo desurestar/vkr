@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 import ru.zagrebin.server.common.ApiModels;
+import ru.zagrebin.server.common.ServerValidation;
 import ru.zagrebin.server.data.entity.*;
 import ru.zagrebin.server.data.repo.*;
 
@@ -44,12 +45,39 @@ public class DbService {
             Double maxCarbs,
             List<String> tags
     ) {
+        public PostFilters {
+            validateIntegerRange(minTime, maxTime, "Cooking time");
+            validateDecimalRange(minCalories, maxCalories, "Calories");
+            validateDecimalRange(minProteins, maxProteins, "Proteins");
+            validateDecimalRange(minFats, maxFats, "Fats");
+            validateDecimalRange(minCarbs, maxCarbs, "Carbs");
+            tags = ServerValidation.tags(tags);
+        }
+
         public static PostFilters empty() {
             return tagsOnly(List.of());
         }
 
         public static PostFilters tagsOnly(List<String> tags) {
             return new PostFilters(null, null, null, null, null, null, null, null, null, null, tags);
+        }
+
+        private static void validateIntegerRange(Integer min, Integer max, String fieldName) {
+            if (min != null && min < 0 || max != null && max < 0) {
+                throw ServerValidation.badRequest(fieldName + " filters cannot be negative");
+            }
+            if (min != null && max != null && min > max) {
+                throw ServerValidation.badRequest(fieldName + " min cannot be greater than max");
+            }
+        }
+
+        private static void validateDecimalRange(Double min, Double max, String fieldName) {
+            if (min != null && (!Double.isFinite(min) || min < 0) || max != null && (!Double.isFinite(max) || max < 0)) {
+                throw ServerValidation.badRequest(fieldName + " filters must be finite non-negative values");
+            }
+            if (min != null && max != null && min > max) {
+                throw ServerValidation.badRequest(fieldName + " min cannot be greater than max");
+            }
         }
     }
 
@@ -331,17 +359,16 @@ public class DbService {
             Integer size,
             PostFilters filters
     ) {
-        var normalizedQuery = q == null || q.isBlank() ? null : q.trim();
-        var pageIndex = Math.max(page == null ? 0 : page, 0);
-        var pageSize = Math.min(Math.max(size == null ? Integer.MAX_VALUE : size, 1), 50);
+        var normalizedQuery = ServerValidation.searchQuery(q);
+        var pagination = ServerValidation.page(page, size);
         var selectedTags = normalizeTags(filters == null ? List.of() : filters.tags());
 
         return posts.findByTypeIgnoreCaseAndStatusIgnoreCase(type, "PUBLISHED").stream()
                 .filter(post -> normalizedQuery == null || post.getTitle().toLowerCase().contains(normalizedQuery.toLowerCase()))
                 .filter(post -> matchesPostFilters(post, filters, selectedTags))
                 .sorted(Comparator.comparing(PostEntity::getCreatedAt).reversed())
-                .skip(page == null || size == null ? 0 : (long) pageIndex * pageSize)
-                .limit(page == null || size == null ? Long.MAX_VALUE : pageSize)
+                .skip(!pagination.requested() ? 0 : (long) pagination.index() * pagination.size())
+                .limit(!pagination.requested() ? Long.MAX_VALUE : pagination.size())
                 .map(post -> toPost(post, currentUserId))
                 .toList();
     }
@@ -415,9 +442,10 @@ public class DbService {
 
     @Transactional(readOnly = true)
     public List<ApiModels.Post> postsByAuthor(Long authorId, Long currentUserId, String q, Integer page, Integer size) {
-        var normalizedQuery = q == null || q.isBlank() ? null : q.trim();
-        var pageable = page != null && size != null
-                ? PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50), Sort.by(Sort.Direction.DESC, "createdAt"))
+        var normalizedQuery = ServerValidation.searchQuery(q);
+        var pagination = ServerValidation.page(page, size);
+        var pageable = pagination.requested()
+                ? PageRequest.of(pagination.index(), pagination.size(), Sort.by(Sort.Direction.DESC, "createdAt"))
                 : null;
         var list = normalizedQuery == null
                 ? (pageable == null
@@ -445,8 +473,7 @@ public class DbService {
 
     private List<ApiModels.User> filterProfileUsers(Set<UserEntity> source, String q, Integer page, Integer size) {
         var normalizedQuery = normalizeSearchQuery(q).toLowerCase();
-        var pageNumber = Math.max(page == null ? 0 : page, 0);
-        var pageSize = Math.min(Math.max(size == null ? 50 : size, 1), 100);
+        var pagination = ServerValidation.page(page, size);
 
         return source.stream()
                 .filter(user -> normalizedQuery.isBlank()
@@ -456,8 +483,8 @@ public class DbService {
                     var username = user.getUsername();
                     return username == null ? "" : username.toLowerCase();
                 }))
-                .skip((long) pageNumber * pageSize)
-                .limit(pageSize)
+                .skip((long) pagination.index() * pagination.size())
+                .limit(pagination.size())
                 .map(this::toUser)
                 .toList();
     }
@@ -490,8 +517,9 @@ public class DbService {
 
     public Map<String, List<?>> search(String query, String type, String tag, Integer page, Integer size) {
         var normalizedQuery = normalizeSearchQuery(query);
-        var pageable = page != null && size != null
-                ? PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50), Sort.by(Sort.Direction.DESC, "createdAt"))
+        var pagination = ServerValidation.page(page, size);
+        var pageable = pagination.requested()
+                ? PageRequest.of(pagination.index(), pagination.size(), Sort.by(Sort.Direction.DESC, "createdAt"))
                 : null;
 
         var p = posts.findByStatusIgnoreCaseAndTitleContainingIgnoreCase("PUBLISHED", normalizedQuery).stream()
@@ -512,9 +540,10 @@ public class DbService {
         if (normalizedQuery.isBlank()) {
             return List.of();
         }
+        var pagination = ServerValidation.page(page, size);
         var pageable = PageRequest.of(
-                Math.max(page == null ? 0 : page, 0),
-                Math.min(Math.max(size == null ? 10 : size, 1), 25),
+                pagination.index(),
+                Math.min(pagination.size(), 25),
                 Sort.by(Sort.Direction.ASC, "username")
         );
         return users.findByUsernameContainingIgnoreCaseOrDisplayNameContainingIgnoreCase(normalizedQuery, normalizedQuery, pageable).stream()
@@ -535,47 +564,15 @@ public class DbService {
 
 
     public ApiModels.Post createRecipe(Long uid, ApiModels.CreateRecipeRequest request) {
+        request = ServerValidation.requireBody(request);
         var post = new PostEntity();
         post.setAuthor(getUserEntity(uid));
         post.setType("RECIPE");
-        post.setTitle(request.title());
-        post.setSummary(request.summary());
-        post.setContent(request.content());
-        post.setImageUrl(cleanRemoteImageUrl(request.imageUrl()));
-        post.setCookTimeMinutes(request.cookTimeMinutes());
-        post.setProteinsPer100(request.proteinsPer100());
-        post.setFatsPer100(request.fatsPer100());
-        post.setCarbsPer100(request.carbsPer100());
-        post.setKcalPer100(request.kcalPer100());
-        post.setStatus(normalizePostStatus(request.status()));
+        applyRecipeFields(post, request);
         post.setCreatedAt(Instant.now());
         post.setLikes(0);
         post.setViews(0);
-        if (request.tags() != null) {
-            post.getTags().addAll(tagEntitiesFromNames(request.tags()));
-        }
-        if (request.ingredients() != null) {
-            for (var i : request.ingredients()) {
-                var e = new RecipeIngredientEntity();
-                e.setPost(post);
-                e.setName(i.name());
-                e.setAmount(i.amount());
-                e.setUnit(i.unit());
-                post.getIngredients().add(e);
-            }
-        }
-        if (request.steps() != null) {
-            for (int index = 0; index < request.steps().size(); index++) {
-                var st = request.steps().get(index);
-                var e = new RecipeStepEntity();
-                e.setPost(post);
-                e.setStepNumber(index + 1);
-                e.setDescription(st.description());
-                e.setImageUrl(cleanRemoteImageUrl(st.imageUrl()));
-                post.getSteps().add(e);
-            }
-        }
-        return toPost(posts.save(post));
+        return toPost(posts.save(post), uid);
     }
 
 
@@ -585,39 +582,8 @@ public class DbService {
         if (!"RECIPE".equalsIgnoreCase(post.getType())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Post is not a recipe");
         }
-        applyCommonPostFields(post, request.title(), request.summary(), request.content(), request.imageUrl(), request.status(), request.tags());
-        post.setCookTimeMinutes(request.cookTimeMinutes());
-        post.setProteinsPer100(request.proteinsPer100());
-        post.setFatsPer100(request.fatsPer100());
-        post.setCarbsPer100(request.carbsPer100());
-        post.setKcalPer100(request.kcalPer100());
-
-        post.getIngredients().clear();
-        post.getSteps().clear();
-        entityManager.flush();
-
-        if (request.ingredients() != null) {
-            for (var i : request.ingredients()) {
-                var e = new RecipeIngredientEntity();
-                e.setPost(post);
-                e.setName(i.name());
-                e.setAmount(i.amount());
-                e.setUnit(i.unit());
-                post.getIngredients().add(e);
-            }
-        }
-
-        if (request.steps() != null) {
-            for (int index = 0; index < request.steps().size(); index++) {
-                var st = request.steps().get(index);
-                var e = new RecipeStepEntity();
-                e.setPost(post);
-                e.setStepNumber(index + 1);
-                e.setDescription(st.description());
-                e.setImageUrl(cleanRemoteImageUrl(st.imageUrl()));
-                post.getSteps().add(e);
-            }
-        }
+        request = ServerValidation.requireBody(request);
+        applyRecipeFields(post, request);
         return toPost(posts.save(post), uid);
     }
 
@@ -627,6 +593,7 @@ public class DbService {
         if (!"ARTICLE".equalsIgnoreCase(post.getType())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Post is not an article");
         }
+        request = ServerValidation.requireBody(request);
         applyCommonPostFields(post, request.title(), request.summary(), request.content(), request.imageUrl(), request.status(), request.tags());
         return toPost(posts.save(post), uid);
     }
@@ -638,41 +605,94 @@ public class DbService {
     }
 
     private void applyCommonPostFields(PostEntity post, String title, String summary, String content, String imageUrl, String status, List<String> tags) {
-        post.setTitle(title);
-        post.setSummary(summary);
-        post.setContent(content);
+        post.setTitle(ServerValidation.requiredText(title, "Title", ServerValidation.MAX_TITLE_LENGTH));
+        post.setSummary(ServerValidation.optionalText(summary, ServerValidation.MAX_SUMMARY_LENGTH));
+        post.setContent(ServerValidation.optionalText(content, ServerValidation.MAX_CONTENT_LENGTH));
         post.setImageUrl(cleanRemoteImageUrl(imageUrl));
         post.setStatus(normalizePostStatus(status));
         post.getTags().clear();
         entityManager.flush();
-        if (tags != null) {
-            post.getTags().addAll(tagEntitiesFromNames(tags));
+        post.getTags().addAll(tagEntitiesFromNames(ServerValidation.tags(tags)));
+    }
+
+    private void applyRecipeFields(PostEntity post, ApiModels.CreateRecipeRequest request) {
+        applyCommonPostFields(post, request.title(), request.summary(), request.content(), request.imageUrl(), request.status(), request.tags());
+        post.setCookTimeMinutes(ServerValidation.nonNegativeInt(request.cookTimeMinutes(), "Cook time", 24 * 60));
+        post.setProteinsPer100(ServerValidation.nonNegativeDecimal(request.proteinsPer100(), "Proteins", ServerValidation.MAX_NUTRIENT));
+        post.setFatsPer100(ServerValidation.nonNegativeDecimal(request.fatsPer100(), "Fats", ServerValidation.MAX_NUTRIENT));
+        post.setCarbsPer100(ServerValidation.nonNegativeDecimal(request.carbsPer100(), "Carbs", ServerValidation.MAX_NUTRIENT));
+        post.setKcalPer100(ServerValidation.nonNegativeDecimal(request.kcalPer100(), "Calories", BigDecimal.valueOf(ServerValidation.MAX_KCAL)));
+
+        post.getIngredients().clear();
+        post.getSteps().clear();
+        entityManager.flush();
+        addRecipeIngredients(post, request.ingredients());
+        addRecipeSteps(post, request.steps());
+    }
+
+    private void addRecipeIngredients(PostEntity post, List<ApiModels.Ingredient> ingredients) {
+        if (ingredients == null) {
+            return;
+        }
+        if (ingredients.size() > ServerValidation.MAX_INGREDIENTS) {
+            throw ServerValidation.badRequest("Too many ingredients. Maximum is " + ServerValidation.MAX_INGREDIENTS);
+        }
+        for (var ingredient : ingredients) {
+            if (ingredient == null) {
+                continue;
+            }
+            var name = ServerValidation.optionalText(ingredient.name(), ServerValidation.MAX_SHOPPING_NAME_LENGTH);
+            if (name == null) {
+                continue;
+            }
+            var e = new RecipeIngredientEntity();
+            e.setPost(post);
+            e.setName(name);
+            e.setAmount(ServerValidation.nonNegativeDecimal(ingredient.amount(), "Ingredient amount", BigDecimal.valueOf(100_000)));
+            e.setUnit(ServerValidation.optionalText(ingredient.unit(), ServerValidation.MAX_AMOUNT_LENGTH));
+            post.getIngredients().add(e);
+        }
+    }
+
+    private void addRecipeSteps(PostEntity post, List<ApiModels.RecipeStep> steps) {
+        if (steps == null) {
+            return;
+        }
+        if (steps.size() > ServerValidation.MAX_STEPS) {
+            throw ServerValidation.badRequest("Too many steps. Maximum is " + ServerValidation.MAX_STEPS);
+        }
+        var stepNumber = 1;
+        for (var step : steps) {
+            if (step == null) {
+                continue;
+            }
+            var description = ServerValidation.optionalText(step.description(), ServerValidation.MAX_CONTENT_LENGTH);
+            if (description == null) {
+                continue;
+            }
+            var e = new RecipeStepEntity();
+            e.setPost(post);
+            e.setStepNumber(stepNumber++);
+            e.setDescription(description);
+            e.setImageUrl(cleanRemoteImageUrl(step.imageUrl()));
+            post.getSteps().add(e);
         }
     }
 
     public ApiModels.Post createArticle(Long uid, ApiModels.CreateArticleRequest request) {
+        request = ServerValidation.requireBody(request);
         var post = new PostEntity();
         post.setAuthor(getUserEntity(uid));
         post.setType("ARTICLE");
-        post.setTitle(request.title());
-        post.setSummary(request.summary());
-        post.setContent(request.content());
-        post.setImageUrl(cleanRemoteImageUrl(request.imageUrl()));
-        post.setStatus(normalizePostStatus(request.status()));
+        applyCommonPostFields(post, request.title(), request.summary(), request.content(), request.imageUrl(), request.status(), request.tags());
         post.setCreatedAt(Instant.now());
         post.setLikes(0);
         post.setViews(0);
-        if (request.tags() != null) {
-            post.getTags().addAll(tagEntitiesFromNames(request.tags()));
-        }
-        return toPost(posts.save(post));
+        return toPost(posts.save(post), uid);
     }
 
     public CommentEntity createComment(Long postId, Long uid, String text, Long parentId) {
-        var cleanedText = text == null ? "" : text.trim();
-        if (cleanedText.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Comment text is required");
-        }
+        var cleanedText = ServerValidation.requiredText(text, "Comment text", ServerValidation.MAX_COMMENT_LENGTH);
 
         var post = getPostEntity(postId);
         var c = new CommentEntity();
@@ -723,7 +743,7 @@ public class DbService {
         i.setUser(getUserEntity(uid));
         i.setList(list);
         i.setName(cleanRequired(name, "Item name is required"));
-        i.setAmount((amount == null || amount.isBlank()) ? "1" : amount.trim());
+        i.setAmount(cleanAmount(amount));
         i.setChecked(false);
         return shopping.save(i);
     }
@@ -738,7 +758,7 @@ public class DbService {
             item.setName(cleanRequired(name, "Item name is required"));
         }
         if (amount != null) {
-            item.setAmount(amount.isBlank() ? "1" : amount.trim());
+            item.setAmount(cleanAmount(amount));
         }
         if (checked != null) {
             item.setChecked(checked);
@@ -789,7 +809,12 @@ public class DbService {
         if (value == null || value.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
         }
-        return value.trim();
+        return ServerValidation.requiredText(value, message.replace(" is required", ""), ServerValidation.MAX_SHOPPING_NAME_LENGTH);
+    }
+
+    private String cleanAmount(String amount) {
+        var cleaned = ServerValidation.optionalText(amount, ServerValidation.MAX_AMOUNT_LENGTH);
+        return cleaned == null ? "1" : cleaned;
     }
 
     private String formatAmount(java.math.BigDecimal amount, String unit) {
@@ -857,7 +882,8 @@ public class DbService {
 
 
     public List<ApiModels.Tag> tags(String q) {
-        var list = (q == null || q.isBlank()) ? tags.findAll() : tags.findByNameContainingIgnoreCase(q);
+        var normalizedQuery = ServerValidation.searchQuery(q);
+        var list = normalizedQuery == null ? tags.findAll() : tags.findByNameContainingIgnoreCase(normalizedQuery);
         return list.stream().map(this::toTag).toList();
     }
 
