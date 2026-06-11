@@ -6,13 +6,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Tune
@@ -28,13 +31,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import ru.zagrebin.front_mobile.ui.common.rememberExplicitCacheImageRequest
 import ru.zagrebin.front_mobile.ui.components.postCard.PostCardContent
 import ru.zagrebin.front_mobile.ui.theme.FilterButtonCornerRadius
 import ru.zagrebin.front_mobile.ui.theme.FilterButtonIconPadding
@@ -129,6 +138,15 @@ fun FeedScreen(
                     onAuthorClick = onOpenPublicProfile
                 )
             }
+
+            if (state.posts.isEmpty() && state.filters.hasActiveFilters && !state.isUserSearch) {
+                item {
+                    FilterEmptyState(
+                        title = "Ничего не найдено",
+                        message = "Попробуйте изменить или сбросить фильтры."
+                    )
+                }
+            }
         }
 
         SearchTopBar(
@@ -209,7 +227,7 @@ fun FeedScreen(
 }
 
 @Composable
-private fun UserSearchResults(
+fun UserSearchResults(
     users: List<UserSearchState>,
     visible: Boolean,
     onOpenPublicProfile: (Long) -> Unit,
@@ -217,37 +235,126 @@ private fun UserSearchResults(
 ) {
     AnimatedVisibility(visible = visible && users.isNotEmpty(), modifier = modifier) {
         Surface(
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(24.dp),
             color = SearchFieldContainerColor,
-            tonalElevation = 6.dp
+            tonalElevation = 8.dp,
+            shadowElevation = 8.dp
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Text(
+                    text = "Пользователи",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                )
                 users.forEach { user ->
-                    Surface(
-                        onClick = { onOpenPublicProfile(user.id) },
-                        color = TransparentColor,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp)
-                        ) {
-                            Text(
-                                text = user.displayName.ifBlank { "Пользователь" },
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                text = if (user.username.startsWith("@")) user.username else "@${user.username}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    UserSearchResultRow(
+                        user = user,
+                        onClick = { onOpenPublicProfile(user.id) }
+                    )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun UserSearchResultRow(
+    user: UserSearchState,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFD8C2A0)),
+            contentAlignment = Alignment.Center
+        ) {
+            val avatarUrl = user.avatarUrl?.takeIf { it.isNotBlank() }
+            if (avatarUrl == null) {
+                Icon(
+                    imageVector = Icons.Filled.Person,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                AsyncImage(
+                    model = rememberExplicitCacheImageRequest(avatarUrl),
+                    contentDescription = "Аватар пользователя",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp)
+        ) {
+            Text(
+                text = user.displayName.ifBlank { "Пользователь" },
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = user.username.withAtPrefix(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun FilterEmptyState(
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 24.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = SearchFieldContainerColor,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+        }
+    }
+}
+
+private fun String.withAtPrefix(): String = when {
+    isBlank() -> "@user"
+    startsWith("@") -> this
+    else -> "@$this"
 }
 
 @Composable
