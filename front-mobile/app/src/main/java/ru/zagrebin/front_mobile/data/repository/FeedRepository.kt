@@ -1005,10 +1005,13 @@ private fun RecipeStepDto.resolveTitle(index: Int): String = when {
     else -> "Шаг ${index + 1}"
 }
 
-private fun formatAmount(value: Double): String = if (value % 1.0 == 0.0) {
-    value.toLong().toString()
-} else {
-    value.toString()
+private fun formatAmount(value: Double): String {
+    val rounded = kotlin.math.round(value * 1000.0) / 1000.0
+    return if (rounded % 1.0 == 0.0) {
+        rounded.toLong().toString()
+    } else {
+        java.math.BigDecimal.valueOf(rounded).stripTrailingZeros().toPlainString()
+    }
 }
 
 

@@ -691,11 +691,7 @@ private fun IngredientsBlock(
             key(ingredient.clientId) {
                 var dragOffsetY by remember(ingredient.clientId, ingredients.size) { mutableStateOf(0f) }
                 var currentDragIndex by remember(ingredient.clientId, ingredients.size) { mutableStateOf(index) }
-                val amountText = if (ingredient.amount % 1f == 0f) {
-                    ingredient.amount.toInt().toString()
-                } else {
-                    ingredient.amount.toString()
-                }
+                val amountText = ingredient.amount.toCleanString()
 
                 Surface(
                 shape = RoundedCornerShape(12.dp),
@@ -1094,9 +1090,9 @@ private fun IngredientAddBottomSheet(
     var amount by rememberSaveable(initialDraft?.amount) { mutableStateOf(initialDraft?.amount?.toCleanString().orEmpty()) }
     var unit by rememberSaveable(initialDraft?.unit) { mutableStateOf(initialDraft?.unit ?: "г") }
     var expanded by remember { mutableStateOf(false) }
-    val units = listOf("г", "мл", "шт", "ст. л.")
-    val amountValue = amount.toFloatOrNull() ?: 0f
-    val canSubmit = name.trim().isNotEmpty() && amountValue > 0f
+    val units = listOf("г", "мл", "шт", "ч. л.", "ст. л.")
+    val amountValue = amount.toDoubleOrNull() ?: 0.0
+    val canSubmit = name.trim().isNotEmpty() && amountValue > 0.0
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1334,7 +1330,7 @@ private fun MutableList<RecipeStepDraft>.renumberSteps() {
 
 data class IngredientDraft(
     val name: String,
-    val amount: Float,
+    val amount: Double,
     val unit: String,
     val clientId: String = UUID.randomUUID().toString()
 )
@@ -1463,6 +1459,11 @@ private fun String.toDecimalInput(): String {
     }
 }
 
-private fun Double.toCleanString(): String = if (this % 1.0 == 0.0) toInt().toString() else toString()
-
-private fun Float.toCleanString(): String = if (this % 1f == 0f) toInt().toString() else toString()
+private fun Double.toCleanString(): String {
+    val rounded = kotlin.math.round(this * 1000.0) / 1000.0
+    return if (rounded % 1.0 == 0.0) {
+        rounded.toInt().toString()
+    } else {
+        java.math.BigDecimal.valueOf(rounded).stripTrailingZeros().toPlainString()
+    }
+}
