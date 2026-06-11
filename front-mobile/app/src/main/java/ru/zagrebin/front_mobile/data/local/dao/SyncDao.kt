@@ -25,11 +25,17 @@ interface SyncDao {
     @Query("SELECT * FROM local_drafts ORDER BY createdAt DESC")
     fun observeLocalDrafts(): Flow<List<LocalDraftEntity>>
 
-    @Query("SELECT * FROM local_drafts ORDER BY createdAt ASC")
+    @Query("SELECT * FROM local_drafts WHERE isDirty = 1 ORDER BY createdAt ASC")
     suspend fun getLocalDraftsForSync(): List<LocalDraftEntity>
+
+    @Query("SELECT * FROM local_drafts WHERE id = :id LIMIT 1")
+    suspend fun getLocalDraft(id: Int): LocalDraftEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertLocalDraft(draft: LocalDraftEntity)
+
+    @Query("UPDATE local_drafts SET isDirty = 0 WHERE id = :id")
+    suspend fun markLocalDraftSynced(id: Int)
 
     @Query("DELETE FROM local_drafts WHERE id = :id")
     suspend fun deleteLocalDraft(id: Int)

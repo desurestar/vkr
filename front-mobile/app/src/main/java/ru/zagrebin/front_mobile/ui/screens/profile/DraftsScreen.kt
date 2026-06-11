@@ -73,9 +73,7 @@ fun DraftsScreen(
                     DraftCard(
                         draft = draft,
                         onOpen = {
-                            if (draft.id > 0) {
-                                if (draft.type == "ARTICLE") onOpenArticle(draft.id) else onOpenRecipe(draft.id)
-                            }
+                            if (draft.type == "ARTICLE") onOpenArticle(draft.id) else onOpenRecipe(draft.id)
                         },
                         onDelete = { viewModel.deleteDraft(draft.id) }
                     )

@@ -43,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -575,22 +576,31 @@ fun NavGraph(
             val detailsViewModel: RecipeDetailsViewModel = viewModel()
             val state = detailsViewModel.state.collectAsState().value
             var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
+            val localRecipeDraft by produceState<RecipeEditDraft?>(initialValue = null, postId) {
+                value = if (postId < 0) {
+                    appContainer.feedRepository.getLocalRecipeDraftRequest(postId)?.toRecipeEditDraft(postId)
+                } else {
+                    null
+                }
+            }
 
-            LaunchedEffect(postId) { detailsViewModel.load(postId) }
+            LaunchedEffect(postId) { if (postId > 0) detailsViewModel.load(postId) }
             LaunchedEffect(Unit) {
                 runCatching { appContainer.feedRepository.loadTagLabels() }
                     .onSuccess { result -> availableTags = result.data }
             }
 
             val post = state.post
+            val initialDraft = localRecipeDraft ?: post?.toRecipeEditDraft()
+            val canEditPost = post != null && (post.status.equals("DRAFT", ignoreCase = true) || state.currentUserId != null && post.authorId == state.currentUserId.toString())
             when {
-                post != null && state.currentUserId != null && post.authorId == state.currentUserId.toString() -> {
+                initialDraft != null && (postId < 0 || canEditPost) -> {
                     CreateRecipeScreen(
                         onBackClick = { navController.popBackStack() },
                         availableTags = availableTags,
-                        initialDraft = post.toRecipeEditDraft(),
+                        initialDraft = initialDraft,
                         isEditMode = true,
-                        isDraftEditMode = post.status.equals("DRAFT", ignoreCase = true),
+                        isDraftEditMode = true,
                         onPublish = { title, summary, content, cookTime, tags, ingredients, steps, recipePhotoUri, existingRecipeImageUrl, proteins, fats, carbs, kcal ->
                             scope.launch {
                                 val saveResult = runCatching {
@@ -669,22 +679,31 @@ fun NavGraph(
             val detailsViewModel: ArticleDetailsViewModel = viewModel()
             val state = detailsViewModel.state.collectAsState().value
             var availableTags by remember { mutableStateOf<List<String>>(emptyList()) }
+            val localArticleDraft by produceState<ArticleEditDraft?>(initialValue = null, postId) {
+                value = if (postId < 0) {
+                    appContainer.feedRepository.getLocalArticleDraftRequest(postId)?.toArticleEditDraft(postId)
+                } else {
+                    null
+                }
+            }
 
-            LaunchedEffect(postId) { detailsViewModel.load(postId) }
+            LaunchedEffect(postId) { if (postId > 0) detailsViewModel.load(postId) }
             LaunchedEffect(Unit) {
                 runCatching { appContainer.feedRepository.loadTagLabels() }
                     .onSuccess { result -> availableTags = result.data }
             }
 
             val post = state.post
+            val initialDraft = localArticleDraft ?: post?.toArticleEditDraft(state.content)
+            val canEditPost = post != null && (post.status.equals("DRAFT", ignoreCase = true) || state.currentUserId != null && post.authorId == state.currentUserId.toString())
             when {
-                post != null && state.currentUserId != null && post.authorId == state.currentUserId.toString() -> {
+                initialDraft != null && (postId < 0 || canEditPost) -> {
                     CreateArticleScreen(
                         onBackClick = { navController.popBackStack() },
                         availableTags = availableTags,
-                        initialDraft = post.toArticleEditDraft(state.content),
+                        initialDraft = initialDraft,
                         isEditMode = true,
-                        isDraftEditMode = post.status.equals("DRAFT", ignoreCase = true),
+                        isDraftEditMode = true,
                         onPublish = { title, summary, content, tags, coverUri, existingCoverUrl, blocks ->
                             scope.launch {
                                 val saveResult = runCatching {
@@ -764,6 +783,36 @@ private fun EditLoadingText(text: String) {
         Text(text)
     }
 }
+
+private fun CreateRecipeRequest.toRecipeEditDraft(id: Int): RecipeEditDraft = RecipeEditDraft(
+    id = id,
+    title = title,
+    summary = summary,
+    imageUrl = imageUrl,
+    cookTimeMinutes = cookTimeMinutes,
+    proteinsPer100 = proteinsPer100,
+    fatsPer100 = fatsPer100,
+    carbsPer100 = carbsPer100,
+    kcalPer100 = kcalPer100,
+    tags = tags,
+    ingredients = ingredients.map { IngredientDraft(it.name, it.amount.toFloat(), it.unit) },
+    steps = steps.map { step ->
+        RecipeStepDraft(
+            number = step.number,
+            description = step.description,
+            photoUri = null,
+            existingImageUrl = step.imageUrl
+        )
+    }
+)
+
+private fun CreateArticleRequest.toArticleEditDraft(id: Int): ArticleEditDraft = ArticleEditDraft(
+    id = id,
+    title = title,
+    coverUrl = imageUrl,
+    tags = tags,
+    blocks = content.toArticleBlocks()
+)
 
 private fun PostCardState.toRecipeEditDraft(): RecipeEditDraft = RecipeEditDraft(
     id = id,
