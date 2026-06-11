@@ -86,10 +86,17 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun addMeal(type: MealType, draft: MealDraft) {
-        draft.recipeId?.let { recipeId ->
+        val recipeId = draft.recipeId
+        if (recipeId != null) {
             recentRecipeIds.value = (listOf(recipeId) + recentRecipeIds.value.filterNot { it == recipeId }).take(10)
         }
-        viewModelScope.launch { repository.addMeal(selectedDate.value, type, draft) }
+        viewModelScope.launch {
+            if (recipeId != null) {
+                repository.addRecipeMeal(selectedDate.value, type, recipeId, draft)
+            } else {
+                repository.addMeal(selectedDate.value, type, draft)
+            }
+        }
     }
 
     fun updateSettings(settings: StatisticsSettings) {
