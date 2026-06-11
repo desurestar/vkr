@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import ru.zagrebin.server.common.ApiModels;
+import ru.zagrebin.server.common.ServerValidation;
 import ru.zagrebin.server.data.DbService;
 
 import java.util.*;
@@ -133,11 +134,13 @@ public class PostController {
     ) {
         var currentUserId = currentUid(s);
         requireVisiblePost(db.getPost(id, currentUserId), currentUserId);
+        req = ServerValidation.requireBody(req);
         return db.recordPostView(id, currentUserId, viewerKey(s, request), req.durationSeconds());
     }
 
     @PostMapping("/posts/{id}/comments")
     public ApiModels.Comment addComment(@PathVariable Long id, @RequestBody ApiModels.CommentRequest req, HttpSession s) {
+        req = ServerValidation.requireBody(req);
         return db.toComment(db.createComment(id, requireUid(s), req.text(), req.parentId()));
     }
 

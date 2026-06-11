@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import ru.zagrebin.server.common.ApiModels;
+import ru.zagrebin.server.common.ServerValidation;
 import ru.zagrebin.server.data.entity.StatisticsDayEntity;
 import ru.zagrebin.server.data.entity.StatisticsMealEntryEntity;
 import ru.zagrebin.server.data.entity.StatisticsSettingsEntity;
@@ -42,7 +43,8 @@ public class StatisticsController {
         var uid = requireUid(session);
         var settings = getOrCreateSettings(uid);
         prune(uid, settings.getRetentionMonths());
-        var yearMonth = month == null || month.isBlank() ? YearMonth.now() : YearMonth.parse(month);
+        var normalizedMonth = ServerValidation.parseMonthOrThrow(month);
+        var yearMonth = normalizedMonth == null ? YearMonth.now() : YearMonth.parse(normalizedMonth);
         var start = yearMonth.atDay(1);
         var end = yearMonth.atEndOfMonth();
         var waterByDate = daysRepo.findByUserIdAndDateBetween(uid, start, end).stream()
@@ -55,6 +57,7 @@ public class StatisticsController {
 
     @PatchMapping("/settings")
     public ApiModels.StatisticsSettings updateSettings(@RequestBody ApiModels.StatisticsSettingsRequest req, HttpSession session) {
+        req = ServerValidation.requireBody(req);
         var uid = requireUid(session);
         var settings = getOrCreateSettings(uid);
         if (req.retentionMonths() != null) settings.setRetentionMonths(clamp(req.retentionMonths(), 1, 24));
@@ -70,9 +73,10 @@ public class StatisticsController {
 
     @PostMapping("/water")
     public ApiModels.StatisticsDay addWater(@RequestBody ApiModels.AddWaterRequest req, HttpSession session) {
+        req = ServerValidation.requireBody(req);
         var uid = requireUid(session);
-        var date = req.date() == null ? LocalDate.now() : req.date();
-        var amount = req.amountMl() == null ? 250 : Math.max(0, req.amountMl());
+        var date = ServerValidation.dateOrToday(req.date());
+        var amount = req.amountMl() == null ? 250 : ServerValidation.nonNegativeInt(req.amountMl(), "Water amount", ServerValidation.MAX_WATER_PER_REQUEST_ML);
         var day = daysRepo.findByUserIdAndDate(uid, date).orElseGet(() -> {
             var d = new StatisticsDayEntity();
             d.setUser(db.getUserEntity(uid));
@@ -89,15 +93,18 @@ public class StatisticsController {
 
     @PostMapping("/meals")
     public ApiModels.StatisticsMealEntry addMeal(@RequestBody ApiModels.AddMealRequest req, HttpSession session) {
+        req = ServerValidation.requireBody(req);
         var uid = requireUid(session);
         var meal = new StatisticsMealEntryEntity();
         meal.setUser(db.getUserEntity(uid));
-        meal.setDate(req.date() == null ? LocalDate.now() : req.date());
+        meal.setDate(ServerValidation.dateOrToday(req.date()));
         meal.setType(cleanType(req.type()));
-        meal.setName(req.name() == null || req.name().isBlank() ? "Прием пищи" : req.name().trim());
-        meal.setAmountLabel(req.amountLabel() == null || req.amountLabel().isBlank() ? "0гр" : req.amountLabel().trim());
-        meal.setTimeLabel(req.timeLabel() == null || req.timeLabel().isBlank() ? "--:--" : req.timeLabel().trim());
-        meal.setKcal(req.kcal() == null ? 0 : Math.max(0, req.kcal()));
+        var name = ServerValidation.optionalText(req.name(), ServerValidation.MAX_MEAL_LABEL_LENGTH);
+        var amountLabel = ServerValidation.optionalText(req.amountLabel(), ServerValidation.MAX_MEAL_LABEL_LENGTH);
+        meal.setName(name == null ? "Прием пищи" : name);
+        meal.setAmountLabel(amountLabel == null ? "0гр" : amountLabel);
+        meal.setTimeLabel(ServerValidation.timeLabelOrDefault(req.timeLabel(), "--:--"));
+        meal.setKcal(req.kcal() == null ? 0 : ServerValidation.nonNegativeInt(req.kcal(), "Calories", ServerValidation.MAX_KCAL));
         meal.setProteins(nonNegative(req.proteins()));
         meal.setFats(nonNegative(req.fats()));
         meal.setCarbs(nonNegative(req.carbs()));
@@ -112,6 +119,7 @@ public class StatisticsController {
     public ApiModels.StatisticsMealEntry addRecipeMeal(@PathVariable Long recipeId,
                                                        @RequestBody ApiModels.AddRecipeMealRequest req,
                                                        HttpSession session) {
+        req = ServerValidation.requireBody(req);
         var uid = requireUid(session);
         var recipe = db.getPostEntity(recipeId);
         if (!"RECIPE".equalsIgnoreCase(recipe.getType())) {
@@ -121,16 +129,16 @@ public class StatisticsController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
         }
 
-        var portion = req.portionGrams() == null ? 100 : Math.max(0, req.portionGrams());
+        var portion = req.portionGrams() == null ? 100 : ServerValidation.nonNegativeInt(req.portionGrams(), "Portion", ServerValidation.MAX_PORTION_GRAMS);
         var factor = BigDecimal.valueOf(portion).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
 
         var meal = new StatisticsMealEntryEntity();
         meal.setUser(db.getUserEntity(uid));
-        meal.setDate(req.date() == null ? LocalDate.now() : req.date());
+        meal.setDate(ServerValidation.dateOrToday(req.date()));
         meal.setType(cleanType(req.type()));
         meal.setName(recipe.getTitle() == null || recipe.getTitle().isBlank() ? "Рецепт" : recipe.getTitle().trim());
         meal.setAmountLabel(portion + (Boolean.TRUE.equals(req.liquid()) ? "мл" : "гр"));
-        meal.setTimeLabel(req.timeLabel() == null || req.timeLabel().isBlank() ? currentTimeLabel() : req.timeLabel().trim());
+        meal.setTimeLabel(ServerValidation.timeLabelOrDefault(req.timeLabel(), currentTimeLabel()));
         meal.setKcal(scaled(recipe.getKcalPer100(), factor).setScale(0, RoundingMode.HALF_UP).intValue());
         meal.setProteins(scaled(recipe.getProteinsPer100(), factor));
         meal.setFats(scaled(recipe.getFatsPer100(), factor));
@@ -179,7 +187,10 @@ public class StatisticsController {
     private int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
     private BigDecimal scaled(BigDecimal value, BigDecimal factor) { return (value == null ? BigDecimal.ZERO : value).multiply(factor).setScale(2, RoundingMode.HALF_UP); }
     private String currentTimeLabel() { return java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")); }
-    private BigDecimal nonNegative(BigDecimal value) { return value == null || value.signum() < 0 ? BigDecimal.ZERO : value; }
+    private BigDecimal nonNegative(BigDecimal value) {
+        var validated = ServerValidation.nonNegativeDecimal(value, "Nutrient", ServerValidation.MAX_NUTRIENT);
+        return validated == null ? BigDecimal.ZERO : validated;
+    }
     private String cleanType(String type) {
         if (type == null) return "SNACK";
         return switch (type.toUpperCase()) {
