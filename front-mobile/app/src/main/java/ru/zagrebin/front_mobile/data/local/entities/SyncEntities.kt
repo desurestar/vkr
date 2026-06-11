@@ -21,5 +21,6 @@ data class LocalDraftEntity(
     val content: String,
     val imageUrl: String?,
     val requestJson: String,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val isDirty: Boolean = true
 )

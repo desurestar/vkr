@@ -88,6 +88,16 @@ class FeedRepository(
 
     suspend fun getCachedDrafts(): List<FeedItem> = syncDao.observeLocalDrafts().first().map { it.toFeedItem() }
 
+    suspend fun getLocalRecipeDraftRequest(id: Int): CreateRecipeRequest? {
+        val draft = syncDao.getLocalDraft(id)?.takeIf { it.type == TYPE_RECIPE } ?: return null
+        return recipeRequestAdapter.fromJson(draft.requestJson)
+    }
+
+    suspend fun getLocalArticleDraftRequest(id: Int): CreateArticleRequest? {
+        val draft = syncDao.getLocalDraft(id)?.takeIf { it.type == TYPE_ARTICLE } ?: return null
+        return articleRequestAdapter.fromJson(draft.requestJson)
+    }
+
     suspend fun refreshRecipes(): RefreshResult = loadRecipes().toRefreshResult()
 
     suspend fun loadRecipesPage(
@@ -166,7 +176,9 @@ class FeedRepository(
             return ServerFirstResult(emptyList(), isFromCache = true)
         }
         return runCatching {
-            feedApi.getDrafts().map { dto -> dto.toEntity(dto.type?.lowercase().orEmpty()).toDomainItem() }
+            val drafts = feedApi.getDrafts()
+            drafts.forEach { dto -> cacheRemoteDraft(dto.id, dto.type?.lowercase().orEmpty()) }
+            drafts.map { dto -> dto.toEntity(dto.type?.lowercase().orEmpty()).toDomainItem() }
         }.fold(
             onSuccess = { ServerFirstResult(it, isFromCache = false) },
             onFailure = { ServerFirstResult(emptyList(), isFromCache = true) }
@@ -181,6 +193,7 @@ class FeedRepository(
         if (!networkConnectionChecker.isNetworkAvailable()) return false
         return runCatching {
             feedApi.deleteDraft(postId)
+            syncDao.deleteLocalDraft(postId)
             true
         }.getOrDefault(false)
     }
@@ -286,9 +299,14 @@ class FeedRepository(
     }
 
     suspend fun updateArticle(postId: Int, request: CreateArticleRequest): CreateArticleResult {
+        if (postId < 0) {
+            if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) return saveLocalArticleDraft(request, postId)
+            if (!networkConnectionChecker.isNetworkAvailable()) return CreateArticleResult.Fallback
+            return saveArticleOnServer(request, onSuccess = { syncDao.deleteLocalDraft(postId) }) { feedApi.createArticle(it) }
+        }
         if (!networkConnectionChecker.isNetworkAvailable()) {
             return if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) {
-                saveLocalArticleDraft(request)
+                saveLocalArticleDraft(request, postId)
             } else {
                 CreateArticleResult.Fallback
             }
@@ -298,10 +316,13 @@ class FeedRepository(
 
     private suspend fun saveArticleOnServer(
         request: CreateArticleRequest,
+        onSuccess: suspend (ArticleDetailsDto) -> Unit = {},
         save: suspend (CreateArticleRequest) -> ArticleDetailsDto
     ): CreateArticleResult = runCatching {
         if (!networkConnectionChecker.isNetworkAvailable()) error("Network is unavailable")
-        val savedArticle = save(request).toArticleDetailsEntity()
+        val dto = save(request)
+        onSuccess(dto)
+        val savedArticle = dto.toArticleDetailsEntity()
         articleDetailsDao.upsert(savedArticle)
         upsertSavedFeedItems(listOf(savedArticle.toFeedItemEntity()))
         loadArticles()
@@ -367,9 +388,14 @@ class FeedRepository(
     }
 
     suspend fun updateRecipe(postId: Int, request: CreateRecipeRequest): CreateRecipeResult {
+        if (postId < 0) {
+            if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) return saveLocalRecipeDraft(request, postId)
+            if (!networkConnectionChecker.isNetworkAvailable()) return CreateRecipeResult.Fallback
+            return saveRecipeOnServer(request, onSuccess = { syncDao.deleteLocalDraft(postId) }) { feedApi.createRecipe(it) }
+        }
         if (!networkConnectionChecker.isNetworkAvailable()) {
             return if (request.status.equals(STATUS_DRAFT, ignoreCase = true)) {
-                saveLocalRecipeDraft(request)
+                saveLocalRecipeDraft(request, postId)
             } else {
                 CreateRecipeResult.Fallback
             }
@@ -379,10 +405,13 @@ class FeedRepository(
 
     private suspend fun saveRecipeOnServer(
         request: CreateRecipeRequest,
+        onSuccess: suspend (RecipeDetailsDto) -> Unit = {},
         save: suspend (CreateRecipeRequest) -> RecipeDetailsDto
     ): CreateRecipeResult = runCatching {
         if (!networkConnectionChecker.isNetworkAvailable()) error("Network is unavailable")
-        val savedRecipe = save(request).toRecipeDetailsEntity()
+        val dto = save(request)
+        onSuccess(dto)
+        val savedRecipe = dto.toRecipeDetailsEntity()
         recipeDetailsDao.upsert(savedRecipe)
         upsertSavedFeedItems(listOf(savedRecipe.toFeedItemEntity()))
         loadRecipes()
@@ -397,13 +426,19 @@ class FeedRepository(
         for (draft in drafts) {
             val success = runCatching {
                 when (draft.type) {
-                    TYPE_RECIPE -> feedApi.createRecipe(recipeRequestAdapter.fromJson(draft.requestJson) ?: error("Invalid recipe draft"))
-                    TYPE_ARTICLE -> feedApi.createArticle(articleRequestAdapter.fromJson(draft.requestJson) ?: error("Invalid article draft"))
+                    TYPE_RECIPE -> {
+                        val request = recipeRequestAdapter.fromJson(draft.requestJson) ?: error("Invalid recipe draft")
+                        if (draft.id < 0) feedApi.createRecipe(request) else feedApi.updateRecipe(draft.id, request)
+                    }
+                    TYPE_ARTICLE -> {
+                        val request = articleRequestAdapter.fromJson(draft.requestJson) ?: error("Invalid article draft")
+                        if (draft.id < 0) feedApi.createArticle(request) else feedApi.updateArticle(draft.id, request)
+                    }
                     else -> error("Unknown draft type")
                 }
             }.isSuccess
             if (success) {
-                syncDao.deleteLocalDraft(draft.id)
+                if (draft.id < 0) syncDao.deleteLocalDraft(draft.id) else syncDao.markLocalDraftSynced(draft.id)
             } else {
                 return false
             }
@@ -411,8 +446,8 @@ class FeedRepository(
         return true
     }
 
-    private suspend fun saveLocalRecipeDraft(request: CreateRecipeRequest): CreateRecipeResult {
-        val id = nextLocalDraftId()
+    private suspend fun saveLocalRecipeDraft(request: CreateRecipeRequest, draftId: Int? = null, isDirty: Boolean = true): CreateRecipeResult {
+        val id = draftId ?: nextLocalDraftId()
         syncDao.upsertLocalDraft(
             LocalDraftEntity(
                 id = id,
@@ -421,14 +456,15 @@ class FeedRepository(
                 summary = request.summary,
                 content = request.content,
                 imageUrl = request.imageUrl,
-                requestJson = recipeRequestAdapter.toJson(request.copy(status = STATUS_DRAFT))
+                requestJson = recipeRequestAdapter.toJson(request.copy(status = STATUS_DRAFT)),
+                isDirty = isDirty
             )
         )
         return CreateRecipeResult.Success(id)
     }
 
-    private suspend fun saveLocalArticleDraft(request: CreateArticleRequest): CreateArticleResult {
-        val id = nextLocalDraftId()
+    private suspend fun saveLocalArticleDraft(request: CreateArticleRequest, draftId: Int? = null, isDirty: Boolean = true): CreateArticleResult {
+        val id = draftId ?: nextLocalDraftId()
         syncDao.upsertLocalDraft(
             LocalDraftEntity(
                 id = id,
@@ -437,10 +473,29 @@ class FeedRepository(
                 summary = request.summary,
                 content = request.content,
                 imageUrl = request.imageUrl,
-                requestJson = articleRequestAdapter.toJson(request.copy(status = STATUS_DRAFT))
+                requestJson = articleRequestAdapter.toJson(request.copy(status = STATUS_DRAFT)),
+                isDirty = isDirty
             )
         )
         return CreateArticleResult.Success(id)
+    }
+
+    private suspend fun cacheRemoteDraft(id: Int, type: String) {
+        if (id <= 0) return
+        runCatching {
+            when (type) {
+                TYPE_ARTICLE -> {
+                    val details = feedApi.getArticleDetails(id)
+                    articleDetailsDao.upsert(details.toArticleDetailsEntity())
+                    saveLocalArticleDraft(details.toCreateArticleRequest(), id, isDirty = false)
+                }
+                else -> {
+                    val details = feedApi.getRecipeDetails(id)
+                    recipeDetailsDao.upsert(details.toRecipeDetailsEntity())
+                    saveLocalRecipeDraft(details.toCreateRecipeRequest(), id, isDirty = false)
+                }
+            }
+        }
     }
 
     private fun nextLocalDraftId(): Int = -(System.currentTimeMillis() % Int.MAX_VALUE).toInt().coerceAtLeast(1)
@@ -822,6 +877,39 @@ private fun ArticleDetailsDto.toArticleDetailsEntity(): ArticleDetailsEntity = A
     isSaved = isSaved,
     tags = tags.toRecipeTags(),
     comments = comments.map { it.toDomain() }
+)
+
+private fun RecipeDetailsDto.toCreateRecipeRequest(): CreateRecipeRequest = CreateRecipeRequest(
+    title = title.orEmpty(),
+    summary = summary.orEmpty(),
+    content = content.orEmpty(),
+    imageUrl = imageUrl.normalizeImageUrl().takeIf { it.isNotBlank() },
+    cookTimeMinutes = cookTimeMinutes ?: time.asString().filter { it.isDigit() }.toIntOrNull() ?: 0,
+    proteinsPer100 = proteinsPer100 ?: 0.0,
+    fatsPer100 = fatsPer100 ?: 0.0,
+    carbsPer100 = carbsPer100 ?: 0.0,
+    kcalPer100 = kcalPer100 ?: 0.0,
+    status = "DRAFT",
+    tags = tags.map { it.name },
+    ingredients = ingredients.map { ingredient ->
+        CreateRecipeIngredient(
+            name = ingredient.name ?: ingredient.text?.substringBefore(" - ").orEmpty(),
+            amount = ingredient.amount ?: ingredient.text?.substringAfter(" - ", "1")?.substringBefore(" ")?.replace(',', '.')?.toDoubleOrNull() ?: 1.0,
+            unit = ingredient.unit ?: ingredient.text?.substringAfter(" - ", "")?.substringAfter(" ", "шт").orEmpty().ifBlank { "шт" }
+        )
+    },
+    steps = steps.mapIndexed { index, step ->
+        CreateRecipeStep(step.number ?: index + 1, step.description.orEmpty(), step.imageUrl.normalizeImageUrl().takeIf { it.isNotBlank() })
+    }
+)
+
+private fun ArticleDetailsDto.toCreateArticleRequest(): CreateArticleRequest = CreateArticleRequest(
+    title = title.orEmpty(),
+    summary = "",
+    content = content.orEmpty(),
+    imageUrl = imageUrl.normalizeImageUrl().takeIf { it.isNotBlank() },
+    status = "DRAFT",
+    tags = tags.map { it.name }
 )
 
 private fun CommentDto.toDomain(): PostComment = PostComment(
