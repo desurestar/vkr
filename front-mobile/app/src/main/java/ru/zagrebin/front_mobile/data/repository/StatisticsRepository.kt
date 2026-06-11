@@ -4,6 +4,8 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import ru.zagrebin.front_mobile.data.local.dao.StatisticsDao
 import ru.zagrebin.front_mobile.data.local.dao.SyncDao
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsDayEntity
@@ -43,6 +45,7 @@ class StatisticsRepository(
     private val mealAdapter = moshi.adapter(PendingMealOp::class.java)
     private val recipeMealAdapter = moshi.adapter(PendingRecipeMealOp::class.java)
     private val settingsAdapter = moshi.adapter(PendingSettingsOp::class.java)
+    private val mutationMutex = Mutex()
 
     fun observeMonth(month: YearMonth, selectedDate: LocalDate): Flow<StatisticsUiState> {
         val start = month.atDay(1).toString()
@@ -81,17 +84,17 @@ class StatisticsRepository(
         }
     }
 
-    suspend fun clearLocalData() {
+    suspend fun clearLocalData() = mutationMutex.withLock {
         dao.clearAll()
         syncDao.clearPendingStatisticsOps()
     }
 
-    suspend fun refreshMonth(month: YearMonth): Boolean {
+    suspend fun refreshMonth(month: YearMonth): Boolean = mutationMutex.withLock {
         val start = month.atDay(1).toString()
         val end = month.atEndOfMonth().toString()
-        if (!networkConnectionChecker.isNetworkAvailable()) return false
-        syncPendingChanges()
-        return runCatching {
+        if (!networkConnectionChecker.isNetworkAvailable()) return@withLock false
+        if (!syncPendingChangesLocked()) return@withLock false
+        return@withLock runCatching {
             val response = api.getStatistics(month.format(DateTimeFormatter.ofPattern("yyyy-MM")))
             dao.replaceMonth(start, end, response.settings.toEntity(), response.days.map { it.toDayEntity() }, response.days.flatMap { it.toMealEntities() })
             prune(response.settings.retentionMonths)
@@ -99,7 +102,7 @@ class StatisticsRepository(
         }.getOrDefault(false)
     }
 
-    suspend fun addWater(date: LocalDate, amountMl: Int) {
+    suspend fun addWater(date: LocalDate, amountMl: Int) = mutationMutex.withLock {
         val dateIso = date.toString()
         val current = dao.getDay(dateIso)
         dao.upsertDay(StatisticsDayEntity(dateIso, (current?.waterConsumedMl ?: 0) + amountMl))
@@ -109,7 +112,7 @@ class StatisticsRepository(
         }
     }
 
-    suspend fun addMeal(date: LocalDate, type: MealType, draft: MealDraft) {
+    suspend fun addMeal(date: LocalDate, type: MealType, draft: MealDraft) = mutationMutex.withLock {
         val dateIso = date.toString()
         val entry = buildMealEntry(dateIso, type, draft)
         dao.upsertMeal(entry)
@@ -124,7 +127,7 @@ class StatisticsRepository(
         }
     }
 
-    suspend fun addRecipeMeal(date: LocalDate, type: MealType, recipeId: Int, draft: MealDraft) {
+    suspend fun addRecipeMeal(date: LocalDate, type: MealType, recipeId: Int, draft: MealDraft) = mutationMutex.withLock {
         val dateIso = date.toString()
         val entry = buildMealEntry(dateIso, type, draft.copy(recipeId = recipeId))
         dao.upsertMeal(entry)
@@ -145,7 +148,7 @@ class StatisticsRepository(
         }
     }
 
-    suspend fun updateSettings(settings: StatisticsSettings) {
+    suspend fun updateSettings(settings: StatisticsSettings) = mutationMutex.withLock {
         dao.upsertSettings(settings.toEntity())
         prune(settings.retentionMonths)
         val request = settings.toRequest()
@@ -155,7 +158,11 @@ class StatisticsRepository(
     }
 
 
-    suspend fun syncPendingChanges(): Boolean {
+    suspend fun syncPendingChanges(): Boolean = mutationMutex.withLock {
+        syncPendingChangesLocked()
+    }
+
+    private suspend fun syncPendingChangesLocked(): Boolean {
         if (!networkConnectionChecker.isNetworkAvailable()) return false
         val ops = syncDao.getPendingStatisticsOps()
         for (op in ops) {
@@ -163,7 +170,8 @@ class StatisticsRepository(
                 when (op.opType) {
                     STAT_OP_WATER -> {
                         val payload = waterAdapter.fromJson(op.payloadJson) ?: error("Invalid water sync payload")
-                        api.addStatisticsWater(AddWaterRequest(payload.date, payload.amountMl))
+                        val saved = api.addStatisticsWater(AddWaterRequest(payload.date, payload.amountMl))
+                        dao.upsertDay(saved.toDayEntity())
                     }
                     STAT_OP_MEAL -> {
                         val payload = mealAdapter.fromJson(op.payloadJson) ?: error("Invalid meal sync payload")
