@@ -182,8 +182,7 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             if (debounce) delay(SEARCH_DEBOUNCE_MS)
-            posts.value = emptyList()
-            pagingState.value = PagingState(hasMorePages = false)
+            pagingState.value = pagingState.value.copy(hasMorePages = false, isLoadingNextPage = false)
             val result = container.feedRepository.searchUsers(searchQuery.trimStart().removePrefix("@").trim())
             userResults.value = result.data
             errorMessage.value = if (result.isFromCache) "Сервер недоступен. Поиск пользователей недоступен." else null

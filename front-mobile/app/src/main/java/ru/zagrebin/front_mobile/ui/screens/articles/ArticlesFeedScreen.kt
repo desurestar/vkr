@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Search
@@ -26,11 +25,9 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -53,7 +50,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.ui.components.postCard.ArticleCardContent
 import ru.zagrebin.front_mobile.ui.screens.feed.FeedFiltersSheet
-import ru.zagrebin.front_mobile.ui.screens.feed.UserSearchState
+import ru.zagrebin.front_mobile.ui.screens.feed.FilterEmptyState
+import ru.zagrebin.front_mobile.ui.screens.feed.UserSearchResults
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.FilterButtonCornerRadius
 import ru.zagrebin.front_mobile.ui.theme.FilterButtonIconPadding
@@ -69,7 +67,6 @@ import ru.zagrebin.front_mobile.ui.theme.SearchBarVerticalPadding
 import ru.zagrebin.front_mobile.ui.theme.SearchFieldContainerColor
 import ru.zagrebin.front_mobile.ui.theme.SearchFieldCornerRadius
 import ru.zagrebin.front_mobile.ui.theme.TopBarHeight
-import ru.zagrebin.front_mobile.ui.theme.TransparentColor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -145,6 +142,15 @@ fun ArticlesFeedScreen(
                     },
                     onAuthorClick = onOpenPublicProfile
                 )
+            }
+
+            if (state.posts.isEmpty() && state.filters.hasActiveFilters && !state.isUserSearch) {
+                item {
+                    FilterEmptyState(
+                        title = "Ничего не найдено",
+                        message = "Попробуйте изменить или сбросить фильтры."
+                    )
+                }
             }
         }
 
@@ -223,48 +229,6 @@ fun ArticlesFeedScreen(
         )
     }
 
-}
-
-@Composable
-private fun UserSearchResults(
-    users: List<UserSearchState>,
-    visible: Boolean,
-    onOpenPublicProfile: (Long) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    AnimatedVisibility(visible = visible && users.isNotEmpty(), modifier = modifier) {
-        Surface(
-            shape = RoundedCornerShape(18.dp),
-            color = SearchFieldContainerColor,
-            tonalElevation = 6.dp
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                users.forEach { user ->
-                    Surface(
-                        onClick = { onOpenPublicProfile(user.id) },
-                        color = TransparentColor,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp)
-                        ) {
-                            Text(
-                                text = user.displayName.ifBlank { "Пользователь" },
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                text = if (user.username.startsWith("@")) user.username else "@${user.username}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
