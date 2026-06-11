@@ -18,7 +18,9 @@ import ru.zagrebin.front_mobile.data.local.entities.RecipeDetailsEntity
 import ru.zagrebin.front_mobile.data.local.entities.TagEntity
 import ru.zagrebin.front_mobile.data.remote.api.CommentRequest
 import ru.zagrebin.front_mobile.data.remote.api.CreateArticleRequest
+import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeIngredient
 import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeRequest
+import ru.zagrebin.front_mobile.data.remote.api.CreateRecipeStep
 import ru.zagrebin.front_mobile.data.remote.api.FeedApi
 import ru.zagrebin.front_mobile.data.remote.api.PostViewRequest
 import ru.zagrebin.front_mobile.data.remote.dto.ArticleDetailsDto
@@ -894,12 +896,17 @@ private fun RecipeDetailsDto.toCreateRecipeRequest(): CreateRecipeRequest = Crea
     ingredients = ingredients.map { ingredient ->
         CreateRecipeIngredient(
             name = ingredient.name ?: ingredient.text?.substringBefore(" - ").orEmpty(),
-            amount = ingredient.amount ?: ingredient.text?.substringAfter(" - ", "1")?.substringBefore(" ")?.replace(',', '.')?.toDoubleOrNull() ?: 1.0,
-            unit = ingredient.unit ?: ingredient.text?.substringAfter(" - ", "")?.substringAfter(" ", "шт").orEmpty().ifBlank { "шт" }
+            amount = ingredient.amount ?: ingredient.text?.substringAfter(" - ", "1")
+                ?.substringBefore(" ")?.replace(',', '.')?.toDoubleOrNull() ?: 1.0,
+            unit = ingredient.unit ?: ingredient.text?.substringAfter(" - ", "")
+                ?.substringAfter(" ", "шт").orEmpty().ifBlank { "шт" }
         )
     },
     steps = steps.mapIndexed { index, step ->
-        CreateRecipeStep(step.number ?: index + 1, step.description.orEmpty(), step.imageUrl.normalizeImageUrl().takeIf { it.isNotBlank() })
+        CreateRecipeStep(
+            step.number ?: index + 1,
+            step.description.orEmpty(),
+            step.imageUrl.normalizeImageUrl().takeIf { it.isNotBlank() })
     }
 )
 
