@@ -64,7 +64,10 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         val date = LocalDate.ofEpochDay(dayId.toLong())
         selectedDate.value = date
         val month = YearMonth.from(date)
-        if (selectedMonth.value != month) selectedMonth.value = month
+        if (selectedMonth.value != month) {
+            selectedMonth.value = month
+            refresh()
+        }
     }
 
     fun showPreviousMonth() {
