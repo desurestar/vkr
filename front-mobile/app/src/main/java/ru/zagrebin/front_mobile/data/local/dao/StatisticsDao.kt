@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
+import ru.zagrebin.front_mobile.data.local.entities.PendingStatisticsOpEntity
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsDayEntity
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsMealEntryEntity
 import ru.zagrebin.front_mobile.data.local.entities.StatisticsSettingsEntity
@@ -42,6 +43,19 @@ interface StatisticsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMeal(meal: StatisticsMealEntryEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun enqueueStatisticsOp(op: PendingStatisticsOpEntity): Long
+
+    @Query("""
+        SELECT * FROM statistics_meals
+        WHERE id < 0
+            AND id NOT IN (
+                SELECT localMealId FROM pending_statistics_ops
+                WHERE localMealId IS NOT NULL
+            )
+    """)
+    suspend fun getLocalMealsWithoutPendingOps(): List<StatisticsMealEntryEntity>
+
     @Query("DELETE FROM statistics_meals WHERE id = :id")
     suspend fun deleteMeal(id: Long)
 
@@ -74,7 +88,31 @@ interface StatisticsDao {
     }
 
     @Transaction
-    suspend fun replaceMonth(start: String, end: String, settings: StatisticsSettingsEntity, days: List<StatisticsDayEntity>, meals: List<StatisticsMealEntryEntity>) {
+    suspend fun upsertDayWithPendingOp(day: StatisticsDayEntity, op: PendingStatisticsOpEntity): Long {
+        upsertDay(day)
+        return enqueueStatisticsOp(op)
+    }
+
+    @Transaction
+    suspend fun upsertMealWithPendingOp(meal: StatisticsMealEntryEntity, op: PendingStatisticsOpEntity): Long {
+        upsertMeal(meal)
+        return enqueueStatisticsOp(op)
+    }
+
+    @Transaction
+    suspend fun upsertSettingsWithPendingOp(settings: StatisticsSettingsEntity, op: PendingStatisticsOpEntity): Long {
+        upsertSettings(settings)
+        return enqueueStatisticsOp(op)
+    }
+
+    @Transaction
+    suspend fun replaceMonth(
+        start: String,
+        end: String,
+        settings: StatisticsSettingsEntity,
+        days: List<StatisticsDayEntity>,
+        meals: List<StatisticsMealEntryEntity>
+    ) {
         upsertSettings(settings)
         clearDays(start, end)
         clearMeals(start, end)

@@ -105,32 +105,51 @@ class StatisticsRepository(
     suspend fun addWater(date: LocalDate, amountMl: Int) = mutationMutex.withLock {
         val dateIso = date.toString()
         val current = dao.getDay(dateIso)
-        dao.upsertDay(StatisticsDayEntity(dateIso, (current?.waterConsumedMl ?: 0) + amountMl))
+        val localDay = StatisticsDayEntity(dateIso, (current?.waterConsumedMl ?: 0) + amountMl)
         val request = AddWaterRequest(dateIso, amountMl)
-        if (!networkConnectionChecker.isNetworkAvailable() || runCatching { api.addStatisticsWater(request) }.isFailure) {
-            enqueueStatisticsOp(STAT_OP_WATER, waterAdapter.toJson(PendingWaterOp(dateIso, amountMl)))
+        val pendingOp = PendingStatisticsOpEntity(
+            opType = STAT_OP_WATER,
+            payloadJson = waterAdapter.toJson(PendingWaterOp(dateIso, amountMl))
+        )
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            dao.upsertDayWithPendingOp(localDay, pendingOp)
+            return@withLock
         }
+
+        dao.upsertDay(localDay)
+        runCatching { api.addStatisticsWater(request) }
+            .onSuccess { saved -> dao.upsertDay(saved.toDayEntity()) }
+            .onFailure { dao.upsertDayWithPendingOp(localDay, pendingOp) }
     }
 
     suspend fun addMeal(date: LocalDate, type: MealType, draft: MealDraft) = mutationMutex.withLock {
         val dateIso = date.toString()
         val entry = buildMealEntry(dateIso, type, draft)
-        dao.upsertMeal(entry)
         val request = entry.toRequest(dateIso)
-        val synced = networkConnectionChecker.isNetworkAvailable() && runCatching {
+        val pendingOp = PendingStatisticsOpEntity(
+            opType = STAT_OP_MEAL,
+            payloadJson = mealAdapter.toJson(PendingMealOp(request)),
+            localMealId = entry.id
+        )
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            dao.upsertMealWithPendingOp(entry, pendingOp)
+            return@withLock
+        }
+
+        dao.upsertMeal(entry)
+        val synced = runCatching {
             val saved = api.addStatisticsMeal(request)
             dao.deleteMeal(entry.id)
             dao.upsertMeal(saved.toEntity(dateIso, type))
         }.isSuccess
         if (!synced) {
-            enqueueStatisticsOp(STAT_OP_MEAL, mealAdapter.toJson(PendingMealOp(request)), entry.id)
+            dao.upsertMealWithPendingOp(entry, pendingOp)
         }
     }
 
     suspend fun addRecipeMeal(date: LocalDate, type: MealType, recipeId: Int, draft: MealDraft) = mutationMutex.withLock {
         val dateIso = date.toString()
         val entry = buildMealEntry(dateIso, type, draft.copy(recipeId = recipeId))
-        dao.upsertMeal(entry)
         val request = AddRecipeMealRequest(
             date = dateIso,
             type = type.name,
@@ -138,22 +157,44 @@ class StatisticsRepository(
             liquid = draft.isLiquid,
             timeLabel = entry.timeLabel
         )
-        val synced = networkConnectionChecker.isNetworkAvailable() && runCatching {
+        val pendingOp = PendingStatisticsOpEntity(
+            opType = STAT_OP_RECIPE_MEAL,
+            payloadJson = recipeMealAdapter.toJson(PendingRecipeMealOp(recipeId, request)),
+            localMealId = entry.id
+        )
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            dao.upsertMealWithPendingOp(entry, pendingOp)
+            return@withLock
+        }
+
+        dao.upsertMeal(entry)
+        val synced = runCatching {
             val saved = api.addRecipeStatisticsMeal(recipeId = recipeId, request = request)
             dao.deleteMeal(entry.id)
             dao.upsertMeal(saved.toEntity(dateIso, type))
         }.isSuccess
         if (!synced) {
-            enqueueStatisticsOp(STAT_OP_RECIPE_MEAL, recipeMealAdapter.toJson(PendingRecipeMealOp(recipeId, request)), entry.id)
+            dao.upsertMealWithPendingOp(entry, pendingOp)
         }
     }
 
     suspend fun updateSettings(settings: StatisticsSettings) = mutationMutex.withLock {
-        dao.upsertSettings(settings.toEntity())
-        prune(settings.retentionMonths)
+        val settingsEntity = settings.toEntity()
         val request = settings.toRequest()
-        if (!networkConnectionChecker.isNetworkAvailable() || runCatching { api.updateStatisticsSettings(request) }.isFailure) {
-            enqueueStatisticsOp(STAT_OP_SETTINGS, settingsAdapter.toJson(PendingSettingsOp(request)))
+        val pendingOp = PendingStatisticsOpEntity(
+            opType = STAT_OP_SETTINGS,
+            payloadJson = settingsAdapter.toJson(PendingSettingsOp(request))
+        )
+        if (!networkConnectionChecker.isNetworkAvailable()) {
+            dao.upsertSettingsWithPendingOp(settingsEntity, pendingOp)
+            prune(settings.retentionMonths)
+            return@withLock
+        }
+
+        dao.upsertSettings(settingsEntity)
+        prune(settings.retentionMonths)
+        if (runCatching { api.updateStatisticsSettings(request) }.isFailure) {
+            dao.upsertSettingsWithPendingOp(settingsEntity, pendingOp)
         }
     }
 
@@ -164,6 +205,7 @@ class StatisticsRepository(
 
     private suspend fun syncPendingChangesLocked(): Boolean {
         if (!networkConnectionChecker.isNetworkAvailable()) return false
+        enqueueOrphanedLocalMeals()
         val ops = syncDao.getPendingStatisticsOps()
         for (op in ops) {
             val success = runCatching {
@@ -202,7 +244,16 @@ class StatisticsRepository(
     }
 
     private suspend fun enqueueStatisticsOp(opType: String, payloadJson: String, localMealId: Long? = null) {
-        syncDao.enqueueStatisticsOp(PendingStatisticsOpEntity(opType = opType, payloadJson = payloadJson, localMealId = localMealId))
+        syncDao.enqueueStatisticsOp(
+            PendingStatisticsOpEntity(opType = opType, payloadJson = payloadJson, localMealId = localMealId)
+        )
+    }
+
+    private suspend fun enqueueOrphanedLocalMeals() {
+        dao.getLocalMealsWithoutPendingOps().forEach { meal ->
+            val request = meal.toRequest(meal.dateIso)
+            enqueueStatisticsOp(STAT_OP_MEAL, mealAdapter.toJson(PendingMealOp(request)), meal.id)
+        }
     }
 
     private suspend fun prune(retentionMonths: Int) {
