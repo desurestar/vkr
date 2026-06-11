@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,6 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Add
@@ -63,16 +65,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.LightPrimary
 import java.io.File
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
 private const val MAX_TAGS = 10
@@ -270,7 +277,14 @@ fun CreateArticleScreen(
                         editingBlockIndex = blocks.indexOf(block).takeIf { it >= 0 }
                         showBlockSheet = editingBlockIndex != null
                     },
-                    onRemoveBlock = { blocks.remove(it) }
+                    onRemoveBlock = {
+                        blocks.remove(it)
+                        blocks.renumberBlocks()
+                    },
+                    onMoveBlock = { fromIndex, toIndex ->
+                        blocks.move(fromIndex, toIndex)
+                        blocks.renumberBlocks()
+                    }
                 )
 
                 if (showErrors && !blocksValid) {
@@ -406,7 +420,11 @@ private fun ArticleCoverBlock(
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             OutlinedButton(
                 onClick = onPickGallery,
                 shape = RoundedCornerShape(12.dp)
@@ -427,6 +445,23 @@ private fun ArticleCoverBlock(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text("Сделать фото", color = Color.White)
+            }
+            if (coverUri != null || !existingCoverUrl.isNullOrBlank()) {
+                OutlinedButton(
+                    onClick = onRemoveCover,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Удалить фото",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Удалить")
+                }
             }
         }
     }
@@ -495,7 +530,8 @@ private fun ArticleBlocksBlock(
     blocks: List<ArticleBlockDraft>,
     onAddClick: () -> Unit,
     onEditBlock: (ArticleBlockDraft) -> Unit,
-    onRemoveBlock: (ArticleBlockDraft) -> Unit
+    onRemoveBlock: (ArticleBlockDraft) -> Unit,
+    onMoveBlock: (fromIndex: Int, toIndex: Int) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
@@ -514,8 +550,19 @@ private fun ArticleBlocksBlock(
                 Text("Добавить блок")
             }
         }
+        val reorderThreshold = with(LocalDensity.current) { 48.dp.toPx() }
+
         blocks.forEachIndexed { index, block ->
-            Surface(shape = RoundedCornerShape(12.dp), color = Color.White) {
+            var dragOffsetY by remember(index, blocks.size) { mutableStateOf(0f) }
+            var currentDragIndex by remember(index, blocks.size) { mutableStateOf(index) }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color.White,
+                modifier = Modifier
+                    .offset { IntOffset(0, dragOffsetY.roundToInt()) }
+                    .zIndex(if (dragOffsetY != 0f) 1f else 0f)
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -523,6 +570,32 @@ private fun ArticleBlocksBlock(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        ReorderHandle(
+                            modifier = Modifier.pointerInput(index, blocks.size) {
+                                detectVerticalDragGestures(
+                                    onDragStart = {
+                                        currentDragIndex = index
+                                        dragOffsetY = 0f
+                                    },
+                                    onVerticalDrag = { _, dragAmount ->
+                                        dragOffsetY += dragAmount
+                                        val targetIndex = when {
+                                            dragOffsetY > reorderThreshold && currentDragIndex < blocks.lastIndex -> currentDragIndex + 1
+                                            dragOffsetY < -reorderThreshold && currentDragIndex > 0 -> currentDragIndex - 1
+                                            else -> currentDragIndex
+                                        }
+                                        if (targetIndex != currentDragIndex) {
+                                            onMoveBlock(currentDragIndex, targetIndex)
+                                            currentDragIndex = targetIndex
+                                            dragOffsetY = 0f
+                                        }
+                                    },
+                                    onDragEnd = { dragOffsetY = 0f },
+                                    onDragCancel = { dragOffsetY = 0f }
+                                )
+                            }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Блок ${index + 1}",
                             style = MaterialTheme.typography.bodyMedium,
@@ -566,6 +639,17 @@ private fun ArticleBlocksBlock(
             }
         }
     }
+}
+
+@Composable
+private fun ReorderHandle(modifier: Modifier = Modifier) {
+    Text(
+        text = "⋮⋮",
+        style = MaterialTheme.typography.titleMedium,
+        color = Color(0xFF8A8A8A),
+        modifier = modifier
+            .padding(horizontal = 2.dp, vertical = 4.dp)
+    )
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -881,6 +965,18 @@ private fun ArticleBlockAddBottomSheet(
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+private fun <T> MutableList<T>.move(fromIndex: Int, toIndex: Int) {
+    if (fromIndex == toIndex || fromIndex !in indices || toIndex !in indices) return
+    val item = removeAt(fromIndex)
+    add(toIndex, item)
+}
+
+private fun MutableList<ArticleBlockDraft>.renumberBlocks() {
+    indices.forEach { index ->
+        this[index] = this[index].copy(number = index + 1)
     }
 }
 
