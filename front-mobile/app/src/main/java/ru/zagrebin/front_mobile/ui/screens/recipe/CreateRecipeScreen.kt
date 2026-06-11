@@ -58,6 +58,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,6 +83,7 @@ import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
 import java.io.File
+import java.util.UUID
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
@@ -169,7 +171,12 @@ fun CreateRecipeScreen(
             },
             onSaveClick = { draft ->
                 if (editingIndex != null && editingIndex in ingredients.indices) {
-                    ingredients[editingIndex] = draft
+                    val current = ingredients[editingIndex]
+                    ingredients[editingIndex] = current.copy(
+                        name = draft.name,
+                        amount = draft.amount,
+                        unit = draft.unit
+                    )
                 } else {
                     ingredients.add(draft)
                 }
@@ -681,15 +688,16 @@ private fun IngredientsBlock(
         val reorderThreshold = with(LocalDensity.current) { 48.dp.toPx() }
 
         ingredients.forEachIndexed { index, ingredient ->
-            var dragOffsetY by remember(index, ingredients.size) { mutableStateOf(0f) }
-            var currentDragIndex by remember(index, ingredients.size) { mutableStateOf(index) }
-            val amountText = if (ingredient.amount % 1f == 0f) {
-                ingredient.amount.toInt().toString()
-            } else {
-                ingredient.amount.toString()
-            }
+            key(ingredient.clientId) {
+                var dragOffsetY by remember(ingredient.clientId, ingredients.size) { mutableStateOf(0f) }
+                var currentDragIndex by remember(ingredient.clientId, ingredients.size) { mutableStateOf(index) }
+                val amountText = if (ingredient.amount % 1f == 0f) {
+                    ingredient.amount.toInt().toString()
+                } else {
+                    ingredient.amount.toString()
+                }
 
-            Surface(
+                Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = Color.White,
                 modifier = Modifier
@@ -703,7 +711,7 @@ private fun IngredientsBlock(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ReorderHandle(
-                        modifier = Modifier.pointerInput(index, ingredients.size) {
+                        modifier = Modifier.pointerInput(ingredient.clientId, ingredients.size) {
                             detectVerticalDragGestures(
                                 onDragStart = {
                                     currentDragIndex = index
@@ -753,6 +761,7 @@ private fun IngredientsBlock(
                     )
                 }
             }
+            }
         }
     }
 }
@@ -785,10 +794,11 @@ private fun StepsBlock(
         val reorderThreshold = with(LocalDensity.current) { 48.dp.toPx() }
 
         steps.forEachIndexed { index, step ->
-            var dragOffsetY by remember(index, steps.size) { mutableStateOf(0f) }
-            var currentDragIndex by remember(index, steps.size) { mutableStateOf(index) }
+            key(step.clientId) {
+                var dragOffsetY by remember(step.clientId, steps.size) { mutableStateOf(0f) }
+                var currentDragIndex by remember(step.clientId, steps.size) { mutableStateOf(index) }
 
-            Surface(
+                Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = Color.White,
                 modifier = Modifier
@@ -803,7 +813,7 @@ private fun StepsBlock(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ReorderHandle(
-                            modifier = Modifier.pointerInput(index, steps.size) {
+                            modifier = Modifier.pointerInput(step.clientId, steps.size) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
                                         currentDragIndex = index
@@ -870,6 +880,8 @@ private fun StepsBlock(
             }
         }
     }
+}
+
 }
 
 @Composable
@@ -1323,14 +1335,16 @@ private fun MutableList<RecipeStepDraft>.renumberSteps() {
 data class IngredientDraft(
     val name: String,
     val amount: Float,
-    val unit: String
+    val unit: String,
+    val clientId: String = UUID.randomUUID().toString()
 )
 
 data class RecipeStepDraft(
     val number: Int,
     val description: String,
     val photoUri: Uri?,
-    val existingImageUrl: String? = null
+    val existingImageUrl: String? = null,
+    val clientId: String = UUID.randomUUID().toString()
 )
 
 data class RecipeEditDraft(
