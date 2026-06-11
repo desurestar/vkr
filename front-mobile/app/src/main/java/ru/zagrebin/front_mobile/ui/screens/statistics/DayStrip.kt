@@ -8,19 +8,34 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DayStrip(
     days: List<StatisticsDay>,
@@ -30,6 +45,16 @@ fun DayStrip(
     onNextMonth: () -> Unit,
     onDayClick: (Int) -> Unit
 ) {
+    val listState = rememberLazyListState()
+    var showCalendar by remember { mutableStateOf(false) }
+
+    LaunchedEffect(days.firstOrNull()?.id, days.size, selectedDayId) {
+        val selectedIndex = days.indexOfFirst { it.id == selectedDayId }
+        if (selectedIndex >= 0) {
+            listState.animateScrollToItem(selectedIndex)
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -37,16 +62,24 @@ fun DayStrip(
             verticalAlignment = Alignment.CenterVertically
         ) {
             MonthNavButton(text = "‹", onClick = onPreviousMonth)
-            Text(
-                text = monthLabel.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() },
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF2A2A2A)
-            )
+            Surface(
+                onClick = { showCalendar = true },
+                shape = RoundedCornerShape(10.dp),
+                color = Color.White
+            ) {
+                Text(
+                    text = monthLabel.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF2A2A2A)
+                )
+            }
             MonthNavButton(text = "›", onClick = onNextMonth)
         }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
+            state = listState,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(days) { day ->
@@ -65,6 +98,35 @@ fun DayStrip(
                     )
                 }
             }
+        }
+    }
+
+    if (showCalendar) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDayId.toUtcMillis()
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showCalendar = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis
+                            ?.toDayId()
+                            ?.let(onDayClick)
+                        showCalendar = false
+                    }
+                ) {
+                    Text(text = "Выбрать")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCalendar = false }) {
+                    Text(text = "Отмена")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }
@@ -94,3 +156,16 @@ private fun DayStripPreview() {
         onDayClick = {}
     )
 }
+
+private fun Int.toUtcMillis(): Long = LocalDate
+    .ofEpochDay(toLong())
+    .atStartOfDay(ZoneOffset.UTC)
+    .toInstant()
+    .toEpochMilli()
+
+private fun Long.toDayId(): Int = Instant
+    .ofEpochMilli(this)
+    .atZone(ZoneOffset.UTC)
+    .toLocalDate()
+    .toEpochDay()
+    .toInt()
