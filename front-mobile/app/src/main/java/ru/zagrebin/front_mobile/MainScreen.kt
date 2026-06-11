@@ -8,12 +8,18 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,18 +28,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import ru.zagrebin.front_mobile.ui.components.BottomBar
 import ru.zagrebin.front_mobile.ui.navigation.NavGraph
 import ru.zagrebin.front_mobile.ui.navigation.BottomNavItem
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
     val density = LocalDensity.current
     val topInset = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
+    val refreshState = rememberPullToRefreshState()
+    val refreshScope = rememberCoroutineScope()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -46,59 +59,118 @@ fun MainScreen() {
         )
     }
     var selectedBottomRoute by remember { mutableStateOf(BottomNavItem.Recipes.route) }
+    var isRefreshing by remember { mutableStateOf(false) }
     LaunchedEffect(currentRoute) {
         if (currentRoute in bottomRoutes) {
             selectedBottomRoute = currentRoute ?: BottomNavItem.Recipes.route
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = refresh@{
+            if (isRefreshing) return@refresh
+            val entryToRefresh = navBackStackEntry ?: return@refresh
+            val refreshRoute = entryToRefresh.toRefreshRoute() ?: return@refresh
 
-        NavGraph(
-            navController = navController,
-            paddingValues = PaddingValues(top = topInset)
-        )
+            refreshScope.launch {
+                isRefreshing = true
+                navController.refreshCurrentDestination(entryToRefresh, refreshRoute)
+                delay(PullRefreshIndicatorMinDurationMillis)
+                isRefreshing = false
+            }
+        },
+        modifier = Modifier.fillMaxSize(),
+        state = refreshState,
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = topInset)
+                    .zIndex(3f),
+                isRefreshing = isRefreshing,
+                state = refreshState,
+                containerColor = Color(0xFF1E1C1F),
+                color = Color(0xFFF6C166)
+            )
+        }
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
 
-        TopFadeBlurOverlay(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .zIndex(1f)
-        )
+            NavGraph(
+                navController = navController,
+                paddingValues = PaddingValues(top = topInset)
+            )
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .zIndex(2f)
-        ) {
-            BottomBar(
-                currentRoute = selectedBottomRoute,
-                onTabClick = { item ->
-                    val isReselect = item.route == selectedBottomRoute
-                    selectedBottomRoute = item.route
+            TopFadeBlurOverlay(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .zIndex(1f)
+            )
 
-                    if (isReselect) {
-                        // Повторный тап по вкладке: очищаем ее стек и пересоздаем экран.
-                        navController.navigate(item.route) {
-                            launchSingleTop = true
-                            restoreState = false
-                            popUpTo(item.route) {
-                                inclusive = true
-                                saveState = false
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .zIndex(2f)
+            ) {
+                BottomBar(
+                    currentRoute = selectedBottomRoute,
+                    onTabClick = { item ->
+                        val isReselect = item.route == selectedBottomRoute
+                        selectedBottomRoute = item.route
+
+                        if (isReselect) {
+                            // Повторный тап по вкладке: очищаем ее стек и пересоздаем экран.
+                            navController.navigate(item.route) {
+                                launchSingleTop = true
+                                restoreState = false
+                                popUpTo(item.route) {
+                                    inclusive = true
+                                    saveState = false
+                                }
                             }
-                        }
-                    } else {
-                        // Переход на другую вкладку: закрываем открытые вложенные страницы.
-                        navController.navigate(item.route) {
-                            launchSingleTop = true
-                            restoreState = true
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                        } else {
+                            // Переход на другую вкладку: закрываем открытые вложенные страницы.
+                            navController.navigate(item.route) {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
                             }
                         }
                     }
-                }
-            )
+                )
+            }
         }
+    }
+}
+
+private const val PullRefreshIndicatorMinDurationMillis = 700L
+
+private fun NavHostController.refreshCurrentDestination(
+    backStackEntry: NavBackStackEntry,
+    refreshRoute: String
+) {
+    navigate(refreshRoute) {
+        launchSingleTop = true
+        restoreState = false
+        popUpTo(backStackEntry.destination.id) {
+            inclusive = true
+            saveState = false
+        }
+    }
+}
+
+private fun NavBackStackEntry.toRefreshRoute(): String? {
+    val route = destination.route ?: return null
+    return when (route) {
+        "publicProfile/{userId}" -> arguments?.getString("userId")?.let { "publicProfile/$it" }
+        "recipe/{postId}" -> arguments?.getInt("postId")?.let { "recipe/$it" }
+        "article/{postId}" -> arguments?.getInt("postId")?.let { "article/$it" }
+        "editRecipe/{postId}" -> arguments?.getInt("postId")?.let { "editRecipe/$it" }
+        "editArticle/{postId}" -> arguments?.getInt("postId")?.let { "editArticle/$it" }
+        else -> route.takeIf { "{" !in it }
     }
 }
 
