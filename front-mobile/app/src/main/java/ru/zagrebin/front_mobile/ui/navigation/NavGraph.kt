@@ -276,7 +276,7 @@ fun NavGraph(
                                     ingredients = ingredients.map { ingredient ->
                                         CreateRecipeIngredient(
                                             name = ingredient.name,
-                                            amount = ingredient.amount.toDouble(),
+                                            amount = ingredient.amount,
                                             unit = ingredient.unit
                                         )
                                     },
@@ -331,7 +331,7 @@ fun NavGraph(
                                     ingredients = ingredients.map { ingredient ->
                                         CreateRecipeIngredient(
                                             name = ingredient.name,
-                                            amount = ingredient.amount.toDouble(),
+                                            amount = ingredient.amount,
                                             unit = ingredient.unit
                                         )
                                     },
@@ -622,7 +622,7 @@ fun NavGraph(
                                             kcalPer100 = kcal,
                                             status = "PUBLISHED",
                                             tags = tags,
-                                            ingredients = ingredients.map { CreateRecipeIngredient(it.name, it.amount.toDouble(), it.unit) },
+                                            ingredients = ingredients.map { CreateRecipeIngredient(it.name, it.amount, it.unit) },
                                             steps = steps.mapIndexed { index, step -> CreateRecipeStep(index + 1, step.description, stepImageUrls[index]) }
                                         )
                                     )
@@ -652,7 +652,7 @@ fun NavGraph(
                                     }
                                     appContainer.feedRepository.updateRecipe(
                                         postId,
-                                        CreateRecipeRequest(title, summary, content, mainImageUrl, cookTime, proteins, fats, carbs, kcal, "DRAFT", tags, ingredients.map { CreateRecipeIngredient(it.name, it.amount.toDouble(), it.unit) }, steps.mapIndexed { index, step -> CreateRecipeStep(index + 1, step.description, stepImageUrls[index]) })
+                                        CreateRecipeRequest(title, summary, content, mainImageUrl, cookTime, proteins, fats, carbs, kcal, "DRAFT", tags, ingredients.map { CreateRecipeIngredient(it.name, it.amount, it.unit) }, steps.mapIndexed { index, step -> CreateRecipeStep(index + 1, step.description, stepImageUrls[index]) })
                                     )
                                 }.getOrDefault(CreateRecipeResult.Fallback)
                                 if (saveResult is CreateRecipeResult.Success) {
@@ -795,7 +795,7 @@ private fun CreateRecipeRequest.toRecipeEditDraft(id: Int): RecipeEditDraft = Re
     carbsPer100 = carbsPer100,
     kcalPer100 = kcalPer100,
     tags = tags,
-    ingredients = ingredients.map { IngredientDraft(it.name, it.amount.toFloat(), it.unit) },
+    ingredients = ingredients.map { IngredientDraft(it.name, it.amount, it.unit) },
     steps = steps.map { step ->
         RecipeStepDraft(
             number = step.number,
@@ -840,7 +840,7 @@ private fun String.toIngredientDraft(): IngredientDraft {
     val parts = split(" - ", limit = 2)
     val name = parts.firstOrNull()?.trim().orEmpty().ifBlank { "Ингредиент" }
     val amountParts = parts.getOrNull(1)?.trim()?.split(" ", limit = 2).orEmpty()
-    val amount = amountParts.firstOrNull()?.replace(',', '.')?.toFloatOrNull() ?: 1f
+    val amount = amountParts.firstOrNull()?.replace(',', '.')?.toDoubleOrNull() ?: 1.0
     val unit = amountParts.getOrNull(1)?.trim().orEmpty().ifBlank { "шт" }
     return IngredientDraft(name, amount, unit)
 }
