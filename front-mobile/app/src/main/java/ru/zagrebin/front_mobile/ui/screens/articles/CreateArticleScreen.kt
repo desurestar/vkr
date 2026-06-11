@@ -55,6 +55,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,6 +80,7 @@ import ru.zagrebin.front_mobile.ui.common.asImageModelUrl
 import ru.zagrebin.front_mobile.ui.theme.AppPageBackgroundColor
 import ru.zagrebin.front_mobile.ui.theme.LightPrimary
 import java.io.File
+import java.util.UUID
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
@@ -553,10 +555,11 @@ private fun ArticleBlocksBlock(
         val reorderThreshold = with(LocalDensity.current) { 48.dp.toPx() }
 
         blocks.forEachIndexed { index, block ->
-            var dragOffsetY by remember(index, blocks.size) { mutableStateOf(0f) }
-            var currentDragIndex by remember(index, blocks.size) { mutableStateOf(index) }
+            key(block.clientId) {
+                var dragOffsetY by remember(block.clientId, blocks.size) { mutableStateOf(0f) }
+                var currentDragIndex by remember(block.clientId, blocks.size) { mutableStateOf(index) }
 
-            Surface(
+                Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = Color.White,
                 modifier = Modifier
@@ -571,7 +574,7 @@ private fun ArticleBlocksBlock(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ReorderHandle(
-                            modifier = Modifier.pointerInput(index, blocks.size) {
+                            modifier = Modifier.pointerInput(block.clientId, blocks.size) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
                                         currentDragIndex = index
@@ -639,6 +642,8 @@ private fun ArticleBlocksBlock(
             }
         }
     }
+}
+
 }
 
 @Composable
@@ -985,7 +990,8 @@ data class ArticleBlockDraft(
     val title: String,
     val content: String,
     val photoUri: Uri?,
-    val existingImageUrl: String? = null
+    val existingImageUrl: String? = null,
+    val clientId: String = UUID.randomUUID().toString()
 )
 
 data class ArticleEditDraft(
